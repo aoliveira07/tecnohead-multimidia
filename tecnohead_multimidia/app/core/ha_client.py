@@ -8,11 +8,6 @@ from typing import Any
 
 import aiohttp
 
-try:  # websockets changed its import path in v14
-    from websockets.asyncio.client import connect as websocket_connect
-except ImportError:  # pragma: no cover - exercised only with older websockets
-    from websockets import connect as websocket_connect
-
 from app.settings import Settings
 
 LOGGER = logging.getLogger("tecnohead.ha")
@@ -125,23 +120,41 @@ class HomeAssistantClient:
     async def websocket_command(self, command: dict[str, Any]) -> Any:
         if not self.settings.supervisor_token:
             raise HomeAssistantUnavailable("SUPERVISOR_TOKEN não está disponível no App")
+        if self._session is None:
+            await self.start()
+        assert self._session is not None
         try:
-            async with websocket_connect(self.settings.core_ws_url, open_timeout=self.settings.ha_request_timeout) as ws:
-                await ws.send(json.dumps({"type": "auth", "access_token": self.settings.supervisor_token}))
-                auth = json.loads(await asyncio.wait_for(ws.recv(), timeout=self.settings.ha_request_timeout))
+            async with self._session.ws_connect(
+                self.settings.core_ws_url,
+                timeout=self.settings.ha_request_timeout,
+                heartbeat=30,
+            ) as ws:
+                await ws.send_json({"type": "auth", "access_token": self.settings.supervisor_token})
+                auth_message = await asyncio.wait_for(ws.receive(), timeout=self.settings.ha_request_timeout)
+                if auth_message.type != aiohttp.WSMsgType.TEXT:
+                    raise HomeAssistantUnavailable("Home Assistant encerrou o WebSocket antes da autenticação")
+                auth = json.loads(auth_message.data)
                 if auth.get("type") != "auth_ok":
-                    raise HomeAssistantUnavailable("autenticação WebSocket do Home Assistant falhou")
+                    detail = auth.get("message") or auth.get("code") or auth.get("type") or "resposta desconhecida"
+                    raise HomeAssistantUnavailable(
+                        f"autenticação WebSocket do Home Assistant falhou ({detail})"
+                    )
                 self._message_id += 1
                 request = {"id": self._message_id, **command}
-                await ws.send(json.dumps(request))
+                await ws.send_json(request)
                 while True:
-                    message = json.loads(await asyncio.wait_for(ws.recv(), timeout=self.settings.ha_request_timeout))
+                    message_data = await asyncio.wait_for(ws.receive(), timeout=self.settings.ha_request_timeout)
+                    if message_data.type != aiohttp.WSMsgType.TEXT:
+                        raise HomeAssistantUnavailable("Home Assistant encerrou o WebSocket durante o comando")
+                    message = json.loads(message_data.data)
                     if message.get("id") == self._message_id:
                         if not message.get("success", False):
                             raise HomeAssistantServiceError(str(message.get("error", "comando WebSocket rejeitado")))
                         return message.get("result")
         except HomeAssistantError:
             raise
+        except (TimeoutError, aiohttp.ClientError, json.JSONDecodeError) as exc:
+            raise HomeAssistantUnavailable("WebSocket do Home Assistant indisponível") from exc
         except Exception as exc:
             raise HomeAssistantUnavailable("WebSocket do Home Assistant indisponível") from exc
 
@@ -186,29 +199,43 @@ class HomeAssistantClient:
     ) -> None:
         if not self.settings.supervisor_token:
             raise HomeAssistantUnavailable("SUPERVISOR_TOKEN não está disponível no App")
-        async with websocket_connect(self.settings.core_ws_url, open_timeout=self.settings.ha_request_timeout) as ws:
-            await ws.send(json.dumps({"type": "auth", "access_token": self.settings.supervisor_token}))
-            auth = json.loads(await asyncio.wait_for(ws.recv(), timeout=self.settings.ha_request_timeout))
+        if self._session is None:
+            await self.start()
+        assert self._session is not None
+        async with self._session.ws_connect(
+            self.settings.core_ws_url,
+            timeout=self.settings.ha_request_timeout,
+            heartbeat=30,
+        ) as ws:
+            await ws.send_json({"type": "auth", "access_token": self.settings.supervisor_token})
+            auth_message = await asyncio.wait_for(ws.receive(), timeout=self.settings.ha_request_timeout)
+            if auth_message.type != aiohttp.WSMsgType.TEXT:
+                raise HomeAssistantUnavailable("Home Assistant encerrou o WebSocket antes da autenticação")
+            auth = json.loads(auth_message.data)
             if auth.get("type") != "auth_ok":
-                raise HomeAssistantUnavailable("autenticação WebSocket do Home Assistant falhou")
+                detail = auth.get("message") or auth.get("code") or auth.get("type") or "resposta desconhecida"
+                raise HomeAssistantUnavailable(f"autenticação WebSocket do Home Assistant falhou ({detail})")
             self._message_id += 1
-            await ws.send(
-                json.dumps(
-                    {
-                        "id": self._message_id,
-                        "type": "subscribe_events",
-                        "event_type": "state_changed",
-                    }
-                )
+            await ws.send_json(
+                {
+                    "id": self._message_id,
+                    "type": "subscribe_events",
+                    "event_type": "state_changed",
+                }
             )
-            subscribed = json.loads(await asyncio.wait_for(ws.recv(), timeout=self.settings.ha_request_timeout))
+            subscribed_message = await asyncio.wait_for(ws.receive(), timeout=self.settings.ha_request_timeout)
+            if subscribed_message.type != aiohttp.WSMsgType.TEXT:
+                raise HomeAssistantUnavailable("Home Assistant encerrou o WebSocket ao assinar eventos")
+            subscribed = json.loads(subscribed_message.data)
             if not subscribed.get("success", False):
                 raise HomeAssistantServiceError("assinatura de eventos rejeitada")
             while not stop_event.is_set():
                 try:
-                    message = await asyncio.wait_for(ws.recv(), timeout=1.0)
+                    message_data = await asyncio.wait_for(ws.receive(), timeout=1.0)
                 except TimeoutError:
                     continue
-                payload = json.loads(message)
+                if message_data.type != aiohttp.WSMsgType.TEXT:
+                    raise HomeAssistantUnavailable("Home Assistant encerrou o WebSocket de eventos")
+                payload = json.loads(message_data.data)
                 if payload.get("type") == "event" and isinstance(payload.get("event"), dict):
                     await callback(payload["event"])
