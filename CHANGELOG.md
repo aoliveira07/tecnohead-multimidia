@@ -28,4 +28,3 @@
 ## 1.2.9
 
 - Alinha a versão exibida no painel, no runtime, nos metadados MQTT e no pacote do App.
-

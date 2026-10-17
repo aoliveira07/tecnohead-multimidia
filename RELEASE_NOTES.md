@@ -9,4 +9,3 @@ Correção operacional do editor Ingress: o polling de diagnóstico não sobresc
 ## v1.2.9
 
 Alinha a versão exibida no painel e nos metadados internos com a versão instalada pelo catálogo HAOS.
-
