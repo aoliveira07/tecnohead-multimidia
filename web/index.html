@@ -1,0 +1,121 @@
+<!doctype html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>TecnoHead Multimídia</title>
+    <link rel="stylesheet" href="/static/style.css" />
+  </head>
+  <body>
+    <header class="topbar">
+      <div class="brand">
+        <svg class="brand-mark" viewBox="0 0 64 64" role="img" aria-label="TecnoHead">
+          <path d="M11 15h42v10H39v25H25V25H11z" fill="currentColor" />
+          <circle cx="46" cy="43" r="8" fill="none" stroke="currentColor" stroke-width="5" />
+          <path d="M47 51l8 7" stroke="currentColor" stroke-width="5" stroke-linecap="round" />
+        </svg>
+        <div>
+          <div class="brand-name">TecnoHead</div>
+          <div class="brand-subtitle">Multimídia</div>
+        </div>
+      </div>
+      <div class="top-actions">
+        <span id="app-version" class="version-badge">v—</span>
+        <span id="ha-state" class="status-pill offline">HAOS offline</span>
+        <button id="refresh" class="icon-button" title="Atualizar descoberta">↻</button>
+      </div>
+    </header>
+
+    <main class="page-shell">
+      <section class="hero">
+        <div>
+          <p class="eyebrow">MOTOR DE CENAS</p>
+          <h1>Ambientes que respondem ao momento.</h1>
+          <p class="hero-copy">Controle Cinema, TV, climatização e atmosfera por área, usando as entidades já registradas no Home Assistant.</p>
+        </div>
+        <div class="hero-note">
+          <span class="hero-dot"></span>
+          <div><strong>IR protegido</strong><br /><small>O App só chama <code>remote.send_command</code> no HA.</small></div>
+        </div>
+      </section>
+
+      <section class="section-heading">
+        <div><p class="eyebrow">PAINEL</p><h2>Ambientes habilitados</h2></div>
+        <span id="last-discovery" class="muted">Descoberta não executada</span>
+      </section>
+      <section id="area-cards" class="area-grid"></section>
+
+      <section class="workspace-grid">
+        <section class="panel editor-panel">
+          <div class="section-heading compact">
+            <div><p class="eyebrow">COMISSIONAMENTO</p><h2>Editor de ambiente</h2></div>
+            <select id="area-select" class="select compact-select" aria-label="Área selecionada"></select>
+          </div>
+          <div id="editor-empty" class="empty-state">Faça a descoberta para selecionar uma área do Home Assistant.</div>
+          <form id="area-form" class="form hidden">
+            <div class="form-row two">
+              <label>Habilitar perfil<select id="enabled"><option value="false">Desabilitado</option><option value="true">Habilitado</option></select></label>
+              <label>Modo padrão do mestre<select id="default-mode"><option value="tv">TV</option><option value="cinema">Cinema</option></select></label>
+            </div>
+            <div class="form-row three">
+              <label>TV física<select id="tv-entity"></select></label>
+              <label>Receiver / Denon<select id="receiver-entity"></select></label>
+              <label>Telão (switch/cover)<select id="screen-entity"></select></label>
+            </div>
+            <div class="form-row three">
+              <label>Apple TV (opcional)<select id="apple-entity"></select></label>
+              <label>Ar-condicionado<select id="climate-entity"></select></label>
+              <label>Sensor de temperatura<select id="temperature-sensor"></select></label>
+            </div>
+            <div class="form-row two">
+              <label>Fonte do receiver no Cinema<input id="cinema-source" placeholder="Selecione uma fonte verificada" /></label>
+              <label>Fonte do receiver na TV<input id="tv-source" value="TV Audio" /></label>
+            </div>
+            <div class="form-row three">
+              <label>Volume Cinema (0–1)<input id="cinema-volume" type="number" min="0" max="1" step="0.01" /></label>
+              <label>Volume TV (0–1)<input id="tv-volume" type="number" min="0" max="1" step="0.01" /></label>
+              <label>Apagar luzes após (s)<input id="lights-delay" type="number" min="0" max="3600" step="1" /></label>
+            </div>
+
+            <div class="subsection">
+              <div class="subsection-heading"><div><p class="eyebrow">EMISSOR HA</p><h3>Remote por área</h3></div><span class="hint">sem IP, MAC ou driver próprio</span></div>
+              <div class="form-row two">
+                <label>Entidade remote<select id="remote-entity"></select></label>
+                <label>Formato ON/OFF<select id="command-format"><option value="broadlink_b64">BroadLink Base64 (b64:)</option><option value="pronto_hex">Pronto Hex</option><option value="named_command">Comando nomeado</option></select></label>
+              </div>
+              <div id="remote-hint" class="inline-notice"></div>
+            </div>
+
+            <details class="advanced" open>
+              <summary>Configurações avançadas de IR e climatização</summary>
+              <div class="advanced-body">
+                <div class="form-row two"><label>Código ON<input id="ir-on" autocomplete="off" /></label><label>Código OFF<input id="ir-off" autocomplete="off" /></label></div>
+                <div class="form-row four"><label>Envios ON<input id="on-sends" type="number" min="1" max="5" /></label><label>Envios OFF<input id="off-sends" type="number" min="1" max="5" /></label><label>Intervalo OFF (s)<input id="off-interval" type="number" min="0" max="60" step="0.1" /></label><label>Intervalo ON (s)<input id="on-interval" type="number" min="0" max="30" step="0.1" /></label></div>
+                <div class="button-row"><button type="button" id="test-ir-on" class="button button-warning">Testar IR ON</button><button type="button" id="test-ir-off" class="button button-warning">Testar IR OFF</button><button type="button" id="restore-ir" class="button button-ghost">Restaurar presets originais</button></div>
+                <div class="form-row four"><label>Setpoint °C<input id="setpoint" type="number" min="16" max="30" step="0.5" /></label><label>Retorno para vento alto °C<input id="high-threshold" type="number" min="16" max="35" step="0.5" /></label><label>Vento baixo<select id="low-fan"><option value="">Detectar da entidade</option></select></label><label>Vento alto<select id="high-fan"><option value="">Detectar da entidade</option></select></label></div>
+                <div class="form-row two"><label>Aleta / swing fixo para cima<select id="vane-mode"><option value="">Detectar capacidade</option></select></label><label>Proteção da TV durante Cinema<select id="tv-protection"><option value="true">Desligar somente a TV</option><option value="false">Não agir na TV</option></select></label></div>
+              </div>
+            </details>
+
+            <div class="subsection"><div class="subsection-heading"><div><p class="eyebrow">ILUMINAÇÃO</p><h3>Luzes descobertas na área</h3></div><span class="hint">switch só entra se classificado explicitamente</span></div><div id="lighting-list" class="check-list"></div></div>
+            <div id="form-message" class="form-message"></div>
+            <div class="button-row form-actions"><button type="submit" class="button button-primary">Salvar perfil da área</button><button type="button" id="reload-profile" class="button button-ghost">Recarregar</button></div>
+          </form>
+        </section>
+
+        <aside class="panel diagnostics-panel">
+          <div class="section-heading compact"><div><p class="eyebrow">OBSERVABILIDADE</p><h2>Diagnóstico</h2></div><button id="download-diagnostics" class="button button-ghost small">Exportar</button></div>
+          <div id="diagnostic-summary" class="diagnostic-summary"></div>
+          <div id="events" class="event-feed"></div>
+        </aside>
+      </section>
+
+      <section class="panel help-panel">
+        <div><p class="eyebrow">SEGURANÇA OPERACIONAL</p><h2>O que o App confirma</h2><p>Uma chamada aceita pelo Home Assistant confirma processamento pela integração. O App não inventa confirmação física do projetor, telão ou aleta; estados desconhecidos aparecem como degradação ou <strong>UNCERTAIN</strong>.</p></div>
+        <div class="help-links"><a href="/api/docs" target="_blank">API local</a><a href="https://github.com/aoliveira07/tecnohead-multimidia" target="_blank">Repositório</a><a href="/api/manual" target="_blank">Manual de implantação</a></div>
+      </section>
+    </main>
+    <div id="toast" class="toast" role="status"></div>
+    <script src="/static/app.js"></script>
+  </body>
+</html>

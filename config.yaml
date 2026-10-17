@@ -1,0 +1,36 @@
+name: "TecnoHead Multimídia"
+slug: "tecnohead_multimidia"
+description: "Motor de cenas multimídia multiambiente para Home Assistant"
+version: "1.2.0"
+stage: experimental
+url: "https://github.com/aoliveira07/tecnohead-multimidia"
+startup: application
+boot: auto
+timeout: 30
+
+arch:
+  - amd64
+  - aarch64
+
+image: ghcr.io/aoliveira07/tecnohead-multimidia
+init: false
+apparmor: true
+
+ingress: true
+ingress_port: 8099
+panel_icon: mdi:projector-screen
+panel_title: TecnoHead Multimídia
+panel_admin: true
+
+homeassistant: "2026.10.0"
+homeassistant_api: true
+hassio_api: true
+hassio_role: default
+
+services:
+  - mqtt:want
+
+map:
+  - type: data
+
+backup: hot

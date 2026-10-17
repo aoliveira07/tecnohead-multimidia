@@ -1,0 +1,60 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+      - run: python -m pip install -r requirements.txt pytest ruff pip-audit
+      - run: ruff check app tests
+      - run: pytest -q
+      - run: pip-audit -r requirements.txt
+
+  app-config:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: python -m pip install pyyaml
+      - name: Validate App metadata
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          import yaml
+          cfg = yaml.safe_load(Path('config.yaml').read_text())
+          assert cfg['slug'] == 'tecnohead_multimidia'
+          assert cfg['ingress'] is True and cfg['homeassistant_api'] is True
+          assert 'mqtt:want' in cfg['services']
+          assert set(cfg['arch']) == {'amd64', 'aarch64'}
+          print('config.yaml OK')
+          PY
+
+  container:
+    needs: [test, app-config]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: docker/setup-qemu-action@v3
+      - uses: docker/setup-buildx-action@v3
+      - uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: Dockerfile
+          platforms: linux/amd64,linux/arm64
+          push: false
+          tags: tecnohead-multimidia:ci
