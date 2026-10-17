@@ -98,7 +98,7 @@ function renderRemoteHint(profile) {
 async function loadProfile(areaId) {
   state.selectedAreaId = areaId;
   try {
-    state.currentArea = await api(`/api/areas/${encodeURIComponent(areaId)}`);
+    state.currentArea = await api(`api/areas/${encodeURIComponent(areaId)}`);
     const area = state.currentArea; const profile = area.profile || {};
     $("editor-empty").classList.add("hidden"); $("area-form").classList.remove("hidden");
     $("enabled").value = String(!!profile.enabled); $("default-mode").value = profile.default_mode || "tv";
@@ -133,21 +133,21 @@ function buildProfile() {
 
 async function saveProfile(event) {
   event.preventDefault(); const message = $("form-message"); message.textContent = "Validando áreas e salvando…";
-  try { const profile = await api(`/api/areas/${encodeURIComponent(state.selectedAreaId)}`, { method: "PUT", body: JSON.stringify(buildProfile()) }); state.currentArea.profile = profile; message.textContent = "Perfil salvo com validação de domínio e área."; toast("Perfil salvo"); await loadAll(false); } catch (error) { message.textContent = `Falha: ${error.message}`; toast(error.message); }
+  try { const profile = await api(`api/areas/${encodeURIComponent(state.selectedAreaId)}`, { method: "PUT", body: JSON.stringify(buildProfile()) }); state.currentArea.profile = profile; message.textContent = "Perfil salvo com validação de domínio e área."; toast("Perfil salvo"); await loadAll(false); } catch (error) { message.textContent = `Falha: ${error.message}`; toast(error.message); }
 }
 
 async function setMode(areaId, mode) {
-  try { await api(`/api/areas/${encodeURIComponent(areaId)}/mode`, { method: "POST", body: JSON.stringify({ mode, confirmed: true }) }); toast(`Cena ${modeLabel(mode)} iniciada`); setTimeout(() => loadAll(false), 900); } catch (error) { toast(`Cena não iniciada: ${error.message}`); }
+  try { await api(`api/areas/${encodeURIComponent(areaId)}/mode`, { method: "POST", body: JSON.stringify({ mode, confirmed: true }) }); toast(`Cena ${modeLabel(mode)} iniciada`); setTimeout(() => loadAll(false), 900); } catch (error) { toast(`Cena não iniciada: ${error.message}`); }
 }
 
 async function testIr(direction) {
   if (!confirm(`Enviar o preset IR ${direction.toUpperCase()} agora? Isso pode atuar fisicamente no projetor.`)) return;
-  try { const result = await api(`/api/areas/${encodeURIComponent(state.selectedAreaId)}/ir/test`, { method: "POST", body: JSON.stringify({ direction, confirmed: true }) }); toast(`HA aceitou ${result.calls?.length || 1} chamada(s); resposta física ainda não é observável.`); await loadProfile(state.selectedAreaId); } catch (error) { toast(`Teste IR: ${error.message}`); }
+  try { const result = await api(`api/areas/${encodeURIComponent(state.selectedAreaId)}/ir/test`, { method: "POST", body: JSON.stringify({ direction, confirmed: true }) }); toast(`HA aceitou ${result.calls?.length || 1} chamada(s); resposta física ainda não é observável.`); await loadProfile(state.selectedAreaId); } catch (error) { toast(`Teste IR: ${error.message}`); }
 }
 
 async function restoreIr() {
   if (!confirm("Restaurar os presets ON/OFF autorizados e os padrões ON1/OFF2/5s?")) return;
-  try { await api(`/api/areas/${encodeURIComponent(state.selectedAreaId)}/ir/restore`, { method: "POST", body: JSON.stringify({ confirmed: true }) }); toast("Presets restaurados"); await loadProfile(state.selectedAreaId); } catch (error) { toast(error.message); }
+  try { await api(`api/areas/${encodeURIComponent(state.selectedAreaId)}/ir/restore`, { method: "POST", body: JSON.stringify({ confirmed: true }) }); toast("Presets restaurados"); await loadProfile(state.selectedAreaId); } catch (error) { toast(error.message); }
 }
 
 function renderEvents() {
@@ -156,7 +156,7 @@ function renderEvents() {
 }
 
 async function loadAll(refresh = false) {
-  try { [state.status, state.areas] = await Promise.all([api("/api/status"), api(`/api/areas?refresh=${refresh}`)]); renderStatus(); renderCards(); renderAreasSelect(); renderEvents(); } catch (error) { toast(`Descoberta: ${error.message}`); renderStatus(); renderEvents(); }
+  try { [state.status, state.areas] = await Promise.all([api("api/status"), api(`api/areas?refresh=${refresh}`)]); renderStatus(); renderCards(); renderAreasSelect(); renderEvents(); } catch (error) { toast(`Descoberta: ${error.message}`); renderStatus(); renderEvents(); }
 }
 
 $("refresh").addEventListener("click", () => loadAll(true));
@@ -166,5 +166,5 @@ $("reload-profile").addEventListener("click", () => loadProfile(state.selectedAr
 $("remote-entity").addEventListener("change", () => renderRemoteHint(state.currentArea?.profile || {}));
 $("climate-entity").addEventListener("change", () => renderClimateOptions(state.currentArea?.profile || {}));
 $("test-ir-on").addEventListener("click", () => testIr("on")); $("test-ir-off").addEventListener("click", () => testIr("off")); $("restore-ir").addEventListener("click", restoreIr);
-$("download-diagnostics").addEventListener("click", async () => { try { const data = await api("/api/diagnostics"); const blob = new Blob([JSON.stringify(data, null, 2)], { type: "application/json" }); const link = document.createElement("a"); link.href = URL.createObjectURL(blob); link.download = "tecnohead-diagnostics-redacted.json"; link.click(); URL.revokeObjectURL(link.href); } catch (error) { toast(error.message); } });
+$("download-diagnostics").addEventListener("click", async () => { try { const data = await api("api/diagnostics"); const blob = new Blob([JSON.stringify(data, null, 2)], { type: "application/json" }); const link = document.createElement("a"); link.href = URL.createObjectURL(blob); link.download = "tecnohead-diagnostics-redacted.json"; link.click(); URL.revokeObjectURL(link.href); } catch (error) { toast(error.message); } });
 loadAll(true); setInterval(() => loadAll(false), 5000);
