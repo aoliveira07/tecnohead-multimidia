@@ -4,6 +4,7 @@ import asyncio
 import json
 import logging
 import re
+import ssl
 from collections.abc import Awaitable, Callable
 from typing import Any
 
@@ -88,15 +89,17 @@ class MqttBridge:
                     qos=1,
                     retain=True,
                 )
-                client = aiomqtt.Client(
-                    hostname=str(service["host"]),
-                    port=int(service["port"]),
-                    username=service.get("username"),
-                    password=service.get("password"),
-                    tls=bool(service.get("ssl", False)),
-                    identifier=f"tecnohead-{self.installation_id[:12]}",
-                    will=will,
-                )
+                client_kwargs: dict[str, Any] = {
+                    "hostname": str(service["host"]),
+                    "port": int(service["port"]),
+                    "username": service.get("username"),
+                    "password": service.get("password"),
+                    "identifier": f"tecnohead-{self.installation_id[:12]}",
+                    "will": will,
+                }
+                if service.get("ssl", False):
+                    client_kwargs["tls_context"] = ssl.create_default_context()
+                client = aiomqtt.Client(**client_kwargs)
                 async with client:
                     async with self._connection_lock:
                         self._client = client
