@@ -129,6 +129,12 @@ class HomeAssistantClient:
                 timeout=self.settings.ha_request_timeout,
                 heartbeat=30,
             ) as ws:
+                greeting = await asyncio.wait_for(ws.receive(), timeout=self.settings.ha_request_timeout)
+                if greeting.type != aiohttp.WSMsgType.TEXT:
+                    raise HomeAssistantUnavailable("Home Assistant encerrou o WebSocket antes da saudação")
+                greeting_payload = json.loads(greeting.data)
+                if greeting_payload.get("type") != "auth_required":
+                    raise HomeAssistantUnavailable("saudação WebSocket do Home Assistant inesperada")
                 await ws.send_json({"type": "auth", "access_token": self.settings.supervisor_token})
                 auth_message = await asyncio.wait_for(ws.receive(), timeout=self.settings.ha_request_timeout)
                 if auth_message.type != aiohttp.WSMsgType.TEXT:
@@ -207,6 +213,12 @@ class HomeAssistantClient:
             timeout=self.settings.ha_request_timeout,
             heartbeat=30,
         ) as ws:
+            greeting = await asyncio.wait_for(ws.receive(), timeout=self.settings.ha_request_timeout)
+            if greeting.type != aiohttp.WSMsgType.TEXT:
+                raise HomeAssistantUnavailable("Home Assistant encerrou o WebSocket antes da saudação")
+            greeting_payload = json.loads(greeting.data)
+            if greeting_payload.get("type") != "auth_required":
+                raise HomeAssistantUnavailable("saudação WebSocket do Home Assistant inesperada")
             await ws.send_json({"type": "auth", "access_token": self.settings.supervisor_token})
             auth_message = await asyncio.wait_for(ws.receive(), timeout=self.settings.ha_request_timeout)
             if auth_message.type != aiohttp.WSMsgType.TEXT:
