@@ -2,7 +2,7 @@
 
 App para Home Assistant OS que transforma áreas cadastradas no HA em ambientes multimídia com cenas Cinema, TV e Desligar. A interface é em português brasileiro, responsiva, aparece na sidebar por Ingress e usa um motor próprio por área — sem criar automações YAML intermediárias.
 
-## Estado da entrega 1.2.1
+## Estado da entrega 1.2.2
 
 O código, a UI, a persistência, a descoberta por área, o transporte IR via `remote.send_command`, MQTT Discovery e a suíte simulada estão implementados. A homologação física e a instalação no HAOS do cliente permanecem pendentes até que esse ambiente seja disponibilizado ao operador; este repositório não afirma teste físico que não foi observado.
 
@@ -31,6 +31,7 @@ Para clientes novos, siga [INSTALL.md](INSTALL.md) e [MANUAL_IMPLANTACAO_CLIENTE
 ## Desenvolvimento
 
 ```powershell
+cd tecnohead_multimidia
 python -m pip install -r requirements.txt pytest pytest-asyncio ruff
 python -m pytest -q
 ruff check app tests

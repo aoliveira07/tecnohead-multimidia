@@ -12,6 +12,9 @@ permissions:
 jobs:
   test:
     runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: tecnohead_multimidia
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
@@ -36,7 +39,7 @@ jobs:
           python - <<'PY'
           from pathlib import Path
           import yaml
-          cfg = yaml.safe_load(Path('config.yaml').read_text())
+          cfg = yaml.safe_load(Path('tecnohead_multimidia/config.yaml').read_text())
           assert cfg['slug'] == 'tecnohead_multimidia'
           assert cfg['ingress'] is True and cfg['homeassistant_api'] is True
           assert 'mqtt:want' in cfg['services']
@@ -53,8 +56,8 @@ jobs:
       - uses: docker/setup-buildx-action@v3
       - uses: docker/build-push-action@v6
         with:
-          context: .
-          file: Dockerfile
+          context: ./tecnohead_multimidia
+          file: ./tecnohead_multimidia/Dockerfile
           platforms: linux/amd64,linux/arm64
           push: false
           tags: tecnohead-multimidia:ci

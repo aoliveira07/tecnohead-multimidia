@@ -1,4 +1,4 @@
-# Relatório de homologação — TecnoHead Multimídia 1.2.1
+# Relatório de homologação — TecnoHead Multimídia 1.2.2
 
 ## Escopo observado nesta entrega
 

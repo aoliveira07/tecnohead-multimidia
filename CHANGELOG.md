@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.2.2 — correção do empacotamento HAOS
+
+- Organiza o App em diretório próprio de repositório Home Assistant.
+- Corrige o contexto do Docker e a validação de metadata para instalação pelo catálogo de Apps.
+
 ## 1.2.1 — correção de MQTT
 
 - Corrige a criação do cliente MQTT seguro usando `tls_context` da API atual do `aiomqtt`.
