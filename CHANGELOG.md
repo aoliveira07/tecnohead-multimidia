@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.2.3 — correção do ambiente do App
+
+- Executa o entrypoint pelo `with-contenv` do Home Assistant para disponibilizar `SUPERVISOR_TOKEN` ao processo.
+
 ## 1.2.2 — correção do empacotamento HAOS
 
 - Organiza o App em diretório próprio de repositório Home Assistant.

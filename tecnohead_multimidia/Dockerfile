@@ -1,6 +1,6 @@
 FROM ghcr.io/home-assistant/base:latest
 
-ARG BUILD_VERSION=1.2.2
+ARG BUILD_VERSION=1.2.3
 ARG BUILD_ARCH=local
 
 LABEL \
@@ -15,8 +15,10 @@ RUN python3 -m pip install --no-cache-dir --break-system-packages -r /requiremen
 
 COPY app /app/app
 COPY web /app/web
+COPY run.sh /run.sh
+RUN chmod +x /run.sh
 
 WORKDIR /app
 ENV PYTHONPATH=/app
 
-CMD ["python3", "-m", "uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8099"]
+CMD ["/run.sh"]
