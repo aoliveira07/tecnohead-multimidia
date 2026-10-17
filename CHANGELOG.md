@@ -25,3 +25,7 @@
 ## 1.2.8
 
 - Corrige a persistência do editor de ambientes durante a atualização periódica do painel: alterações em andamento não são sobrescritas pelo polling de status.
+## 1.2.9
+
+- Alinha a versão exibida no painel, no runtime, nos metadados MQTT e no pacote do App.
+

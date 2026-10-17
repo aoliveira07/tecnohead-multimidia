@@ -6,3 +6,7 @@ Antes de marcar a instalação como homologada, o instalador deve executar o che
 ## v1.2.8
 
 Correção operacional do editor Ingress: o polling de diagnóstico não sobrescreve mais um cadastro de área enquanto ele está sendo preenchido.
+## v1.2.9
+
+Alinha a versão exibida no painel e nos metadados internos com a versão instalada pelo catálogo HAOS.
+
