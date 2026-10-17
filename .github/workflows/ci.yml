@@ -18,7 +18,7 @@ jobs:
         with:
           python-version: "3.12"
           cache: pip
-      - run: python -m pip install -r requirements.txt pytest ruff pip-audit
+      - run: python -m pip install -r requirements.txt pytest pytest-asyncio ruff pip-audit
       - run: ruff check app tests
       - run: pytest -q
       - run: pip-audit -r requirements.txt
