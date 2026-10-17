@@ -1,5 +1,5 @@
 const $ = (id) => document.getElementById(id);
-const state = { areas: [], status: null, selectedAreaId: null, currentArea: null };
+const state = { areas: [], status: null, selectedAreaId: null, currentArea: null, formDirty: false };
 
 async function api(path, options = {}) {
   const response = await fetch(path, { headers: { "Content-Type": "application/json", ...(options.headers || {}) }, ...options });
@@ -59,7 +59,9 @@ function renderAreasSelect() {
   select.innerHTML = state.areas.map((area) => `<option value="${escapeHtml(area.area_id)}">${escapeHtml(area.name)}</option>`).join("");
   if (state.selectedAreaId && state.areas.some((area) => area.area_id === state.selectedAreaId)) select.value = state.selectedAreaId;
   else state.selectedAreaId = select.value || null;
-  if (state.selectedAreaId) loadProfile(state.selectedAreaId);
+  // The status poll runs every few seconds. Do not overwrite an in-progress
+  // commissioning form with the last persisted profile while the user edits.
+  if (state.selectedAreaId && !state.formDirty) loadProfile(state.selectedAreaId);
 }
 
 function populateSelect(id, entities, predicate, selected, blank = "Não configurado") {
@@ -97,6 +99,7 @@ function renderRemoteHint(profile) {
 
 async function loadProfile(areaId) {
   state.selectedAreaId = areaId;
+  state.formDirty = false;
   try {
     state.currentArea = await api(`api/areas/${encodeURIComponent(areaId)}`);
     const area = state.currentArea; const profile = area.profile || {};
@@ -133,7 +136,7 @@ function buildProfile() {
 
 async function saveProfile(event) {
   event.preventDefault(); const message = $("form-message"); message.textContent = "Validando áreas e salvando…";
-  try { const profile = await api(`api/areas/${encodeURIComponent(state.selectedAreaId)}`, { method: "PUT", body: JSON.stringify(buildProfile()) }); state.currentArea.profile = profile; message.textContent = "Perfil salvo com validação de domínio e área."; toast("Perfil salvo"); await loadAll(false); } catch (error) { message.textContent = `Falha: ${error.message}`; toast(error.message); }
+  try { const profile = await api(`api/areas/${encodeURIComponent(state.selectedAreaId)}`, { method: "PUT", body: JSON.stringify(buildProfile()) }); state.currentArea.profile = profile; state.formDirty = false; message.textContent = "Perfil salvo com validação de domínio e área."; toast("Perfil salvo"); await loadAll(false); } catch (error) { state.formDirty = true; message.textContent = `Falha: ${error.message}`; toast(error.message); }
 }
 
 async function setMode(areaId, mode) {
@@ -162,6 +165,8 @@ async function loadAll(refresh = false) {
 $("refresh").addEventListener("click", () => loadAll(true));
 $("area-select").addEventListener("change", (event) => loadProfile(event.target.value));
 $("area-form").addEventListener("submit", saveProfile);
+$("area-form").addEventListener("input", () => { state.formDirty = true; });
+$("area-form").addEventListener("change", () => { state.formDirty = true; });
 $("reload-profile").addEventListener("click", () => loadProfile(state.selectedAreaId));
 $("remote-entity").addEventListener("change", () => renderRemoteHint(state.currentArea?.profile || {}));
 $("climate-entity").addEventListener("change", () => renderClimateOptions(state.currentArea?.profile || {}));

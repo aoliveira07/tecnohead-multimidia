@@ -22,3 +22,6 @@
 - Motor multiambiente para Cinema, TV, OFF e evento de TV física.
 - Descoberta efetiva por área, clima, luzes classificadas e MQTT Discovery.
 - UI TecnoHead em português brasileiro e documentação de implantação.
+## 1.2.8
+
+- Corrige a persistência do editor de ambientes durante a atualização periódica do painel: alterações em andamento não são sobrescritas pelo polling de status.
