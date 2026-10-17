@@ -148,6 +148,14 @@ async function testIr(direction) {
   try { const result = await api(`api/areas/${encodeURIComponent(state.selectedAreaId)}/ir/test`, { method: "POST", body: JSON.stringify({ direction, confirmed: true }) }); toast(`HA aceitou ${result.calls?.length || 1} chamada(s); resposta física ainda não é observável.`); await loadProfile(state.selectedAreaId); } catch (error) { toast(`Teste IR: ${error.message}`); }
 }
 
+async function checkRemote() {
+  try {
+    const result = await api(`api/areas/${encodeURIComponent(state.selectedAreaId)}/ir/check`);
+    const label = result.friendly_name ? ` — ${result.friendly_name}` : "";
+    toast(`Entidade ${result.entity_id}${label} validada na área; nenhum IR foi emitido.`);
+  } catch (error) { toast(`Validação da entidade: ${error.message}`); }
+}
+
 async function restoreIr() {
   if (!confirm("Restaurar os presets ON/OFF autorizados e os padrões ON1/OFF2/5s?")) return;
   try { await api(`api/areas/${encodeURIComponent(state.selectedAreaId)}/ir/restore`, { method: "POST", body: JSON.stringify({ confirmed: true }) }); toast("Presets restaurados"); await loadProfile(state.selectedAreaId); } catch (error) { toast(error.message); }
@@ -171,5 +179,6 @@ $("reload-profile").addEventListener("click", () => loadProfile(state.selectedAr
 $("remote-entity").addEventListener("change", () => renderRemoteHint(state.currentArea?.profile || {}));
 $("climate-entity").addEventListener("change", () => renderClimateOptions(state.currentArea?.profile || {}));
 $("test-ir-on").addEventListener("click", () => testIr("on")); $("test-ir-off").addEventListener("click", () => testIr("off")); $("restore-ir").addEventListener("click", restoreIr);
+$("check-remote").addEventListener("click", checkRemote);
 $("download-diagnostics").addEventListener("click", async () => { try { const data = await api("api/diagnostics"); const blob = new Blob([JSON.stringify(data, null, 2)], { type: "application/json" }); const link = document.createElement("a"); link.href = URL.createObjectURL(blob); link.download = "tecnohead-diagnostics-redacted.json"; link.click(); URL.revokeObjectURL(link.href); } catch (error) { toast(error.message); } });
 loadAll(true); setInterval(() => loadAll(false), 5000);

@@ -187,10 +187,20 @@ class AreaEngine:
             raise IRSequenceError("perfil IR do projetor não está configurado")
         await self.ir.send_on(self.profile)
         self.projector_intent = "on_commanded_unknown_physical"
-        warnings.extend(await self.actions.apply_receiver(self.profile, self.profile.receiver_cinema_source, self.profile.volume_cinema))
+        warnings.extend(
+            await self._optional_receiver(
+                self.profile.receiver_cinema_source,
+                self.profile.volume_cinema,
+                "cinema",
+            )
+        )
         if self.profile.apple_tv_entity_id:
-            await self.actions.call(self.profile, self.profile.apple_tv_entity_id, {"media_player"}, "media_player", "turn_on")
-        warnings.extend(await self.actions.apply_climate(self.profile))
+            try:
+                await self.actions.call(self.profile, self.profile.apple_tv_entity_id, {"media_player"}, "media_player", "turn_on")
+            except ActionError as exc:
+                warnings.append(f"Apple TV indisponível: {exc}")
+                await self._record(level="warning", event="apple_tv_degraded", message=str(exc), entity_id=self.profile.apple_tv_entity_id, result="degraded")
+        warnings.extend(await self._optional_climate())
         self.diagnostic = "Cinema ativo; projetor recebeu ON, sem feedback físico"
         return warnings
 
@@ -207,8 +217,14 @@ class AreaEngine:
             await self.actions.call(self.profile, self.profile.tv_entity_id, {"media_player"}, "media_player", "turn_on")
         else:
             warnings.append("TV não configurada")
-        warnings.extend(await self.actions.apply_receiver(self.profile, self.profile.receiver_tv_source, self.profile.volume_tv))
-        warnings.extend(await self.actions.apply_climate(self.profile))
+        warnings.extend(
+            await self._optional_receiver(
+                self.profile.receiver_tv_source,
+                self.profile.volume_tv,
+                "tv",
+            )
+        )
+        warnings.extend(await self._optional_climate())
         return warnings
 
     async def _off(self, generation: int) -> list[str]:
@@ -222,12 +238,52 @@ class AreaEngine:
         await self._screen(False)
         if self.profile.tv_entity_id:
             self._mark_internal_tv("off")
-            await self.actions.call(self.profile, self.profile.tv_entity_id, {"media_player"}, "media_player", "turn_off")
+            try:
+                await self.actions.call(self.profile, self.profile.tv_entity_id, {"media_player"}, "media_player", "turn_off")
+            except ActionError as exc:
+                warnings.append(f"TV indisponível: {exc}")
+                await self._record(level="warning", event="tv_degraded", message=str(exc), entity_id=self.profile.tv_entity_id, result="degraded")
         if self.profile.receiver_entity_id:
-            await self.actions.call(self.profile, self.profile.receiver_entity_id, {"media_player"}, "media_player", "turn_off")
+            try:
+                await self.actions.call(self.profile, self.profile.receiver_entity_id, {"media_player"}, "media_player", "turn_off")
+            except ActionError as exc:
+                warnings.append(f"receiver indisponível: {exc}")
+                await self._record(level="warning", event="receiver_degraded", message=str(exc), entity_id=self.profile.receiver_entity_id, result="degraded")
         if self.profile.apple_tv_entity_id:
-            await self.actions.call(self.profile, self.profile.apple_tv_entity_id, {"media_player"}, "media_player", "turn_off")
+            try:
+                await self.actions.call(self.profile, self.profile.apple_tv_entity_id, {"media_player"}, "media_player", "turn_off")
+            except ActionError as exc:
+                warnings.append(f"Apple TV indisponível: {exc}")
+                await self._record(level="warning", event="apple_tv_degraded", message=str(exc), entity_id=self.profile.apple_tv_entity_id, result="degraded")
         return warnings
+
+    async def _optional_receiver(self, source: str | None, volume: float, scene: str) -> list[str]:
+        try:
+            return await self.actions.apply_receiver(self.profile, source, volume)
+        except ActionError as exc:
+            message = f"receiver indisponível na cena {scene}: {exc}"
+            await self._record(
+                level="warning",
+                event="receiver_degraded",
+                message=message,
+                entity_id=self.profile.receiver_entity_id,
+                result="degraded",
+            )
+            return [message]
+
+    async def _optional_climate(self) -> list[str]:
+        try:
+            return await self.actions.apply_climate(self.profile)
+        except ActionError as exc:
+            message = f"climatização indisponível: {exc}"
+            await self._record(
+                level="warning",
+                event="climate_degraded",
+                message=message,
+                entity_id=self.profile.climate_entity_id,
+                result="degraded",
+            )
+            return [message]
 
     async def _screen(self, open_screen: bool) -> None:
         entity_id = self.profile.screen_entity_id
@@ -320,8 +376,14 @@ class AreaEngine:
             self.diagnostic = "TV ligada fisicamente; aplicando somente receiver e ambiente"
             await self._record(event="external_tv_on", message=self.diagnostic, result="started")
             warnings = []
-            warnings.extend(await self.actions.apply_receiver(self.profile, self.profile.receiver_tv_source, self.profile.volume_tv))
-            warnings.extend(await self.actions.apply_climate(self.profile))
+            warnings.extend(
+                await self._optional_receiver(
+                    self.profile.receiver_tv_source,
+                    self.profile.volume_tv,
+                    "tv-física",
+                )
+            )
+            warnings.extend(await self._optional_climate())
             self.phase = Phase.ERROR if warnings else Phase.ACTIVE
             self.diagnostic = "; ".join(warnings) if warnings else "TV física preservada, receiver em TV Audio"
             self._generation += 1

@@ -93,6 +93,14 @@ async def test_ir(area_id: str, payload: IRTestRequest, request: Request):
         raise translate_error(exc) from exc
 
 
+@router.get("/areas/{area_id}/ir/check")
+async def check_ir_entity(area_id: str, request: Request):
+    try:
+        return await runtime_from(request).check_ir_entity(area_id)
+    except Exception as exc:
+        raise translate_error(exc) from exc
+
+
 @router.post("/areas/{area_id}/ir/restore")
 async def restore_ir(area_id: str, payload: RestorePresetRequest, request: Request):
     try:

@@ -190,6 +190,7 @@ class MqttBridge:
             "manufacturer": "TecnoHead",
             "model": "Multimídia",
             "sw_version": self.settings.app_version,
+            "suggested_area": profile.area_id,
         }
 
     def _switch_config(self, profile: AreaProfile, key: str, name: str) -> dict[str, Any]:

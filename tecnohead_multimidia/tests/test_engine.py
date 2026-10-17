@@ -72,6 +72,30 @@ async def test_external_tv_on_does_not_move_screen_or_send_ir(fake_ha, cinema_pr
 
 
 @pytest.mark.asyncio
+async def test_cinema_keeps_independent_steps_when_receiver_is_unavailable(fake_ha, cinema_profile):
+    discovery = DiscoveryService(fake_ha)
+    events = []
+
+    async def record(**kwargs):
+        events.append(kwargs)
+
+    next(item for item in fake_ha.snapshot["states"] if item["entity_id"] == "media_player.denon_cinema")["state"] = "unavailable"
+    clock = FakeClock()
+    actions = ActionExecutor(fake_ha, discovery, record)
+    ir = HomeAssistantRemoteTransport(fake_ha, discovery, record, sleep=clock.sleep, monotonic=clock.monotonic)
+    engine = AreaEngine(cinema_profile, actions, ir, discovery, record)
+
+    await engine.request_mode(Mode.CINEMA)
+    await engine.wait_idle()
+
+    assert any(call["entity_id"] == "switch.tela" and call["service"] == "turn_on" for call in fake_ha.calls)
+    assert any(call["domain"] == "remote" and call["service"] == "send_command" for call in fake_ha.calls)
+    assert any(call["service"] == "set_temperature" for call in fake_ha.calls)
+    assert engine.phase.value == "error"
+    assert any(item["event"] == "receiver_degraded" for item in events)
+
+
+@pytest.mark.asyncio
 async def test_climate_uses_high_then_low_without_fan_oscillation(fake_ha, cinema_profile):
     discovery = DiscoveryService(fake_ha)
     actions = ActionExecutor(fake_ha, discovery)

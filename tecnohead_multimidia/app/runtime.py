@@ -206,6 +206,24 @@ class Runtime:
             self.config = await self.store.snapshot()
             raise
 
+    async def check_ir_entity(self, area_id: str) -> dict[str, Any]:
+        """Validate the configured HA remote without transmitting IR."""
+        profile = await self.get_profile(area_id)
+        remote_id = profile.ir.remote_entity_id if profile.ir else None
+        result = await self.discovery.validate_remote(area_id, remote_id)
+        state = result.get("state", {})
+        attributes = state.get("attributes", {}) if isinstance(state, dict) else {}
+        return {
+            "ok": True,
+            "entity_id": remote_id,
+            "domain": "remote",
+            "area_id": area_id,
+            "state": state.get("state", "unknown"),
+            "friendly_name": attributes.get("friendly_name"),
+            "supported_features": attributes.get("supported_features"),
+            "physical_transmission": "não executada",
+        }
+
     async def request_mode(self, area_id: str, mode: Mode, *, reason: str = "explicit") -> dict[str, Any]:
         profile = await self.get_profile(area_id)
         if not profile.enabled:

@@ -1,5 +1,11 @@
 # Changelog
 
+## 1.2.10
+
+- Validação segura da entidade `remote` por área sem emitir IR.
+- Cenas continuam as etapas independentes quando receiver, Apple TV ou climatização estão indisponíveis, registrando a degradação.
+- MQTT Discovery informa a área sugerida do dispositivo.
+
 ## 1.2.3 — correção do ambiente do App
 
 - Executa o entrypoint pelo `with-contenv` do Home Assistant para disponibilizar `SUPERVISOR_TOKEN` ao processo.
