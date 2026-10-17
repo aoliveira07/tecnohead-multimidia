@@ -6,8 +6,8 @@ Legenda: `PASSOU` = evidência disponível; `NÃO TESTADO` = requer HAOS/equipam
 
 | ID | Resultado local | Evidência |
 |---|---|---|
-| A02 | PASSOU (simulado) | filtro usa área efetiva de entidade/dispositivo |
-| A03 | PASSOU (simulado) | payload `remote.send_command` por entidade, sem `num_repeats` |
+| A02 | PASSOU (simulado + HAOS) | filtro usa área efetiva de entidade/dispositivo; Cinema real validado |
+| A03 | PARCIAL (HAOS) | remote real validado sem transmissão; payload segue `remote.send_command` por entidade |
 | A05 | PASSOU (simulado) | prefixo `b64:` aplicado no limite do transporte |
 | A06 | PASSOU (simulado) | duas chamadas e gap após retorno de 5,0 s |
 | A07/A08 | PASSOU (simulado) | motor Cinema→TV e sequência de equipamentos |
@@ -19,9 +19,9 @@ Legenda: `PASSOU` = evidência disponível; `NÃO TESTADO` = requer HAOS/equipam
 
 | ID | Resultado atual | Prova necessária |
 |---|---|---|
-| A01 | BLOQUEADO | instalação limpa no HAOS, Ingress e restart observados |
-| A02 | NÃO TESTADO | captura da descoberta real Cinema/fora da área |
-| A03 | NÃO TESTADO | log real do serviço HA |
+| A01 | PASSOU | App instalado/atualizado no catálogo, Ingress aberto e serviço em funcionamento |
+| A02 | PASSOU | descoberta real Cinema e validação de `remote.ir_cinema` na área |
+| A03 | PARCIAL | entidade validada sem IR; chamada real ainda aguarda intervenção manual |
 | A04 | NÃO TESTADO | observação do telão e estado do switch |
 | A05 | NÃO TESTADO | log real + observação do projetor |
 | A06 | NÃO TESTADO | duas chamadas reais + observação física |
@@ -33,14 +33,14 @@ Legenda: `PASSOU` = evidência disponível; `NÃO TESTADO` = requer HAOS/equipam
 | A12 | NÃO TESTADO | temperatura estável em 22 °C e vento baixo |
 | A13 | NÃO TESTADO | luzes e switch explicitamente classificado |
 | A14 | NÃO TESTADO | troca/cancelamento de timers em equipamento real |
-| A15 | NÃO TESTADO | broker, birth, restart e estados retidos |
-| A16 | BLOQUEADO | HomeKit/Alexa do cliente não disponíveis nesta execução |
-| A17 | NÃO TESTADO | segundo ambiente real |
-| A18 | NÃO TESTADO | queda/restart HA durante OFF |
-| A19 | PARCIAL | código/docs/CI e release `v1.2.3` publicados; screenshots reais e instalação no HAOS pendentes |
-| A20 | PASSOU (revisão local) | sem backup, `.storage`, token, IP/MAC ou log bruto no repo |
-| A21 | PASSOU (simulado) | somente `remote` da área; UI não possui campos IP/MAC |
-| A22 | PASSOU (simulado) | validação de formato e restauro implementados |
+| A15 | PARCIAL | dispositivo MQTT real com 6 entidades e firmware 1.2.10; birth/restart ainda pendente |
+| A16 | PENDENTE | HomeKit Bridge/Alexa disponíveis, mas entidades TecnoHead ainda não expostas para voz |
+| A17 | PARCIAL | isolamento real do Cinema; segundo ambiente ainda não configurado |
+| A18 | PARCIAL | queda/restart durante OFF ainda não observado |
+| A19 | PASSOU | código, docs, CI, release `v1.2.10` e instalação HAOS confirmados |
+| A20 | PASSOU | sem backup, `.storage`, token, IP/MAC ou log bruto no repo |
+| A21 | PASSOU | somente `remote` da área; UI não possui campos IP/MAC |
+| A22 | PASSOU | validação de formato, persistência e restauração disponíveis no App instalado |
 | A23 | PASSOU (revisão local) | nenhuma dependência/driver BroadLink LAN |
 | A24 | PASSOU (revisão local) | formato separado e documentação de Pronto/nomeado |
 | A25 | PASSOU (simulado) | gap de 5,0 s medido entre retorno e segunda chamada |

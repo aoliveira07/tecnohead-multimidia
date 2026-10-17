@@ -2,9 +2,9 @@
 
 App para Home Assistant OS que transforma áreas cadastradas no HA em ambientes multimídia com cenas Cinema, TV e Desligar. A interface é em português brasileiro, responsiva, aparece na sidebar por Ingress e usa um motor próprio por área — sem criar automações YAML intermediárias.
 
-## Estado da entrega 1.2.3
+## Estado da entrega 1.2.10
 
-O código, a UI, a persistência, a descoberta por área, o transporte IR via `remote.send_command`, MQTT Discovery e a suíte simulada estão implementados. A homologação física e a instalação no HAOS do cliente permanecem pendentes até que esse ambiente seja disponibilizado ao operador; este repositório não afirma teste físico que não foi observado.
+O App está instalado e configurado no HAOS autorizado, com Ingress e MQTT Discovery ativos, perfil Cinema persistido e `remote.ir_cinema` validado na área correta sem transmitir IR. A homologação física continua pendente até a intervenção manual do operador; este repositório não afirma teste físico que não foi observado.
 
 Os testes locais atuais são executados com um HA simulado e cobrem o intervalo OFF de 5 segundos, isolamento por área, cenas e evento de TV física. Veja [HOMOLOGATION.md](HOMOLOGATION.md) e [TEST_PLAN.md](docs/TEST_PLAN.md) para o status por critério.
 

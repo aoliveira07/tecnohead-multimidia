@@ -1,31 +1,70 @@
-# Relatório de homologação — TecnoHead Multimídia 1.2.3
+# Relatório de instalação e homologação — TecnoHead Multimídia v1.2.10
 
-## Escopo observado nesta entrega
+## Status real em 17/10/2026
 
-- Implementação local do App e sua UI Ingress.
-- Transporte IR exclusivamente pela API/serviço do Home Assistant.
-- Presets ON/OFF genéricos autorizados, persistência e restauração.
-- Filtro estrito por área e validação antes de cada ação física.
-- Motor de cenas por área, proteção de TV, clima e desligamento de luzes.
-- MQTT Discovery opcional e documentação de HomeKit/Alexa.
-- 10 testes automatizados locais: PASSOU.
+**Instalado e configurado no HAOS; pronto para testes físicos manuais. Ainda não homologado fisicamente.**
 
-## Não observado
+O App foi instalado pelo catálogo de Apps a partir do repositório autorizado, atualizado de 1.2.8 para 1.2.10 e confirmado como “Em funcionamento”. O Ingress abriu, a descoberta real do Home Assistant respondeu, o perfil Cinema permaneceu persistido e o MQTT Discovery reconectou após a atualização.
 
-O repositório GitHub e a release instalável foram publicados. Ainda não houve sessão autorizada do HAOS do cliente, broker real ou acesso aos equipamentos físicos. Portanto, esta versão não é classificada como `instalado` ou `homologado`; o status correto é `publicado / instalável / parcialmente testado / implantação bloqueada por acesso de ambiente`.
+Não foram acionados projetor, telão, TV, receiver, ar, aleta ou luzes durante esta sessão. A validação executada no emissor foi somente cadastral/operacional e não transmitiu IR.
 
-## Bloqueios objetivos
+## Entidades mapeadas no ambiente Cinema
 
-1. URL/credencial de acesso ao HAOS autorizado, ou uma sessão de Ingress disponibilizada.
-2. Janela segura para observar projetor, telão, Denon, TV, LG, luzes, MQTT e assistentes de voz.
+| Função | Entidade | Situação observada |
+|---|---|---|
+| TV física | `media_player.tv_cinema` | selecionada; estado reportado pelo HA |
+| Receiver | `media_player.denon_cinema` | selecionado, porém indisponível na integração Denon no momento |
+| Telão | `switch.tela` | selecionado; operação física pendente |
+| Apple TV opcional | `media_player.cinema_cinema` | selecionada |
+| Ar-condicionado | `climate.ar_cinema` | selecionado; 22 °C, alto `very high`, baixo `low` |
+| Emissor IR | `remote.ir_cinema` | validado na área Cinema; sem IP/MAC/driver no App |
+| Luzes automáticas | `light.luz_cinema`, `light.luz_pipoca`, `light.sanca_cinema` | descobertas dinamicamente |
 
-## Evidências locais
+O sensor `sensor.ir_cinema_temperatura` não foi vinculado porque a leitura real observada não era válida; o perfil usa a temperatura anunciada pelo próprio climate. A posição fixa superior da aleta permanece sem valor configurado porque a integração anuncia posições numéricas e ainda falta confirmação física do valor correto.
 
-- `python -m pytest -q`: 10 passed.
-- `ruff check app tests`: passou.
-- `python -m compileall -q app tests`: passou.
-- O payload de OFF foi verificado em teste simulado como duas chamadas `remote.send_command` independentes, sem `num_repeats`, com 5,0 s após o retorno da primeira.
+## Checklist de aceite
 
-## Próxima atualização obrigatória
+Legenda: `PASSOU` = evidência observada; `PARCIAL` = parte validada, parte pendente; `NÃO TESTADO` = requer intervenção física; `PENDENTE` = integração externa ou equipamento indisponível.
 
-Após o acesso, executar [TEST_PLAN.md](docs/TEST_PLAN.md), anexar capturas reais, registrar versão instalada, SHA, tag/release, entidades mapeadas e pendências. Se qualquer teste físico falhar, corrigir, versionar e repetir a janela de testes antes de mudar o status para homologado.
+| ID | Resultado atual | Evidência |
+|---|---|---|
+| A01 | PASSOU | App instalado pelo catálogo, Ingress aberto, atualização 1.2.10 concluída e serviço em funcionamento |
+| A02 | PASSOU | descoberta real por área; Cinema ofereceu somente entidades efetivamente associadas à área, incluindo `remote.ir_cinema` |
+| A03 | PARCIAL | entidade remote validada pelo HA sem transmissão; chamada física ainda não executada |
+| A04 | NÃO TESTADO | requer observação do telão |
+| A05 | NÃO TESTADO | requer envio ON autorizado e observação do projetor |
+| A06 | NÃO TESTADO | requer duas chamadas OFF reais, intervalo de 5 s e observação física |
+| A07 | NÃO TESTADO | cena Cinema completa aguarda teste manual |
+| A08 | NÃO TESTADO | cena TV completa aguarda teste manual |
+| A09 | NÃO TESTADO | evento de TV física aguarda teste manual |
+| A10 | NÃO TESTADO | proteção durante Cinema aguarda teste manual |
+| A11 | NÃO TESTADO | ar e aleta aguardam observação em temperatura real |
+| A12 | NÃO TESTADO | histerese e vento baixo aguardam observação |
+| A13 | NÃO TESTADO | temporizador de 30 s aguarda teste com luzes reais |
+| A14 | NÃO TESTADO | cancelamento de timer aguarda teste de cena |
+| A15 | PARCIAL | dispositivo MQTT real com 3 switches + 3 sensores, estado `idle/off` e firmware 1.2.10; birth/restart do broker ainda não observado |
+| A16 | PENDENTE | HomeKit Bridge e Alexa estão disponíveis, mas as entidades TecnoHead ainda não foram incluídas/expostas para teste de voz |
+| A17 | PARCIAL | isolamento por área implementado e Cinema configurado; segundo ambiente ainda não comissionado |
+| A18 | PARCIAL | proteção contra repetição cega coberta por testes; queda real durante sequência ainda não observada |
+| A19 | PASSOU | repositório, commit, tag/release, CI e imagem multiarch publicados |
+| A20 | PASSOU | nenhuma alteração em outros Apps, banco, automações antigas ou arquivos `.storage`; nenhum segredo no repositório |
+| A21 | PASSOU | campo aceita somente `remote` da área e sugere `remote.ir_cinema`; nenhum campo IP/MAC |
+| A22 | PASSOU | presets e parâmetros persistentes, editor avançado e restauração disponíveis; valores sensíveis não aparecem nos diagnósticos |
+| A23 | PASSOU | BroadLink permanece integrado no HA; o App não possui driver LAN/IP |
+| A24 | PASSOU | formatos BroadLink Base64, Pronto Hex e comando nomeado separados; troca de entidade não presume compatibilidade de payload |
+| A25 | PASSOU (simulado) | testes automatizados medem 5,0 s após o retorno da primeira chamada; medição física de portadora não é alegada |
+| A26 | PARCIAL | cancelamento seguro coberto em código/testes; reinício real durante OFF ainda não observado |
+
+## Evidências técnicas
+
+- `python -m pytest -q`: **11 passed**.
+- `python -m ruff check app tests`: passou.
+- `python -m compileall -q app`: passou.
+- CI GitHub: sucesso no commit `79e7295`.
+- Release multiarch: `v1.2.10`, publicada após build `amd64`/`aarch64` bem-sucedido.
+- Validação no painel: `remote.ir_cinema` associado a Cinema; nenhum IR transmitido.
+- MQTT real: dispositivo TecnoHead na área Cinema, seis entidades, estado inicial Desligado/idle/Pronto.
+
+## Próximo passo manual
+
+Com receiver indisponível, o painel registra essa degradação e continua etapas independentes seguras; a integração Denon precisa estar disponível para validar fonte e volume. O operador deve executar o checklist físico em [docs/TEST_PLAN.md](docs/TEST_PLAN.md), começando pelo teste ON autorizado e observação direta do projetor. O App não deve ser classificado como homologado antes dessa observação.
