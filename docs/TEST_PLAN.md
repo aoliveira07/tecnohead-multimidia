@@ -37,7 +37,7 @@ Legenda: `PASSOU` = evidência disponível; `NÃO TESTADO` = requer HAOS/equipam
 | A16 | BLOQUEADO | HomeKit/Alexa do cliente não disponíveis nesta execução |
 | A17 | NÃO TESTADO | segundo ambiente real |
 | A18 | NÃO TESTADO | queda/restart HA durante OFF |
-| A19 | PARCIAL | código/docs/CI preparados; release e screenshots reais dependem de publicação/HAOS |
+| A19 | PARCIAL | código/docs/CI e release `v1.2.1` publicados; screenshots reais e instalação no HAOS pendentes |
 | A20 | PASSOU (revisão local) | sem backup, `.storage`, token, IP/MAC ou log bruto no repo |
 | A21 | PASSOU (simulado) | somente `remote` da área; UI não possui campos IP/MAC |
 | A22 | PASSOU (simulado) | validação de formato e restauro implementados |

@@ -8,21 +8,20 @@
 - Filtro estrito por área e validação antes de cada ação física.
 - Motor de cenas por área, proteção de TV, clima e desligamento de luzes.
 - MQTT Discovery opcional e documentação de HomeKit/Alexa.
-- 9 testes automatizados locais: PASSOU.
+- 10 testes automatizados locais: PASSOU.
 
 ## Não observado
 
-Não houve sessão autorizada do HAOS do cliente, broker real, GitHub remoto criado/publicado nesta etapa, nem acesso aos equipamentos físicos. Portanto, esta versão não é classificada como `instalado` ou `homologado`; o status correto é `implementado localmente / parcialmente testado / implantação bloqueada por acesso de ambiente`.
+O repositório GitHub e a release instalável foram publicados. Ainda não houve sessão autorizada do HAOS do cliente, broker real ou acesso aos equipamentos físicos. Portanto, esta versão não é classificada como `instalado` ou `homologado`; o status correto é `publicado / instalável / parcialmente testado / implantação bloqueada por acesso de ambiente`.
 
 ## Bloqueios objetivos
 
 1. URL/credencial de acesso ao HAOS autorizado, ou uma sessão de Ingress disponibilizada.
-2. Autorização/sessão da conta ou organização GitHub para criar o repositório exclusivo e publicar GHCR/release.
-3. Janela segura para observar projetor, telão, Denon, TV, LG, luzes, MQTT e assistentes de voz.
+2. Janela segura para observar projetor, telão, Denon, TV, LG, luzes, MQTT e assistentes de voz.
 
 ## Evidências locais
 
-- `python -m pytest -q`: 9 passed.
+- `python -m pytest -q`: 10 passed.
 - `ruff check app tests`: passou.
 - `python -m compileall -q app tests`: passou.
 - O payload de OFF foi verificado em teste simulado como duas chamadas `remote.send_command` independentes, sem `num_repeats`, com 5,0 s após o retorno da primeira.
