@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.2.1 — correção de MQTT
+
+- Corrige a criação do cliente MQTT seguro usando `tls_context` da API atual do `aiomqtt`.
+- Mantém a arquitetura IR da 1.2.0 e os defaults ON1/OFF2/5s.
+
 ## 1.2.0 — inicial
 
 - Arquitetura corrigida para selecionar entidade `remote` do Home Assistant por área.
