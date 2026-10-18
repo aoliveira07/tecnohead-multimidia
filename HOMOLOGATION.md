@@ -1,19 +1,19 @@
 # Relatório de instalação e homologação — TecnoHead Multimídia v1.2.10
 
-## Status real em 17/10/2026
+## Status real em 18/10/2026
 
 **Instalado e configurado no HAOS; pronto para testes físicos manuais. Ainda não homologado fisicamente.**
 
-O App foi instalado pelo catálogo de Apps a partir do repositório autorizado, atualizado de 1.2.8 para 1.2.10 e confirmado como “Em funcionamento”. O Ingress abriu, a descoberta real do Home Assistant respondeu, o perfil Cinema permaneceu persistido e o MQTT Discovery reconectou após a atualização.
+O App foi instalado pelo catálogo de Apps a partir do repositório autorizado, atualizado de 1.2.8 para 1.2.10 e confirmado como “Em funcionamento”. O Ingress abriu, a descoberta real do Home Assistant respondeu, o perfil Cinema permaneceu persistido e o MQTT Discovery reconectou após a atualização. Nesta etapa foi revalidada a conexão do Denon no Home Assistant e o perfil do App foi salvo novamente sem iniciar uma cena ou teste IR.
 
-Não foram acionados projetor, telão, TV, receiver, ar, aleta ou luzes durante esta sessão. A validação executada no emissor foi somente cadastral/operacional e não transmitiu IR.
+Durante esta revalidação do Denon, não foi acionado botão de cena nem teste IR; a etapa executada foi cadastral/operacional.
 
 ## Entidades mapeadas no ambiente Cinema
 
 | Função | Entidade | Situação observada |
 |---|---|---|
 | TV física | `media_player.tv_cinema` | selecionada; estado reportado pelo HA |
-| Receiver | `media_player.denon_cinema` | selecionado, porém indisponível na integração Denon no momento |
+| Receiver | `media_player.denon_cinema` | selecionado; dispositivo Denon Cinema ligado, na área Cinema, com conexão restabelecida |
 | Telão | `switch.tela` | selecionado; operação física pendente |
 | Apple TV opcional | `media_player.cinema_cinema` | selecionada |
 | Ar-condicionado | `climate.ar_cinema` | selecionado; 22 °C, alto `very high`, baixo `low` |
@@ -21,6 +21,12 @@ Não foram acionados projetor, telão, TV, receiver, ar, aleta ou luzes durante 
 | Luzes automáticas | `light.luz_cinema`, `light.luz_pipoca`, `light.sanca_cinema` | descobertas dinamicamente |
 
 O sensor `sensor.ir_cinema_temperatura` não foi vinculado porque a leitura real observada não era válida; o perfil usa a temperatura anunciada pelo próprio climate. A posição fixa superior da aleta permanece sem valor configurado porque a integração anuncia posições numéricas e ainda falta confirmação física do valor correto.
+
+### Revalidação do Denon — 18/10/2026
+
+A integração **Denon AVR Network Receivers** voltou a apresentar um dispositivo. O dispositivo **Denon Cinema** está associado à área Cinema e reporta estado ligado no Home Assistant. A entidade `media_player.denon_cinema` foi confirmada no editor do TecnoHead. A lista real de fontes do receiver contém `Apple TV` e `TV Audio`; o perfil foi salvo com `Apple TV` para Cinema, `TV Audio` para TV e os volumes configurados anteriormente (0,20 e 0,15).
+
+Essa validação confirma a conexão, a associação de área, a entidade e os rótulos de fonte. Ainda não confirma a troca física de fonte, volume ou resposta acústica; essas ações permanecem para o teste manual acompanhado.
 
 ## Checklist de aceite
 
@@ -30,12 +36,12 @@ Legenda: `PASSOU` = evidência observada; `PARCIAL` = parte validada, parte pend
 |---|---|---|
 | A01 | PASSOU | App instalado pelo catálogo, Ingress aberto, atualização 1.2.10 concluída e serviço em funcionamento |
 | A02 | PASSOU | descoberta real por área; Cinema ofereceu somente entidades efetivamente associadas à área, incluindo `remote.ir_cinema` |
-| A03 | PARCIAL | entidade remote validada pelo HA sem transmissão; chamada física ainda não executada |
+| A03 | PARCIAL | entidade remote validada pelo HA sem nova transmissão nesta etapa; chamada física ainda não executada |
 | A04 | NÃO TESTADO | requer observação do telão |
 | A05 | NÃO TESTADO | requer envio ON autorizado e observação do projetor |
 | A06 | NÃO TESTADO | requer duas chamadas OFF reais, intervalo de 5 s e observação física |
-| A07 | NÃO TESTADO | cena Cinema completa aguarda teste manual |
-| A08 | NÃO TESTADO | cena TV completa aguarda teste manual |
+| A07 | NÃO TESTADO | cena Cinema completa aguarda teste manual; Denon agora conectado e fonte configurada |
+| A08 | NÃO TESTADO | cena TV completa aguarda teste manual; Denon agora conectado e fonte configurada |
 | A09 | NÃO TESTADO | evento de TV física aguarda teste manual |
 | A10 | NÃO TESTADO | proteção durante Cinema aguarda teste manual |
 | A11 | NÃO TESTADO | ar e aleta aguardam observação em temperatura real |
@@ -62,9 +68,10 @@ Legenda: `PASSOU` = evidência observada; `PARCIAL` = parte validada, parte pend
 - `python -m compileall -q app`: passou.
 - CI GitHub: sucesso no commit `79e7295`.
 - Release multiarch: `v1.2.10`, publicada após build `amd64`/`aarch64` bem-sucedido.
-- Validação no painel: `remote.ir_cinema` associado a Cinema; nenhum IR transmitido.
+- Validação no painel: `remote.ir_cinema` associado a Cinema; nesta revalidação do Denon não foi acionado botão de cena nem teste IR.
+- Denon real: integração com um dispositivo ativo, dispositivo na área Cinema, `media_player.denon_cinema` selecionado e fontes `Apple TV`/`TV Audio` gravadas no perfil.
 - MQTT real: dispositivo TecnoHead na área Cinema, seis entidades, estado inicial Desligado/idle/Pronto.
 
 ## Próximo passo manual
 
-Com receiver indisponível, o painel registra essa degradação e continua etapas independentes seguras; a integração Denon precisa estar disponível para validar fonte e volume. O operador deve executar o checklist físico em [docs/TEST_PLAN.md](docs/TEST_PLAN.md), começando pelo teste ON autorizado e observação direta do projetor. O App não deve ser classificado como homologado antes dessa observação.
+O bloqueio de conexão do receiver foi removido. O painel está em **Desligado / Pronto** e o operador pode executar o checklist físico em [docs/TEST_PLAN.md](docs/TEST_PLAN.md), começando pelo teste ON autorizado e observação direta do projetor. A troca física de fonte/volume do Denon e a homologação completa continuam pendentes até a observação manual.
