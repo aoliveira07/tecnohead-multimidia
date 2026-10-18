@@ -124,6 +124,13 @@ class AudioManager:
             },
         }
 
+    @staticmethod
+    def _is_audio_candidate(entity: dict[str, Any] | None) -> bool:
+        if not entity:
+            return False
+        supports = entity.get("supports") or {}
+        return bool(supports.get("volume") or supports.get("group") or entity.get("integration") in {"linkplay", "link_play"})
+
     def _zone_status(self, zone: AudioZoneProfile) -> dict[str, Any]:
         base = {
             "zone_id": zone.zone_id,
@@ -171,9 +178,11 @@ class AudioManager:
                     "area_id": area.area_id,
                     "name": area.name,
                     "media_players": [
-                        self._entity_descriptor(area.area_id, entity.entity_id)
+                        descriptor
                         for entity in area.entities
                         if entity.domain == "media_player"
+                        for descriptor in [self._entity_descriptor(area.area_id, entity.entity_id)]
+                        if self._is_audio_candidate(descriptor)
                     ],
                 }
             )
@@ -249,6 +258,8 @@ class AudioManager:
         if state.get("state") in {"unknown", "unavailable"}:
             raise AudioActionError(f"media_player indisponível: {zone.media_player_entity_id}")
         entity = self._entity_descriptor(zone.area_id, zone.media_player_entity_id) or {}
+        if not self._is_audio_candidate(entity):
+            raise AudioActionError("media_player não anunciou capability de áudio compatível para esta zona")
         return zone, entity, state
 
     async def set_volume(self, config: MultiroomConfig, zone_id: str, request: AudioVolumeRequest) -> dict[str, Any]:

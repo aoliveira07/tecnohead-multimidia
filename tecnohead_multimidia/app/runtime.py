@@ -190,6 +190,9 @@ class Runtime:
             if not zone.area_id or not zone.media_player_entity_id:
                 raise ValueError(f"zona {zone.zone_id} habilitada sem área/media_player")
             await self.discovery.validate_entity(zone.area_id, zone.media_player_entity_id, {"media_player"}, required=True)
+            descriptor = self.audio._entity_descriptor(zone.area_id, zone.media_player_entity_id)
+            if not self.audio._is_audio_candidate(descriptor):
+                raise ValueError(f"zona {zone.zone_id}: media_player não anunciou volume, grupo ou integração LinkPlay")
         audio = MultiroomConfig.model_validate(update.model_dump(mode="json"))
         await self.store.update_audio(audio)
         self.config = await self.store.snapshot()

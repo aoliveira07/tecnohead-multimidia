@@ -19,6 +19,7 @@ def _audio_snapshot(fake_ha):
         {"entity_id": "media_player.kitchen_amp", "device_id": "dev-kitchen", "area_id": None, "platform": "linkplay"},
         {"entity_id": "media_player.pool_amp", "device_id": "dev-pool", "area_id": None, "platform": "linkplay"},
         {"entity_id": "media_player.other_room", "device_id": "dev-kitchen", "area_id": "other_area", "platform": "linkplay"},
+        {"entity_id": "media_player.pool_tv_wrapper", "device_id": "dev-pool", "area_id": None, "platform": "universal"},
     ]
     fake_ha.snapshot["states"] = [
         {
@@ -45,6 +46,11 @@ def _audio_snapshot(fake_ha):
                 "supported_features": 524297,
                 "group_members": [],
             },
+        },
+        {
+            "entity_id": "media_player.pool_tv_wrapper",
+            "state": "off",
+            "attributes": {"friendly_name": "TV Piscina", "source_list": ["TV", "HDMI"], "supported_features": 1},
         },
     ]
 
