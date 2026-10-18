@@ -1,6 +1,6 @@
 # Relatório de descoberta de áudio — v1.3
 
-Data da leitura: 18/10/2026. A leitura foi somente de registros, estados e integrações do Home Assistant; nenhuma fonte, volume, grupo, ARC, IR ou cena foi acionada.
+Data da leitura inicial: 18/10/2026. A descoberta cadastral foi somente de registros, estados e integrações do Home Assistant. O teste posterior de volume da Cozinha está registrado no addendum abaixo; nenhuma fonte, grupo, ARC, IR ou cena foi acionada.
 
 ## Resultado sanitizado — atualização após cadastro LinkPlay
 
@@ -20,4 +20,8 @@ O amplificador atual da Piscina foi identificado pelo HA como `media_player.pisc
 O HDMI ARC/CEC não foi modificado. O estado observado da Piscina era `HDMI`/`playing` com volume 100%; nenhum comando foi emitido pelo App. O primeiro teste físico deve reduzir o volume manualmente e confirmar o comportamento do ARC antes de qualquer troca de fonte ou agrupamento.
 
 AirPlay 2 virtual ainda está bloqueado para a etapa de implementação/POC: Shairport Sync, NQPTP e a ponte PCM→LinkPlay não foram iniciados. Não há alegação de descoberta AirPlay, áudio audível ou sincronismo.
+
+## Addendum v1.3.2 — volume da Cozinha
+
+Após a correção do `401 Unauthorized`, o App foi atualizado para v1.3.2 e enviou `media_player.volume_set` para `media_player.cozinha_room` pela sessão autenticada do Home Assistant. O App releu 30% e a ferramenta nativa de Template confirmou `volume_level: 0.3`. Essa evidência valida o comando e o estado reportado pelo HA; não substitui a confirmação auditiva nas caixas. A Piscina permaneceu em HDMI/ARC e não foi comandada.
 

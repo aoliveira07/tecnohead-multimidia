@@ -1,4 +1,24 @@
-# Relatório de instalação e homologação — TecnoHead Multimídia v1.3.1
+# Relatório de instalação e homologação — TecnoHead Multimídia v1.3.2
+
+## Addendum v1.3.2 — correção do volume LinkPlay e teste pelo App (18/10/2026)
+
+A captura enviada pelo operador mostrou `401 Unauthorized` ao aplicar volume no painel. A causa foi isolada no caminho de chamada de serviço: leituras de estado funcionavam, mas o POST REST de serviço não era aceito pelo endpoint usado pelo App. A v1.3.2 passou a chamar `media_player` pela sessão WebSocket autenticada do Home Assistant, sem fallback REST automático (evitando duplicar qualquer comando físico).
+
+Publicação e instalação confirmadas:
+
+- commit: `21a6aea44920d5cea2a9c9f1869f7a62ac0c673f`
+- tag/release: `v1.3.2`
+- CI e imagem de App: concluídos com sucesso
+- HAOS: atualização concluída; Ingress exibindo `v1.3.2` e `HAOS online`
+
+Teste real executado com cautela:
+
+1. No App, zona **Cozinha**, entidade `media_player.cozinha_room`, foi aplicado volume limitado de 30%.
+2. O App registrou `audio_volume_set`, exibiu “Volume enviado ao Home Assistant” e releu a zona em 30%.
+3. Na ferramenta nativa **Ferramentas → Template** do Home Assistant, a leitura independente retornou `volume_level: 0.3` para `media_player.cozinha_room`, com estado `idle`.
+4. Piscina não foi acionada; fonte HDMI/ARC, reprodução, agrupamento, troca de fonte, IR e cenas não foram tocados nesta prova.
+
+Resultado: **PASSOU para chamada autenticada e retorno de estado do volume da Cozinha; resposta acústica física ainda requer escuta do operador**. O limite de segurança do App permanece em 30%.
 
 ## Registro inicial v1.3.0 — áudio multiroom (18/10/2026, superseded)
 
@@ -27,11 +47,11 @@ O HomeKit Bridge passou a apresentar os receivers `Cozinha Room` e `Piscina Room
 
 AirPlay 2 virtual continua **NÃO HOMOLOGADO**: Shairport Sync/NQPTP não foram iniciados e nenhum áudio foi encaminhado às caixas. A presença dos receivers no HomeKit Bridge não é prova de AirPlay 2.
 
-## Status real em 18/10/2026
+## Status real em 18/10/2026 — atualizado pela v1.3.2
 
 **Instalado e configurado no HAOS; pronto para testes físicos manuais. Ainda não homologado fisicamente.**
 
-O App foi atualizado pelo catálogo de Apps a partir do repositório autorizado, de 1.3.0 para 1.3.1, e confirmado como “Em funcionamento”. O Ingress abriu com o indicador `v1.3.1` e “HAOS online”; a descoberta real do Home Assistant respondeu, o painel de áudio apareceu e as duas zonas LinkPlay foram cadastradas com validação de área. O perfil Cinema permaneceu persistido. O MQTT Discovery reconectou após a atualização. O intervalo OFF do perfil Cinema está em 5,0 s e foi salvo sem iniciar uma cena ou teste IR.
+O App foi atualizado pelo catálogo de Apps a partir do repositório autorizado, de 1.3.1 para 1.3.2, e confirmado como “Em funcionamento”. O Ingress abriu com o indicador `v1.3.2` e “HAOS online”; a descoberta real do Home Assistant respondeu, o painel de áudio apareceu e as duas zonas LinkPlay permaneceram cadastradas com validação de área. O perfil Cinema permaneceu persistido. O MQTT Discovery reconectou após a atualização. O intervalo OFF do perfil Cinema está em 5,0 s e foi salvo sem iniciar uma cena ou teste IR.
 
 Durante esta revalidação do Denon, não foi acionado botão de cena nem teste IR; a etapa executada foi cadastral/operacional.
 
