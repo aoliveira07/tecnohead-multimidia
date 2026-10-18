@@ -1,8 +1,8 @@
-# Relatório de instalação e homologação — TecnoHead Multimídia v1.2.11
+# Relatório de instalação e homologação — TecnoHead Multimídia v1.3.0
 
 ## Addendum v1.3.0 — áudio multiroom (18/10/2026)
 
-A implementação v1.3 foi adicionada ao mesmo App e passou nos testes automatizados. O painel de áudio, migração de configuração, controles `media_player`, filtro estrito por área e estados MQTT estão prontos para atualização. Esta alteração ainda não pode ser chamada de “implantada e homologada” no HAOS: o levantamento real não encontrou integração LinkPlay nem entidade do amplificador novo da Piscina, e nenhum comando físico de áudio ou AirPlay foi enviado.
+A implementação v1.3 foi adicionada ao mesmo App e passou nos testes automatizados. O painel de áudio, migração de configuração, controles `media_player`, filtro estrito por área e estados MQTT foram instalados no HAOS em 18/10/2026. Esta versão ainda não pode ser chamada de “fisicamente homologada”: o levantamento real não encontrou integração LinkPlay nem entidade do amplificador novo da Piscina, e nenhum comando físico de áudio ou AirPlay foi enviado.
 
 O resultado fiel é: **código implementado e testado localmente; AirPlay 2/LinkPlay bloqueados por alvo físico ausente; v1.2 física ainda pendente de intervenção manual**. A evidência sanitizada está em [docs/AUDIO_DISCOVERY_REPORT.md](docs/AUDIO_DISCOVERY_REPORT.md) e a matriz B01–B45 em [docs/AUDIO_TEST_PLAN.md](docs/AUDIO_TEST_PLAN.md).
 
@@ -12,7 +12,7 @@ O próximo dado impeditivo é o modelo atual do amplificador da Piscina ou a ent
 
 **Instalado e configurado no HAOS; pronto para testes físicos manuais. Ainda não homologado fisicamente.**
 
-O App foi instalado pelo catálogo de Apps a partir do repositório autorizado, atualizado para 1.2.11 e confirmado como “Em funcionamento”. O Ingress abriu, a descoberta real do Home Assistant respondeu, o perfil Cinema permaneceu persistido e o MQTT Discovery reconectou após a atualização. O intervalo OFF do perfil Cinema foi ajustado para 4,0 s e salvo novamente sem iniciar uma cena ou teste IR.
+O App foi atualizado pelo catálogo de Apps a partir do repositório autorizado, de 1.2.11 para 1.3.0, e confirmado como “Em funcionamento”. O Ingress abriu com o indicador `v1.3.0` e “HAOS online”; a descoberta real do Home Assistant respondeu, o painel de áudio apareceu com as duas zonas sem cadastro físico e o perfil Cinema permaneceu persistido. O MQTT Discovery reconectou após a atualização. O intervalo OFF do perfil Cinema permanece em 4,0 s e foi preservado sem iniciar uma cena ou teste IR.
 
 Durante esta revalidação do Denon, não foi acionado botão de cena nem teste IR; a etapa executada foi cadastral/operacional.
 
