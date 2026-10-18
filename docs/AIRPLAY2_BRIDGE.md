@@ -2,7 +2,7 @@
 
 ## Estado desta versão
 
-A implementação está empacotada na release `v1.4.0`, mas a homologação física continua pendente. O App não marca áudio físico como concluído só porque um nome mDNS apareceu no iPhone. A prova precisa confirmar áudio audível no amplificador, volume/parada e a política HDMI ARC.
+A implementação está empacotada na release `v1.4.1`, mas a homologação física continua pendente. O App não marca áudio físico como concluído só porque um nome mDNS apareceu no iPhone. A prova precisa confirmar áudio audível no amplificador, volume/parada e a política HDMI ARC.
 
 ## Componentes fixados
 

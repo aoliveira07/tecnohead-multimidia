@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.4.1 — correção de pacote Alpine
+
+- Corrige o nome do pacote `libplist-util` usado para compilar o suporte AirPlay 2 no Alpine.
+- Mantém a implementação e os commits upstream fixados da v1.4.0.
+
 ## 1.4.0 — AirPlay 2 virtual instalável
 
 - Empacota Shairport Sync upstream com AirPlay 2 real e NQPTP em revisões fixadas.

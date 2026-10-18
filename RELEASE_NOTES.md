@@ -1,5 +1,9 @@
 # Release notes
 
+## v1.4.1 — build instalável do AirPlay 2
+
+Rebuild da v1.4.0 com o nome correto do pacote Alpine necessário pelo compilador AirPlay 2. Nenhuma lógica de cena, áudio, ARC ou HomeKit foi alterada.
+
 ## v1.4.0 — receptor AirPlay 2 virtual
 
 Esta versão mantém as cenas, IR via Home Assistant, LinkPlay, MQTT e HomeKit Bridge e adiciona a implementação do receptor AirPlay 2 no próprio App. Shairport Sync e NQPTP são compilados a partir de revisões upstream fixadas; Cozinha e Piscina têm identidades e portas independentes. O áudio recebido é convertido em PCM→MP3 e encaminhado ao `media_player` LinkPlay pela API autenticada do Home Assistant.

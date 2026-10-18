@@ -47,7 +47,7 @@ RUN apk add --no-cache \
       libconfig-dev \
       libgcrypt-dev \
       libplist-dev \
-      libplist-utils \
+      libplist-util \
       libsoxr-dev \
       libtool \
       linux-headers \
@@ -88,7 +88,7 @@ RUN cd /src/shairport-sync \
 
 FROM ghcr.io/home-assistant/base:latest
 
-ARG BUILD_VERSION=1.4.0
+ARG BUILD_VERSION=1.4.1
 ARG BUILD_ARCH=local
 ARG NQPTP_COMMIT=ab8fb67483411640fd7f1e193889482f2421c37c
 ARG SHAIRPORT_SYNC_COMMIT=cf6998daa1876c5a8f97128a960c8afc0e731841

@@ -2,7 +2,7 @@
 
 App para Home Assistant OS que transforma áreas cadastradas no HA em ambientes multimídia com cenas Cinema, TV e Desligar. A interface é em português brasileiro, responsiva, aparece na sidebar por Ingress e usa um motor próprio por área — sem criar automações YAML intermediárias.
 
-## Estado da entrega 1.4.0
+## Estado da entrega 1.4.1
 
 O módulo v1.2 permanece no mesmo App, com Ingress, MQTT Discovery, cenas e IR pela entidade do Home Assistant. O áudio multiroom usa os players LinkPlay reais `media_player.cozinha_room` e `media_player.piscina_room`, descobertos por área. A v1.4 acrescenta a implementação do receptor AirPlay 2 virtual: duas instâncias Shairport Sync upstream fixadas, NQPTP compartilhado, mDNS do host e ponte PCM→stream local encaminhada ao LinkPlay por `media_player.play_media`.
 
