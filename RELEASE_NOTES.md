@@ -1,5 +1,11 @@
 # Release notes
 
+## v1.4.8 — volume AirPlay ativo
+
+Corrige o caso em que Cozinha e Piscina reproduziam áudio, mas não respondiam ao volume do iPhone. O receptor AirPlay 2 agora aplica o volume recebido no PCM antes do encoder/stream LinkPlay. O volume da zona pelo TecnoHead continua sendo enviado separadamente por `media_player.volume_set`.
+
+O primeiro teste deve ser feito em volume baixo, verificando uma zona por vez e depois as duas simultaneamente.
+
 ## v1.4.7 — AirPlay explícito e HDMI ARC observado
 
 A Piscina não bloqueia mais uma seleção AirPlay/Spotify quando a última fonte observada é HDMI/ARC. O App encaminha a solicitação ao `media_player` do Home Assistant e deixa o amplificador fazer sua própria arbitragem de fonte. Ao ligar a TV, o comportamento CEC/ARC permanece intocado; ao parar uma sessão que já voltou a ARC, o App evita enviar `media_stop`.

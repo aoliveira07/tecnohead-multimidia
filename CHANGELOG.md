@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.4.8 — volume AirPlay ativo
+
+- Corrige o volume dos destinos AirPlay 2: o Shairport Sync deixa de ignorar o volume enviado pelo iPhone e aplica a atenuação no PCM antes da ponte HTTP para o LinkPlay.
+- Mantém o volume físico de cada `media_player` como controle separado pelo painel TecnoHead/Home Assistant.
+
 ## 1.4.7 — AirPlay explícito com ARC observado
 
 - Remove o bloqueio que recusava AirPlay na Piscina quando a última fonte observada era HDMI/ARC.

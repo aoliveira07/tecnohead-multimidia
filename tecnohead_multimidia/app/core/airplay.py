@@ -591,7 +591,12 @@ general = {{
 {address_line}  regtype = "_airplay._tcp";
   airplay_device_id = 0x{device_id}L;
   nqptp_shared_memory_interface_name = {_quote_config(shm_name)};
-  ignore_volume_control = "yes";
+  # Keep the AirPlay source volume in the decoded PCM path. With the
+  # stdout->ffmpeg->HTTP bridge, "yes" would make the iPhone volume slider
+  # appear to work while leaving both LinkPlay zones at a fixed gain.
+  # The physical media_player.volume_set control remains available as a
+  # separate zone-level control.
+  ignore_volume_control = "no";
   interpolation = "basic";
   mixdown = "stereo";
 }};

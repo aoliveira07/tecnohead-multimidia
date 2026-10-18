@@ -37,6 +37,8 @@ def test_airplay_config_has_distinct_airplay2_identity_and_port(tmp_path):
     assert "port = 7000;" in config
     assert 'regtype = "_airplay._tcp";' in config
     assert 'nqptp_shared_memory_interface_name = "/tecnohead-kitchen"' in config
+    assert 'ignore_volume_control = "no";' in config
+    assert 'ignore_volume_control = "yes";' not in config
 
 
 def test_airplay_config_binds_runtime_lan_address_without_persisting_it(tmp_path):
