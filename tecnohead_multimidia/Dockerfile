@@ -86,7 +86,7 @@ RUN cd /src/shairport-sync \
 
 FROM ghcr.io/home-assistant/base:latest
 
-ARG BUILD_VERSION=1.4.10
+ARG BUILD_VERSION=1.4.11
 ARG BUILD_ARCH=local
 ARG NQPTP_COMMIT=ab8fb67483411640fd7f1e193889482f2421c37c
 ARG SHAIRPORT_SYNC_COMMIT=cf6998daa1876c5a8f97128a960c8afc0e731841
@@ -127,8 +127,9 @@ RUN python3 -m pip install --no-cache-dir --break-system-packages -r /requiremen
 
 COPY app /app/app
 COPY web /app/web
+COPY airplay_volume_hook.py /usr/local/bin/tecnohead-airplay-volume-hook
 COPY run.sh /run.sh
-RUN chmod +x /run.sh
+RUN chmod +x /run.sh /usr/local/bin/tecnohead-airplay-volume-hook
 
 WORKDIR /app
 ENV PYTHONPATH=/app \

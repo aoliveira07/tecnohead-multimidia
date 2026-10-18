@@ -31,6 +31,7 @@ PCM_SAMPLE_FORMAT = "s32le"
 STREAM_IDLE_SECONDS = 8.0
 MDNS_PROBE_TIMEOUT = 3.0
 METADATA_STREAM_LIMIT = 4 * 1024 * 1024
+VOLUME_HOOK_PATH = "/usr/local/bin/tecnohead-airplay-volume-hook"
 IPV4_RE = re.compile(r"(?<![0-9])(?:[0-9]{1,3}\.){3}[0-9]{1,3}(?![0-9])")
 
 EventRecorder = Callable[..., Awaitable[None]]
@@ -162,9 +163,12 @@ class _Endpoint:
     ffmpeg: asyncio.subprocess.Process | None = None
     metadata_reader: asyncio.subprocess.Process | None = None
     metadata_pipe_path: Path | None = None
+    volume_socket: socket.socket | None = None
+    volume_socket_path: Path | None = None
     pcm_task: asyncio.Task[None] | None = None
     mp3_task: asyncio.Task[None] | None = None
     metadata_task: asyncio.Task[None] | None = None
+    volume_task: asyncio.Task[None] | None = None
     process_log_task: asyncio.Task[None] | None = None
     ffmpeg_log_task: asyncio.Task[None] | None = None
     idle_task: asyncio.Task[None] | None = None
@@ -179,6 +183,7 @@ class _Endpoint:
     last_error: str | None = None
     last_airplay_volume_percent: int | None = None
     last_airplay_volume_at: float | None = None
+    last_airplay_volume_source: str | None = None
     process_log_tail: deque[str] = field(default_factory=lambda: deque(maxlen=24))
 
 
@@ -543,8 +548,10 @@ publish-aaaa-on-ipv4=no
         directory.mkdir(parents=True, exist_ok=True)
         config_path = directory / f"{zone.zone_id}.conf"
         endpoint.metadata_pipe_path = self._metadata_pipe_path(zone)
+        endpoint.volume_socket_path = self._volume_socket_path(zone)
         try:
             self._prepare_metadata_pipe(endpoint.metadata_pipe_path)
+            endpoint.volume_socket = self._prepare_volume_socket(endpoint.volume_socket_path)
         except OSError as exc:
             endpoint.state = "blocked"
             endpoint.last_error = _redact_process_line(str(exc))
@@ -557,9 +564,12 @@ publish-aaaa-on-ipv4=no
                 level="error",
                 result="blocked",
             )
+            self._remove_metadata_pipe(endpoint.metadata_pipe_path)
+            self._close_volume_socket(endpoint.volume_socket, endpoint.volume_socket_path)
+            endpoint.volume_socket = None
             return
         config_path.write_text(
-            self._config_text(zone, port, endpoint.metadata_pipe_path),
+            self._config_text(zone, port, endpoint.metadata_pipe_path, endpoint.volume_socket_path),
             encoding="utf-8",
         )
         try:
@@ -632,6 +642,8 @@ publish-aaaa-on-ipv4=no
             await self._terminate_process(endpoint.ffmpeg)
             await self._terminate_process(endpoint.metadata_reader)
             self._remove_metadata_pipe(endpoint.metadata_pipe_path)
+            self._close_volume_socket(endpoint.volume_socket, endpoint.volume_socket_path)
+            endpoint.volume_socket = None
             return
         endpoint.state = "advertising"
         endpoint.diagnostic = "AirPlay 2 anunciado; aguardando seleção Apple"
@@ -640,6 +652,10 @@ publish-aaaa-on-ipv4=no
         endpoint.metadata_task = asyncio.create_task(
             self._consume_metadata(endpoint),
             name=f"airplay-metadata-{zone.zone_id}",
+        )
+        endpoint.volume_task = asyncio.create_task(
+            self._consume_volume_hook(endpoint),
+            name=f"airplay-volume-hook-{zone.zone_id}",
         )
         endpoint.process_log_task = asyncio.create_task(self._consume_process_log(endpoint), name=f"airplay-log-{zone.zone_id}")
         endpoint.ffmpeg_log_task = asyncio.create_task(self._consume_ffmpeg_log(endpoint), name=f"airplay-ffmpeg-log-{zone.zone_id}")
@@ -661,6 +677,9 @@ publish-aaaa-on-ipv4=no
     def _metadata_pipe_path(self, zone: AudioZoneProfile) -> Path:
         return self.settings.data_dir / "airplay" / f"{self._safe_zone_name(zone.zone_id)}-metadata"
 
+    def _volume_socket_path(self, zone: AudioZoneProfile) -> Path:
+        return self.settings.data_dir / "airplay" / f"{self._safe_zone_name(zone.zone_id)}-volume.sock"
+
     @staticmethod
     def _prepare_metadata_pipe(path: Path) -> None:
         path.parent.mkdir(parents=True, exist_ok=True)
@@ -676,12 +695,47 @@ publish-aaaa-on-ipv4=no
             with contextlib.suppress(FileNotFoundError, OSError):
                 path.unlink()
 
-    def _config_text(self, zone: AudioZoneProfile, port: int, metadata_pipe: Path | None = None) -> str:
+    @staticmethod
+    def _prepare_volume_socket(path: Path) -> socket.socket:
+        if not hasattr(socket, "AF_UNIX"):
+            raise OSError("o sistema operacional não oferece sockets Unix para o gancho de volume AirPlay")
+        path.parent.mkdir(parents=True, exist_ok=True)
+        with contextlib.suppress(FileNotFoundError):
+            path.unlink()
+        volume_socket = socket.socket(socket.AF_UNIX, socket.SOCK_DGRAM)
+        try:
+            volume_socket.bind(str(path))
+            os.chmod(path, 0o600)
+            volume_socket.setblocking(False)
+            return volume_socket
+        except OSError:
+            volume_socket.close()
+            with contextlib.suppress(FileNotFoundError):
+                path.unlink()
+            raise
+
+    @staticmethod
+    def _close_volume_socket(volume_socket: socket.socket | None, path: Path | None) -> None:
+        if volume_socket:
+            with contextlib.suppress(OSError):
+                volume_socket.close()
+        if path:
+            with contextlib.suppress(FileNotFoundError, OSError):
+                path.unlink()
+
+    def _config_text(
+        self,
+        zone: AudioZoneProfile,
+        port: int,
+        metadata_pipe: Path | None = None,
+        volume_socket: Path | None = None,
+    ) -> str:
         service_name = zone.airplay.service_name or f"TecnoHead {zone.zone_id.title()}"
         stable = re.sub(r"[^0-9a-f]", "", zone.airplay.stable_id.casefold())
         device_id = (stable[:12] or secrets.token_hex(6)).ljust(12, "0")
         shm_name = f"/tecnohead-{re.sub(r'[^a-z0-9-]', '-', zone.zone_id.casefold())}"[:63]
         metadata_pipe = metadata_pipe or self._metadata_pipe_path(zone)
+        volume_socket = volume_socket or self._volume_socket_path(zone)
         # On a host with more than one interface, letting Avahi associate the
         # service with its default hostname can make the RTSP target resolve to
         # the wrong interface. The address is resolved at runtime and is never
@@ -701,6 +755,10 @@ general = {{
   # physical LinkPlay media_player, so the iPhone changes the player volume
   # instead of applying a second software attenuation in this bridge.
   ignore_volume_control = "yes";
+  # Shairport Sync appends the AirPlay dB value to this command. The hook
+  # sends only that value over a private Unix datagram socket so the App can
+  # update the physical LinkPlay player without relying only on metadata.
+  run_this_when_volume_is_set = {_quote_config(f"{VOLUME_HOOK_PATH} {volume_socket} ")};
   interpolation = "basic";
   mixdown = "stereo";
 }};
@@ -832,6 +890,33 @@ diagnostics = {{
                 area_id=endpoint.zone.area_id,
                 entity_id=endpoint.zone.media_player_entity_id,
                 message="a leitura do volume AirPlay foi interrompida",
+                level="warning",
+                result="degraded",
+            )
+
+    async def _consume_volume_hook(self, endpoint: _Endpoint) -> None:
+        if not endpoint.volume_socket:
+            return
+        loop = asyncio.get_running_loop()
+        try:
+            while True:
+                payload = await loop.sock_recv(endpoint.volume_socket, 128)
+                if not payload:
+                    continue
+                volume_percent = airplay_volume_to_percent(payload)
+                if volume_percent is None:
+                    continue
+                endpoint.last_airplay_volume_source = "shairport_volume_hook"
+                await self._forward_airplay_volume(endpoint, volume_percent)
+        except asyncio.CancelledError:
+            raise
+        except (OSError, RuntimeError) as exc:
+            endpoint.last_error = _redact_process_line(str(exc))
+            await self.event_recorder(
+                event="airplay_volume_hook_failed",
+                area_id=endpoint.zone.area_id,
+                entity_id=endpoint.zone.media_player_entity_id,
+                message="a ponte nativa de volume AirPlay foi interrompida",
                 level="warning",
                 result="degraded",
             )
@@ -993,6 +1078,7 @@ diagnostics = {{
             endpoint.pcm_task,
             endpoint.mp3_task,
             endpoint.metadata_task,
+            endpoint.volume_task,
             endpoint.process_log_task,
             endpoint.ffmpeg_log_task,
         ):
@@ -1004,6 +1090,7 @@ diagnostics = {{
             endpoint.pcm_task,
             endpoint.mp3_task,
             endpoint.metadata_task,
+            endpoint.volume_task,
             endpoint.process_log_task,
             endpoint.ffmpeg_log_task,
         ):
@@ -1015,6 +1102,8 @@ diagnostics = {{
         await self._terminate_process(endpoint.metadata_reader)
         await endpoint.broker.close()
         self._remove_metadata_pipe(endpoint.metadata_pipe_path)
+        self._close_volume_socket(endpoint.volume_socket, endpoint.volume_socket_path)
+        endpoint.volume_socket = None
 
     @staticmethod
     async def _terminate_process(process: asyncio.subprocess.Process | None) -> None:
@@ -1101,6 +1190,8 @@ diagnostics = {{
                     "volume_bridge": "active",
                     "last_airplay_volume_percent": endpoint.last_airplay_volume_percent,
                     "last_airplay_volume_at": datetime.fromtimestamp(endpoint.last_airplay_volume_at, UTC).isoformat() if endpoint.last_airplay_volume_at else None,
+                    "last_airplay_volume_source": endpoint.last_airplay_volume_source,
+                    "volume_hook_active": bool(endpoint.volume_socket),
                     "process_alive": bool(endpoint.process and endpoint.process.returncode is None),
                     "process_returncode": endpoint.process.returncode if endpoint.process else None,
                     "process_log_tail": list(endpoint.process_log_tail),

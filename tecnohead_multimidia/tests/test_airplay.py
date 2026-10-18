@@ -2,7 +2,10 @@ from __future__ import annotations
 
 import asyncio
 import base64
+import contextlib
+import socket
 
+import pytest
 from test_audio import _audio_snapshot, _config
 
 from app.core.airplay import (
@@ -45,6 +48,7 @@ def test_airplay_config_has_distinct_airplay2_identity_and_port(tmp_path):
     assert 'regtype = "_airplay._tcp";' in config
     assert 'nqptp_shared_memory_interface_name = "/tecnohead-kitchen"' in config
     assert 'ignore_volume_control = "yes";' in config
+    assert "run_this_when_volume_is_set = \"/usr/local/bin/tecnohead-airplay-volume-hook" in config
     assert 'pipe_name = "' in config
     assert 'metadata = {' in config
 
@@ -118,6 +122,48 @@ async def test_airplay_pvol_is_forwarded_to_zone_player(fake_ha, tmp_path):
     assert fake_ha.calls[-1]["service"] == "volume_set"
     assert fake_ha.calls[-1]["data"] == {"volume_level": 0.3}
     assert events[-1]["event"] == "airplay_volume_forwarded"
+
+
+async def test_airplay_volume_hook_is_forwarded_to_zone_player(tmp_path):
+    if not hasattr(socket, "AF_UNIX"):
+        pytest.skip("sockets Unix são usados somente no runtime Linux do App")
+    async def record(**kwargs):
+        return None
+
+    manager = AirPlayEndpointManager(Settings(data_dir=tmp_path), None, None, record)  # type: ignore[arg-type]
+    zone = AudioZoneProfile(
+        zone_id="kitchen",
+        area_id="kitchen",
+        media_player_entity_id="media_player.kitchen",
+        airplay={"enabled": True, "service_name": "TecnoHead Cozinha", "stable_id": "0123456789abcdef"},
+    )
+    endpoint = _Endpoint(zone=zone, port=7000)
+    socket_path = tmp_path / "volume.sock"
+    endpoint.volume_socket = manager._prepare_volume_socket(socket_path)
+    forwarded: list[int] = []
+
+    async def forward(_endpoint, volume_percent):
+        forwarded.append(volume_percent)
+
+    manager._forward_airplay_volume = forward  # type: ignore[method-assign]
+    client = socket.socket(socket.AF_UNIX, socket.SOCK_DGRAM)
+    task = asyncio.create_task(manager._consume_volume_hook(endpoint))
+    try:
+        client.sendto(b"-15.00", str(socket_path))
+        await asyncio.wait_for(_wait_for_value(forwarded), timeout=1)
+        assert forwarded == [50]
+        assert endpoint.last_airplay_volume_source == "shairport_volume_hook"
+    finally:
+        task.cancel()
+        with contextlib.suppress(asyncio.CancelledError):
+            await task
+        client.close()
+        manager._close_volume_socket(endpoint.volume_socket, socket_path)
+
+
+async def _wait_for_value(values: list[int]) -> None:
+    while not values:
+        await asyncio.sleep(0.01)
 
 
 def test_airplay_config_binds_runtime_lan_address_without_persisting_it(tmp_path):

@@ -1,5 +1,11 @@
 # Release notes
 
+## v1.4.11 — sincronização física do volume AirPlay
+
+O caminho anterior dependia exclusivamente do leitor de metadados `ssnc/pvol`. A versão 1.4.11 usa também o gancho nativo `run_this_when_volume_is_set` do Shairport Sync: cada valor enviado pelo iPhone é entregue por um socket Unix privado ao App e convertido em `media_player.volume_set` para a entidade LinkPlay da mesma zona. O PCM continua em ganho pleno, sem dupla atenuação.
+
+A homologação permanece física: o valor do AudioCast/LinkPlay deve acompanhar o slider do AirPlay em Cozinha e Piscina, uma zona por vez.
+
 ## v1.4.10 — ponte de volume resiliente
 
 Corrige a falha observada em teste real: uma mensagem grande de metadados do Shairport Sync podia exceder o limite padrão do leitor assíncrono e interromper a leitura dos eventos `pvol`. O App agora usa um limite controlado de 4 MiB para o leitor FIFO; o volume recebido do iPhone continua sendo encaminhado à entidade física LinkPlay pela API do Home Assistant.

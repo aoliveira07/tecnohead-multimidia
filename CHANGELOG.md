@@ -1,5 +1,11 @@
 # Changelog
 
+## 1.4.11 — gancho nativo de volume AirPlay
+
+- Usa `run_this_when_volume_is_set` do Shairport Sync para encaminhar cada alteração do slider AirPlay por socket Unix privado ao App.
+- Mantém o caminho `ssnc/pvol` como fallback e o PCM em ganho pleno, fazendo o `media_player` LinkPlay controlar o volume audível.
+- Expõe no diagnóstico a origem e a atividade da ponte de volume, sem registrar payloads ou dados privados.
+
 ## 1.4.10 — leitor de metadados AirPlay resiliente
 
 - Aumenta o limite do leitor FIFO de metadados para aceitar itens grandes antes do próximo evento `ssnc/pvol`.
