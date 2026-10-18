@@ -63,6 +63,9 @@ def test_private_mdns_fallback_uses_one_shared_bus_and_avahi(tmp_path):
     avahi_config = manager._private_avahi_config()
     assert "org.freedesktop.Avahi" in dbus_config
     assert "unix:path=" in dbus_config
+    assert '<allow send_destination="*"/>' in dbus_config
+    assert '<allow receive_type="method_return"/>' in dbus_config
+    assert '<allow receive_type="signal"/>' in dbus_config
     assert "enable-dbus=yes" in avahi_config
     assert "disable-user-service-publishing=no" in avahi_config
 

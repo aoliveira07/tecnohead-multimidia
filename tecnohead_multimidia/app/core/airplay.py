@@ -406,9 +406,15 @@ publish-aaaa-on-ipv4=no
     <allow own="org.freedesktop.Avahi"/>
     <allow own="org.gnome.ShairportSync"/>
     <allow own_prefix="org.mpris.MediaPlayer2.ShairportSync"/>
-    <allow send_destination="org.freedesktop.Avahi"/>
-    <allow send_destination="org.freedesktop.DBus"/>
-    <allow receive_sender="org.freedesktop.Avahi"/>
+  <!-- This bus is private to the App. Allow the normal request/reply and
+       signal traffic used by Avahi and Shairport Sync; restricting replies
+       here makes Avahi silently reject its own D-Bus method returns. -->
+  <allow send_destination="*"/>
+  <allow receive_sender="*"/>
+  <allow receive_type="method_call"/>
+  <allow receive_type="method_return"/>
+  <allow receive_type="error"/>
+  <allow receive_type="signal"/>
   </policy>
 </busconfig>
 '''

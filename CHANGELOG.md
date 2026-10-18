@@ -1,5 +1,11 @@
 # Changelog
 
+## 1.4.6 — política D-Bus do responder mDNS
+
+- Permite no barramento D-Bus privado do App as respostas e sinais necessários entre Avahi e Shairport Sync.
+- Mantém um único responder mDNS interno, sem alterar o Avahi global do HAOS.
+- Não altera LinkPlay, HDMI ARC, HomeKit Bridge ou cenas existentes.
+
 ## 1.4.5 — responder mDNS compartilhado para AirPlay 2
 
 - Verifica se o HAOS oferece Avahi no D-Bus antes de iniciar os receptores.

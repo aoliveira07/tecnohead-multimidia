@@ -1,5 +1,11 @@
 # Release notes
 
+## v1.4.6
+
+Corrige a política do D-Bus privado usado pelo responder Avahi interno. A versão anterior iniciava o processo, mas rejeitava respostas de método e sinais necessários para a publicação dos serviços AirPlay 2. A correção permanece isolada ao barramento interno do App e não altera o serviço mDNS global do HAOS.
+
+Após a atualização, a prova ainda exige que `TecnoHead Cozinha` e `TecnoHead Piscina` apareçam no iPhone e que o áudio seja ouvido fisicamente nas respectivas zonas.
+
 ## v1.4.5
 
 Corrige o bloqueio observado na rede real: os processos Shairport Sync estavam ativos, mas o host não publicava os serviços TecnoHead no mDNS. O App agora consulta o Avahi do host; se o serviço não existir, sobe um único D-Bus/Avahi compartilhado dentro do próprio App, sem iniciar um Avahi por zona e sem alterar o serviço global do HAOS. O painel passa a mostrar o modo e o diagnóstico do responder mDNS.
