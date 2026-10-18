@@ -1,8 +1,13 @@
 # Licenças de terceiros
 
-O módulo atual usa as dependências Python declaradas em `pyproject.toml` e `requirements.txt`, todas instaladas na imagem do App conforme a licença de cada projeto.
+O módulo usa as dependências Python declaradas em `pyproject.toml` e `requirements.txt`, além dos pacotes Alpine necessários para o App. A imagem v1.4.5 inclui e fixa:
 
-Shairport Sync, NQPTP, Avahi/mDNS e eventuais codecs/encoders não foram incluídos nem iniciados nesta release v1.3. Antes de empacotar a ponte, a release deve fixar revisão, gerar SBOM, incluir os avisos de licença exigidos e registrar se AAC/ALAC/FFmpeg/GStreamer serão necessários.
+- Shairport Sync `cf6998daa1876c5a8f97128a960c8afc0e731841`, com os avisos de licença distribuídos pelo upstream.
+- NQPTP `ab8fb67483411640fd7f1e193889482f2421c37c`, GPL-2.0-or-later conforme o arquivo `LICENSE` upstream.
+- Avahi e D-Bus dos pacotes Alpine 3.23 para o responder mDNS compartilhado; os textos de licença vêm dos próprios pacotes da distribuição.
+- FFmpeg e bibliotecas de codec/transporte exigidas pela imagem base e pelo build do Shairport Sync.
 
-Referências upstream: [Shairport Sync LICENSES](https://github.com/mikebrady/shairport-sync/tree/master/LICENSES) e [repositório Shairport Sync](https://github.com/mikebrady/shairport-sync).
+As fontes e avisos devem permanecer acessíveis no release junto com o SBOM gerado pelo workflow quando disponível. O App não redistribui credenciais, dados do cliente ou arquivos de configuração do HA.
+
+Referências: [Shairport Sync LICENSES](https://github.com/mikebrady/shairport-sync/tree/master/LICENSES), [NQPTP LICENSE](https://github.com/mikebrady/nqptp/blob/master/LICENSE), [Avahi](https://www.avahi.org/) e [D-Bus](https://www.freedesktop.org/wiki/Software/dbus/).
 
