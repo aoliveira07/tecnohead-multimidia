@@ -141,6 +141,11 @@ class AreaEngine:
             else:
                 warnings.extend(await self._off(generation))
             if warnings:
+                # Optional receiver/climate degradation still leaves the
+                # requested scene logically active. This keeps its cancellable
+                # light timer running while exposing the degraded phase.
+                self.mode = mode
+                self.requested_mode = mode
                 self.diagnostic = "Concluído com degradações: " + "; ".join(warnings[:5])
                 self.phase = Phase.ERROR
                 await self._record(event="transition_degraded", message=self.diagnostic, result="degraded")
@@ -161,7 +166,7 @@ class AreaEngine:
             self.diagnostic = str(exc)
             await self._record(level="error", event="transition_failed", message=self.diagnostic, result="failed")
         finally:
-            if mode is not Mode.OFF and self.phase in {Phase.ACTIVE, Phase.ERROR}:
+            if mode is not Mode.OFF and self.phase in {Phase.ACTIVE, Phase.ERROR} and self.mode is mode:
                 self._schedule_lights(generation, self._request_monotonic)
             if self._pending_mode is not None and self._pending_mode is not mode:
                 next_mode = self._pending_mode

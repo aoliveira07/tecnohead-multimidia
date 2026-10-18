@@ -81,7 +81,7 @@ class IRProfile(BaseModel):
     on_sends: int = Field(default=1, ge=1, le=5)
     off_sends: int = Field(default=2, ge=1, le=5)
     on_interval_seconds: float = Field(default=0.4, ge=0, le=30)
-    off_interval_seconds: float = Field(default=5.0, ge=0, le=60)
+    off_interval_seconds: float = Field(default=4.0, ge=0, le=60)
     last_test_at: str | None = None
     last_test_result: str | None = None
 

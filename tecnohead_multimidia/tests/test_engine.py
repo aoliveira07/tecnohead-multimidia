@@ -40,8 +40,36 @@ async def test_cinema_then_tv_runs_scene_and_off_confirmation(fake_ha, cinema_pr
     assert len(off_calls) == 3
     assert engine.mode.value == "tv"
     assert engine.projector_intent == "off_commanded_unknown_physical"
-    assert clock.value == 5.0
+    assert clock.value == 4.0
     assert any(item["event"] == "transition_completed" for item in events)
+
+
+@pytest.mark.asyncio
+async def test_lights_still_turn_off_when_scene_has_nonblocking_degradation(fake_ha, cinema_profile):
+    discovery = DiscoveryService(fake_ha)
+    events = []
+
+    async def record(**kwargs):
+        events.append(kwargs)
+
+    climate_state = next(item for item in fake_ha.snapshot["states"] if item["entity_id"] == "climate.ar_cinema")
+    climate_state["attributes"]["swing_modes"] = ["1", "2"]
+    actions = ActionExecutor(fake_ha, discovery, record)
+    ir = HomeAssistantRemoteTransport(fake_ha, discovery, record)
+    engine = AreaEngine(cinema_profile, actions, ir, discovery, record)
+
+    await engine.request_mode(Mode.CINEMA)
+    await engine.wait_idle()
+    if engine._lights_task:
+        await engine._lights_task
+
+    assert engine.mode is Mode.CINEMA
+    assert engine.phase.value == "error"
+    assert {call["entity_id"] for call in fake_ha.calls if call["service"] == "turn_off"} >= {
+        "light.luz_cinema",
+        "light.sanca_cinema",
+    }
+    assert any(item["event"] == "lights_turned_off" for item in events)
 
 
 @pytest.mark.asyncio

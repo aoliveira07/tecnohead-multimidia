@@ -13,7 +13,7 @@ def test_authorized_presets_are_loaded_with_safe_defaults():
     assert profile.off.value == PROJECTOR_OFF_B64
     assert profile.on_sends == 1
     assert profile.off_sends == 2
-    assert profile.off_interval_seconds == 5.0
+    assert profile.off_interval_seconds == 4.0
 
 
 def test_base64_prefix_is_added_only_at_transport_boundary():

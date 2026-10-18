@@ -21,7 +21,7 @@ O App considera área explícita da entidade; se ausente, usa a área do disposi
 | luzes | 30 s após o pedido |
 | projetor ON | 1 chamada HA |
 | projetor OFF | 2 chamadas HA |
-| intervalo OFF | 5,0 s após o retorno da primeira |
+| intervalo OFF | 4,0 s após o retorno da primeira |
 | modo padrão do mestre | TV |
 | volume Cinema | 0,25 HA |
 | volume TV | 0,20 HA |

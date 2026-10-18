@@ -2,18 +2,18 @@
 
 App para Home Assistant OS que transforma áreas cadastradas no HA em ambientes multimídia com cenas Cinema, TV e Desligar. A interface é em português brasileiro, responsiva, aparece na sidebar por Ingress e usa um motor próprio por área — sem criar automações YAML intermediárias.
 
-## Estado da entrega 1.2.10
+## Estado da entrega 1.2.11
 
 O App está instalado e configurado no HAOS autorizado, com Ingress e MQTT Discovery ativos, perfil Cinema persistido e `remote.ir_cinema` validado na área correta sem transmitir IR. A homologação física continua pendente até a intervenção manual do operador; este repositório não afirma teste físico que não foi observado.
 
-Os testes locais atuais são executados com um HA simulado e cobrem o intervalo OFF de 5 segundos, isolamento por área, cenas e evento de TV física. Veja [HOMOLOGATION.md](HOMOLOGATION.md) e [TEST_PLAN.md](docs/TEST_PLAN.md) para o status por critério.
+Os testes locais atuais são executados com um HA simulado e cobrem o intervalo OFF de 4 segundos, o desligamento das luzes mesmo com degradação não bloqueante, isolamento por área, cenas e evento de TV física. Veja [HOMOLOGATION.md](HOMOLOGATION.md) e [TEST_PLAN.md](docs/TEST_PLAN.md) para o status por critério.
 
 ## Arquitetura de segurança
 
 - O App chama o proxy oficial do Home Assistant Core com `SUPERVISOR_TOKEN` e `homeassistant_api`.
 - O emissor IR é apenas uma entidade `remote` da mesma área. Não há IP/MAC, protocolo LAN, autenticação própria, `python-broadlink` ou driver BroadLink neste projeto.
 - O projetor usa `remote.send_command` com os presets próprios do App. BroadLink Base64 vira `b64:<payload>` somente no limite do transporte.
-- Desligamento atual: primeira chamada HA → espera monotônica de 5,0 s após o retorno → segunda chamada HA. Não usa `num_repeats` como substituto e não reinicia o ciclo em timeout.
+- Desligamento atual: primeira chamada HA → espera monotônica de 4,0 s após o retorno → segunda chamada HA. Não usa `num_repeats` como substituto e não reinicia o ciclo em timeout.
 - O retorno da API confirma processamento pelo HA, não a resposta física do projetor. A UI e os diagnósticos deixam essa limitação explícita.
 - A configuração do cliente vive no volume privado `/data`; diagnósticos exportados redigem os códigos IR.
 

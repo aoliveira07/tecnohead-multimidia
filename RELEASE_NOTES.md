@@ -1,4 +1,12 @@
-# Release notes 1.2.3
+# Release notes
+
+## v1.2.11
+
+Correção operacional observada no comissionamento: uma cena Cinema com degradação opcional (por exemplo, posição de aleta não confirmada) agora permanece logicamente ativa e executa o temporizador cancelável de iluminação. O intervalo padrão entre as duas chamadas independentes de desligamento IR foi ajustado para 4,0 s, mantendo a validação por entidade `remote` do Home Assistant e sem `num_repeats`.
+
+O teste físico do projetor, das luzes, do telão e das cenas continua dependendo da observação manual; a API aceita pela integração não é tratada como confirmação física.
+
+## v1.2.10
 
 ## v1.2.10
 

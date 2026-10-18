@@ -1,5 +1,11 @@
 # Changelog
 
+## 1.2.11
+
+- Corrige a manutenção do modo lógico em cenas parcialmente degradadas, permitindo que o temporizador de iluminação execute mesmo quando a aleta não puder ser confirmada.
+- Mantém switches fora da classificação de iluminação protegidos e adiciona regressão automatizada para as três luzes descobertas da área.
+- Ajusta a sequência do projetor para duas chamadas OFF independentes com intervalo configurável padrão de 4 s após o retorno da primeira chamada.
+
 ## 1.2.10
 
 - Validação segura da entidade `remote` por área sem emitir IR.

@@ -26,7 +26,7 @@ async def test_remote_validation_rejects_entity_from_other_area(fake_ha, cinema_
 
 
 @pytest.mark.asyncio
-async def test_off_is_two_independent_ha_calls_with_five_seconds_after_first_return(fake_ha, cinema_profile):
+async def test_off_is_two_independent_ha_calls_with_four_seconds_after_first_return(fake_ha, cinema_profile):
     discovery = DiscoveryService(fake_ha)
     clock = FakeClock()
     transport = HomeAssistantRemoteTransport(fake_ha, discovery, sleep=clock.sleep, monotonic=clock.monotonic)
@@ -37,4 +37,4 @@ async def test_off_is_two_independent_ha_calls_with_five_seconds_after_first_ret
     assert all(call["entity_id"] == "remote.ir_cinema" for call in remote_calls)
     assert all(call["data"]["command"].startswith("b64:") for call in remote_calls)
     assert all("num_repeats" not in call["data"] for call in remote_calls)
-    assert result["gaps_after_return_seconds"] == [5.0]
+    assert result["gaps_after_return_seconds"] == [4.0]

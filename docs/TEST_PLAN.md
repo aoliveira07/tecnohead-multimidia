@@ -9,7 +9,7 @@ Legenda: `PASSOU` = evidência disponível; `NÃO TESTADO` = requer HAOS/equipam
 | A02 | PASSOU (simulado + HAOS) | filtro usa área efetiva de entidade/dispositivo; Cinema real validado |
 | A03 | PARCIAL (HAOS) | remote real validado sem transmissão; payload segue `remote.send_command` por entidade |
 | A05 | PASSOU (simulado) | prefixo `b64:` aplicado no limite do transporte |
-| A06 | PASSOU (simulado) | duas chamadas e gap após retorno de 5,0 s |
+| A06 | PASSOU (simulado) | duas chamadas e gap após retorno de 4,0 s |
 | A07/A08 | PASSOU (simulado) | motor Cinema→TV e sequência de equipamentos |
 | A09 | PASSOU (simulado) | TV física inativa não move telão/projetor |
 | A17 | PASSOU (simulado) | profiles/engines separados por área |
@@ -33,17 +33,17 @@ Legenda: `PASSOU` = evidência disponível; `NÃO TESTADO` = requer HAOS/equipam
 | A12 | NÃO TESTADO | temperatura estável em 22 °C e vento baixo |
 | A13 | NÃO TESTADO | luzes e switch explicitamente classificado |
 | A14 | NÃO TESTADO | troca/cancelamento de timers em equipamento real |
-| A15 | PARCIAL | dispositivo MQTT real com 6 entidades e firmware 1.2.10; birth/restart ainda pendente |
+| A15 | PARCIAL | dispositivo MQTT real com 6 entidades e firmware 1.2.11; birth/restart ainda pendente |
 | A16 | PENDENTE | HomeKit Bridge/Alexa disponíveis, mas entidades TecnoHead ainda não expostas para voz |
 | A17 | PARCIAL | isolamento real do Cinema; segundo ambiente ainda não configurado |
 | A18 | PARCIAL | queda/restart durante OFF ainda não observado |
-| A19 | PASSOU | código, docs, CI, release `v1.2.10` e instalação HAOS confirmados |
+| A19 | PASSOU | código, docs, CI, release `v1.2.11` e instalação HAOS confirmados |
 | A20 | PASSOU | sem backup, `.storage`, token, IP/MAC ou log bruto no repo |
 | A21 | PASSOU | somente `remote` da área; UI não possui campos IP/MAC |
 | A22 | PASSOU | validação de formato, persistência e restauração disponíveis no App instalado |
 | A23 | PASSOU (revisão local) | nenhuma dependência/driver BroadLink LAN |
 | A24 | PASSOU (revisão local) | formato separado e documentação de Pronto/nomeado |
-| A25 | PASSOU (simulado) | gap de 5,0 s medido entre retorno e segunda chamada |
+| A25 | PASSOU (simulado) | gap de 4,0 s medido entre retorno e segunda chamada |
 | A26 | PARCIAL | cancelamento seguro implementado; restart real ainda não observado |
 
 ## Procedimento de captura
