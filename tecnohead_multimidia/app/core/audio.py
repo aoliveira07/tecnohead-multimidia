@@ -354,6 +354,28 @@ class AudioManager:
         )
         return {"ok": True, "zone_id": zone_id, "requested_percent": request.volume_percent}
 
+    async def set_airplay_volume(
+        self,
+        config: MultiroomConfig,
+        zone_id: str,
+        volume_percent: int,
+    ) -> dict[str, Any]:
+        """Forward the iPhone's AirPlay volume to the physical player.
+
+        Shairport is configured with a full-gain PCM path. This method keeps
+        the configured per-zone safety ceiling and makes the LinkPlay player,
+        rather than a second software attenuator, own the audible volume.
+        """
+
+        zone = self._zone_config(config, zone_id)
+        applied_percent = min(max(0, int(volume_percent)), zone.max_volume_percent)
+        result = await self.set_volume(
+            config,
+            zone_id,
+            AudioVolumeRequest(volume_percent=applied_percent, confirmed=True),
+        )
+        return {**result, "requested_percent": int(volume_percent), "applied_percent": applied_percent}
+
     async def set_mute(self, config: MultiroomConfig, zone_id: str, request: AudioMuteRequest) -> dict[str, Any]:
         if not request.confirmed:
             raise PermissionError("mudo requer confirmação explícita")

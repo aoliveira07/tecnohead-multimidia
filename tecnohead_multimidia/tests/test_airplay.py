@@ -1,10 +1,11 @@
 from __future__ import annotations
 
 import asyncio
+import base64
 
 from test_audio import _audio_snapshot, _config
 
-from app.core.airplay import AirPlayEndpointManager, AudioStreamBroker
+from app.core.airplay import AirPlayEndpointManager, AudioStreamBroker, _Endpoint, airplay_volume_to_percent
 from app.core.audio import AudioManager
 from app.core.discovery import DiscoveryService
 from app.models import AudioZoneProfile
@@ -37,8 +38,59 @@ def test_airplay_config_has_distinct_airplay2_identity_and_port(tmp_path):
     assert "port = 7000;" in config
     assert 'regtype = "_airplay._tcp";' in config
     assert 'nqptp_shared_memory_interface_name = "/tecnohead-kitchen"' in config
-    assert 'ignore_volume_control = "no";' in config
-    assert 'ignore_volume_control = "yes";' not in config
+    assert 'ignore_volume_control = "yes";' in config
+    assert 'pipe_name = "' in config
+    assert 'metadata = {' in config
+
+
+def test_airplay_volume_maps_source_db_to_linear_player_percent():
+    assert airplay_volume_to_percent("0.00") == 100
+    assert airplay_volume_to_percent("-15.00") == 50
+    assert airplay_volume_to_percent("-30.00") == 0
+    assert airplay_volume_to_percent("-144.00") == 0
+    assert airplay_volume_to_percent("not-a-volume") is None
+
+
+async def test_airplay_metadata_reader_decodes_pvol_payload(tmp_path):
+    async def record(**kwargs):
+        return None
+
+    manager = AirPlayEndpointManager(Settings(data_dir=tmp_path), None, None, record)  # type: ignore[arg-type]
+    payload = b"-15.00,-15.00,-30.00,0.00"
+    encoded = base64.b64encode(payload)
+    stream = asyncio.StreamReader()
+    stream.feed_data(
+        b"<item><type>73736e63</type><code>70766f6c</code><length>"
+        + str(len(payload)).encode()
+        + b"</length>\n<data encoding=\"base64\">\n"
+        + encoded
+        + b"\n</data></item>\n"
+    )
+    stream.feed_eof()
+    header = await stream.readline()
+    assert await manager._read_metadata_item(stream, header) == ("ssnc", "pvol", payload)
+
+
+async def test_airplay_pvol_is_forwarded_to_zone_player(fake_ha, tmp_path):
+    _audio_snapshot(fake_ha)
+    discovery = DiscoveryService(fake_ha)
+    audio = AudioManager(fake_ha, discovery)
+    events = []
+
+    async def record(**kwargs):
+        events.append(kwargs)
+
+    manager = AirPlayEndpointManager(Settings(data_dir=tmp_path), fake_ha, audio, record)
+    manager._config = _config()
+    zone = manager._config.zones[0]
+    endpoint = _Endpoint(zone=zone, port=7000)
+
+    await manager._forward_airplay_volume(endpoint, 50)
+
+    assert endpoint.last_airplay_volume_percent == 50
+    assert fake_ha.calls[-1]["service"] == "volume_set"
+    assert fake_ha.calls[-1]["data"] == {"volume_level": 0.3}
+    assert events[-1]["event"] == "airplay_volume_forwarded"
 
 
 def test_airplay_config_binds_runtime_lan_address_without_persisting_it(tmp_path):

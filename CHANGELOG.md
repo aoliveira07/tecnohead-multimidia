@@ -1,5 +1,11 @@
 # Changelog
 
+## 1.4.9 — volume AirPlay encaminhado ao LinkPlay
+
+- Mantém o PCM AirPlay em ganho pleno e encaminha o evento `ssnc/pvol` para `media_player.volume_set` da zona correspondente via Home Assistant.
+- Usa uma FIFO de metadados exclusiva por endpoint, evitando colisão entre Cozinha e Piscina.
+- Mantém o teto de volume configurado por zona e não altera a política HDMI ARC.
+
 ## 1.4.8 — volume AirPlay ativo
 
 - Corrige o volume dos destinos AirPlay 2: o Shairport Sync deixa de ignorar o volume enviado pelo iPhone e aplica a atenuação no PCM antes da ponte HTTP para o LinkPlay.

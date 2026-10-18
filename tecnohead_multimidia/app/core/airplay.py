@@ -1,6 +1,8 @@
 from __future__ import annotations
 
 import asyncio
+import base64
+import binascii
 import contextlib
 import json
 import logging
@@ -16,6 +18,7 @@ from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
+from app.core.audio import AudioActionError
 from app.core.ha_client import HomeAssistantError
 from app.models import AudioZoneProfile, MultiroomConfig
 
@@ -30,6 +33,39 @@ MDNS_PROBE_TIMEOUT = 3.0
 IPV4_RE = re.compile(r"(?<![0-9])(?:[0-9]{1,3}\.){3}[0-9]{1,3}(?![0-9])")
 
 EventRecorder = Callable[..., Awaitable[None]]
+_METADATA_HEADER_RE = re.compile(
+    rb"<item><type>(?P<type>[0-9a-fA-F]{8})</type>"
+    rb"<code>(?P<code>[0-9a-fA-F]{8})</code>"
+    rb"<length>(?P<length>\d+)</length>"
+)
+
+
+def _metadata_fourcc(value: bytes) -> str | None:
+    try:
+        decoded = bytes.fromhex(value.decode("ascii"))
+        return decoded.decode("ascii") if len(decoded) == 4 else None
+    except (UnicodeDecodeError, ValueError):
+        return None
+
+
+def airplay_volume_to_percent(value: str | bytes) -> int | None:
+    """Convert Shairport's AirPlay dB value to the linear iOS slider.
+
+    Shairport reports the source volume as 0 dB (100%) down to -30 dB (0%),
+    with -144 dB reserved for mute. The PCM path is kept at full gain and
+    this value is forwarded to the physical LinkPlay media_player instead.
+    """
+
+    if isinstance(value, bytes):
+        value = value.decode("ascii", errors="ignore")
+    try:
+        db = float(value.strip())
+    except (TypeError, ValueError):
+        return None
+    if db <= -143.0:
+        return 0
+    percent = round(((db + 30.0) / 30.0) * 100.0)
+    return max(0, min(100, percent))
 
 
 def _redact_process_line(line: str) -> str:
@@ -123,8 +159,11 @@ class _Endpoint:
     broker: AudioStreamBroker = field(default_factory=AudioStreamBroker)
     process: asyncio.subprocess.Process | None = None
     ffmpeg: asyncio.subprocess.Process | None = None
+    metadata_reader: asyncio.subprocess.Process | None = None
+    metadata_pipe_path: Path | None = None
     pcm_task: asyncio.Task[None] | None = None
     mp3_task: asyncio.Task[None] | None = None
+    metadata_task: asyncio.Task[None] | None = None
     process_log_task: asyncio.Task[None] | None = None
     ffmpeg_log_task: asyncio.Task[None] | None = None
     idle_task: asyncio.Task[None] | None = None
@@ -137,6 +176,8 @@ class _Endpoint:
     output_started: bool = False
     linkplay_started: bool = False
     last_error: str | None = None
+    last_airplay_volume_percent: int | None = None
+    last_airplay_volume_at: float | None = None
     process_log_tail: deque[str] = field(default_factory=lambda: deque(maxlen=24))
 
 
@@ -500,8 +541,36 @@ publish-aaaa-on-ipv4=no
         directory = self.settings.data_dir / "airplay"
         directory.mkdir(parents=True, exist_ok=True)
         config_path = directory / f"{zone.zone_id}.conf"
-        config_path.write_text(self._config_text(zone, port), encoding="utf-8")
+        endpoint.metadata_pipe_path = self._metadata_pipe_path(zone)
         try:
+            self._prepare_metadata_pipe(endpoint.metadata_pipe_path)
+        except OSError as exc:
+            endpoint.state = "blocked"
+            endpoint.last_error = _redact_process_line(str(exc))
+            endpoint.diagnostic = f"não foi possível preparar a ponte de volume AirPlay: {endpoint.last_error}"
+            await self.event_recorder(
+                event="airplay_volume_bridge_failed",
+                area_id=zone.area_id,
+                entity_id=zone.media_player_entity_id,
+                message=endpoint.diagnostic,
+                level="error",
+                result="blocked",
+            )
+            return
+        config_path.write_text(
+            self._config_text(zone, port, endpoint.metadata_pipe_path),
+            encoding="utf-8",
+        )
+        try:
+            # Keep a reader open before Shairport Sync starts. This prevents
+            # the metadata FIFO from blocking its first pvol message while
+            # still keeping one isolated pipe per AirPlay identity.
+            endpoint.metadata_reader = await asyncio.create_subprocess_exec(
+                "cat",
+                str(endpoint.metadata_pipe_path),
+                stdout=asyncio.subprocess.PIPE,
+                stderr=asyncio.subprocess.DEVNULL,
+            )
             endpoint.ffmpeg = await asyncio.create_subprocess_exec(
                 "ffmpeg",
                 "-hide_banner",
@@ -553,11 +622,17 @@ publish-aaaa-on-ipv4=no
                 result="blocked",
             )
             await self._terminate_process(endpoint.ffmpeg)
+            await self._terminate_process(endpoint.metadata_reader)
+            self._remove_metadata_pipe(endpoint.metadata_pipe_path)
             return
         endpoint.state = "advertising"
         endpoint.diagnostic = "AirPlay 2 anunciado; aguardando seleção Apple"
         endpoint.pcm_task = asyncio.create_task(self._consume_pcm(endpoint), name=f"airplay-pcm-{zone.zone_id}")
         endpoint.mp3_task = asyncio.create_task(self._consume_mp3(endpoint), name=f"airplay-mp3-{zone.zone_id}")
+        endpoint.metadata_task = asyncio.create_task(
+            self._consume_metadata(endpoint),
+            name=f"airplay-metadata-{zone.zone_id}",
+        )
         endpoint.process_log_task = asyncio.create_task(self._consume_process_log(endpoint), name=f"airplay-log-{zone.zone_id}")
         endpoint.ffmpeg_log_task = asyncio.create_task(self._consume_ffmpeg_log(endpoint), name=f"airplay-ffmpeg-log-{zone.zone_id}")
         endpoint.idle_task = asyncio.create_task(self._watch_idle(endpoint), name=f"airplay-idle-{zone.zone_id}")
@@ -571,11 +646,34 @@ publish-aaaa-on-ipv4=no
             result="advertising",
         )
 
-    def _config_text(self, zone: AudioZoneProfile, port: int) -> str:
+    @staticmethod
+    def _safe_zone_name(zone_id: str) -> str:
+        return re.sub(r"[^a-z0-9_-]", "-", zone_id.casefold()) or "zone"
+
+    def _metadata_pipe_path(self, zone: AudioZoneProfile) -> Path:
+        return self.settings.data_dir / "airplay" / f"{self._safe_zone_name(zone.zone_id)}-metadata"
+
+    @staticmethod
+    def _prepare_metadata_pipe(path: Path) -> None:
+        path.parent.mkdir(parents=True, exist_ok=True)
+        with contextlib.suppress(FileNotFoundError):
+            path.unlink()
+        if not hasattr(os, "mkfifo"):
+            raise OSError("o sistema operacional não oferece FIFO para metadados AirPlay")
+        os.mkfifo(path, 0o600)
+
+    @staticmethod
+    def _remove_metadata_pipe(path: Path | None) -> None:
+        if path:
+            with contextlib.suppress(FileNotFoundError, OSError):
+                path.unlink()
+
+    def _config_text(self, zone: AudioZoneProfile, port: int, metadata_pipe: Path | None = None) -> str:
         service_name = zone.airplay.service_name or f"TecnoHead {zone.zone_id.title()}"
         stable = re.sub(r"[^0-9a-f]", "", zone.airplay.stable_id.casefold())
         device_id = (stable[:12] or secrets.token_hex(6)).ljust(12, "0")
         shm_name = f"/tecnohead-{re.sub(r'[^a-z0-9-]', '-', zone.zone_id.casefold())}"[:63]
+        metadata_pipe = metadata_pipe or self._metadata_pipe_path(zone)
         # On a host with more than one interface, letting Avahi associate the
         # service with its default hostname can make the RTSP target resolve to
         # the wrong interface. The address is resolved at runtime and is never
@@ -591,12 +689,10 @@ general = {{
 {address_line}  regtype = "_airplay._tcp";
   airplay_device_id = 0x{device_id}L;
   nqptp_shared_memory_interface_name = {_quote_config(shm_name)};
-  # Keep the AirPlay source volume in the decoded PCM path. With the
-  # stdout->ffmpeg->HTTP bridge, "yes" would make the iPhone volume slider
-  # appear to work while leaving both LinkPlay zones at a fixed gain.
-  # The physical media_player.volume_set control remains available as a
-  # separate zone-level control.
-  ignore_volume_control = "no";
+  # Keep PCM at full gain. The pvol metadata below is forwarded to the
+  # physical LinkPlay media_player, so the iPhone changes the player volume
+  # instead of applying a second software attenuation in this bridge.
+  ignore_volume_control = "yes";
   interpolation = "basic";
   mixdown = "stereo";
 }};
@@ -604,6 +700,12 @@ stdout = {{
   output_rate = {PCM_RATE};
   output_format = "S32_LE";
   output_channels = {PCM_CHANNELS};
+}};
+metadata = {{
+  enabled = "yes";
+  include_cover_art = "no";
+  pipe_name = {_quote_config(str(metadata_pipe))};
+  pipe_timeout = 1000;
 }};
 sessioncontrol = {{
   active_state_timeout = {STREAM_IDLE_SECONDS};
@@ -655,6 +757,109 @@ diagnostics = {{
             raise
         except Exception as exc:
             endpoint.last_error = _redact_process_line(str(exc))
+
+    @staticmethod
+    async def _read_metadata_item(
+        stream: asyncio.StreamReader,
+        header: bytes,
+    ) -> tuple[str, str, bytes] | None:
+        match = _METADATA_HEADER_RE.search(header)
+        if not match:
+            return None
+        type_code = _metadata_fourcc(match.group("type"))
+        item_code = _metadata_fourcc(match.group("code"))
+        if not type_code or not item_code:
+            return None
+        try:
+            length = int(match.group("length"))
+        except ValueError:
+            return None
+        if length <= 0:
+            return type_code, item_code, b""
+
+        marker = await stream.readline()
+        if not marker or not marker.lstrip().startswith(b"<data"):
+            return None
+        encoded_parts: list[bytes] = []
+        while True:
+            line = await stream.readline()
+            if not line:
+                return None
+            if line.lstrip().startswith(b"</data>"):
+                break
+            encoded_parts.append(line.strip())
+        payload = b""
+        if encoded_parts:
+            with contextlib.suppress(ValueError, binascii.Error):
+                payload = base64.b64decode(b"".join(encoded_parts), validate=False)
+        return type_code, item_code, payload[:length]
+
+    async def _consume_metadata(self, endpoint: _Endpoint) -> None:
+        if not endpoint.metadata_reader or not endpoint.metadata_reader.stdout:
+            return
+        try:
+            while True:
+                header = await endpoint.metadata_reader.stdout.readline()
+                if not header:
+                    return
+                item = await self._read_metadata_item(endpoint.metadata_reader.stdout, header)
+                if not item:
+                    continue
+                type_code, item_code, payload = item
+                if type_code != "ssnc" or item_code != "pvol":
+                    continue
+                fields = payload.decode("ascii", errors="ignore").split(",")
+                if not fields:
+                    continue
+                volume_percent = airplay_volume_to_percent(fields[0])
+                if volume_percent is None:
+                    continue
+                await self._forward_airplay_volume(endpoint, volume_percent)
+        except asyncio.CancelledError:
+            raise
+        except Exception as exc:
+            endpoint.last_error = _redact_process_line(str(exc))
+            await self.event_recorder(
+                event="airplay_volume_bridge_failed",
+                area_id=endpoint.zone.area_id,
+                entity_id=endpoint.zone.media_player_entity_id,
+                message="a leitura do volume AirPlay foi interrompida",
+                level="warning",
+                result="degraded",
+            )
+
+    async def _forward_airplay_volume(self, endpoint: _Endpoint, volume_percent: int) -> None:
+        if endpoint.last_airplay_volume_percent == volume_percent:
+            return
+        endpoint.last_airplay_volume_percent = volume_percent
+        endpoint.last_airplay_volume_at = time.monotonic()
+        try:
+            result = await self.audio.set_airplay_volume(
+                self._config,
+                endpoint.zone.zone_id,
+                volume_percent,
+            )
+            applied = int(result.get("applied_percent", volume_percent))
+            await self.event_recorder(
+                event="airplay_volume_forwarded",
+                area_id=endpoint.zone.area_id,
+                entity_id=endpoint.zone.media_player_entity_id,
+                message="volume AirPlay encaminhado ao media_player LinkPlay pela API do Home Assistant",
+                command_kind="media_player.volume_set",
+                result=f"accepted_by_home_assistant:{applied}%",
+                physical_confirmation="not_observable",
+            )
+        except (HomeAssistantError, RuntimeError, ValueError, AudioActionError) as exc:
+            endpoint.last_error = _redact_process_line(str(exc))
+            await self.event_recorder(
+                event="airplay_volume_forward_failed",
+                area_id=endpoint.zone.area_id,
+                entity_id=endpoint.zone.media_player_entity_id,
+                message="o Home Assistant não aceitou o volume físico solicitado pelo AirPlay",
+                level="warning",
+                command_kind="media_player.volume_set",
+                result="degraded",
+            )
 
     async def _activate_linkplay(self, endpoint: _Endpoint) -> None:
         url = self._stream_url(endpoint)
@@ -774,16 +979,34 @@ diagnostics = {{
         endpoint = self._endpoints.pop(zone_id, None)
         if not endpoint:
             return
-        for task in (endpoint.activation_task, endpoint.idle_task, endpoint.pcm_task, endpoint.mp3_task, endpoint.process_log_task, endpoint.ffmpeg_log_task):
+        for task in (
+            endpoint.activation_task,
+            endpoint.idle_task,
+            endpoint.pcm_task,
+            endpoint.mp3_task,
+            endpoint.metadata_task,
+            endpoint.process_log_task,
+            endpoint.ffmpeg_log_task,
+        ):
             if task and not task.done():
                 task.cancel()
-        for task in (endpoint.activation_task, endpoint.idle_task, endpoint.pcm_task, endpoint.mp3_task, endpoint.process_log_task, endpoint.ffmpeg_log_task):
+        for task in (
+            endpoint.activation_task,
+            endpoint.idle_task,
+            endpoint.pcm_task,
+            endpoint.mp3_task,
+            endpoint.metadata_task,
+            endpoint.process_log_task,
+            endpoint.ffmpeg_log_task,
+        ):
             if task:
                 with contextlib.suppress(asyncio.CancelledError, Exception):
                     await task
         await self._terminate_process(endpoint.process)
         await self._terminate_process(endpoint.ffmpeg)
+        await self._terminate_process(endpoint.metadata_reader)
         await endpoint.broker.close()
+        self._remove_metadata_pipe(endpoint.metadata_pipe_path)
 
     @staticmethod
     async def _terminate_process(process: asyncio.subprocess.Process | None) -> None:
@@ -867,6 +1090,9 @@ diagnostics = {{
                     "diagnostic": endpoint.diagnostic,
                     "clients": endpoint.broker.client_count,
                     "bytes_sent": endpoint.broker.bytes_sent,
+                    "volume_bridge": "active",
+                    "last_airplay_volume_percent": endpoint.last_airplay_volume_percent,
+                    "last_airplay_volume_at": datetime.fromtimestamp(endpoint.last_airplay_volume_at, UTC).isoformat() if endpoint.last_airplay_volume_at else None,
                     "process_alive": bool(endpoint.process and endpoint.process.returncode is None),
                     "process_returncode": endpoint.process.returncode if endpoint.process else None,
                     "process_log_tail": list(endpoint.process_log_tail),

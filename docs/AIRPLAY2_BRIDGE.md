@@ -2,7 +2,7 @@
 
 ## Estado desta versão
 
-A implementação está empacotada na release `v1.4.8`. A homologação física continua sendo registrada por zona: o operador precisa confirmar seleção, áudio audível, volume e parada. O App não marca áudio físico como concluído só porque um nome mDNS apareceu no iPhone. Se o processo Shairport Sync morrer na inicialização, a interface mostra o código e a cauda sanitizada do diagnóstico em vez de manter “Visível no AirPlay”.
+A implementação está empacotada na release `v1.4.9`. A homologação física continua sendo registrada por zona: o operador precisa confirmar seleção, áudio audível, volume e parada. O App não marca áudio físico como concluído só porque um nome mDNS apareceu no iPhone. Se o processo Shairport Sync morrer na inicialização, a interface mostra o código e a cauda sanitizada do diagnóstico em vez de manter “Visível no AirPlay”.
 
 ## Componentes fixados
 
@@ -15,11 +15,17 @@ A implementação está empacotada na release `v1.4.8`. A homologação física 
 
 ## Caminho do áudio
 
-1. Shairport Sync recebe AirPlay 2 e entrega PCM S32_LE, 48 kHz, estéreo ao stdout.
+1. Shairport Sync recebe AirPlay 2 e entrega PCM S32_LE, 48 kHz, estéreo ao stdout, em ganho pleno.
 2. FFmpeg interno converte esse PCM para MP3 contínuo de 192 kbps.
 3. O App oferece o fluxo somente durante a sessão, por uma URL local com token aleatório e validade implícita pela sessão.
 4. O player LinkPlay é solicitado por `media_player.play_media` via API autenticada do Home Assistant. Não há cliente proprietário LinkPlay nem conexão direta ao BroadLink.
 5. Ao parar, o App solicita `media_player.media_stop` apenas se a zona não tiver retornado para ARC; não retoma a fonte anterior automaticamente.
+
+## Volume AirPlay e volume físico LinkPlay
+
+O fluxo PCM não aplica a atenuação do slider do iPhone. Cada instância usa `ignore_volume_control = "yes"` e uma FIFO de metadados exclusiva; o evento Shairport `ssnc/pvol` é convertido do intervalo AirPlay de `-30 dB..0 dB` para `0..100%` e enviado como uma chamada autenticada `media_player.volume_set` à entidade LinkPlay da mesma zona. Assim, o ganho digital permanece alto e o amplificador AudioCast/LinkPlay continua sendo o estágio que altera o volume audível.
+
+O limite máximo configurado da zona continua valendo. Com limite de 100%, o valor do iPhone chega integralmente ao player; com limite menor, o App aplica o teto sem aumentar o ganho do PCM. O painel do App e o Home Assistant permanecem controles físicos equivalentes. O diagnóstico registra a última porcentagem recebida e o resultado da chamada, sem registrar payload de áudio ou dados privados.
 
 O formato/codec aceito pelo firmware do player ainda é critério de prova física. Se `play_media` aceitar o comando mas não houver áudio, o diagnóstico será `AIRPLAY_BRIDGE_UNSUPPORTED`, sem declarar sucesso.
 
@@ -31,7 +37,7 @@ O formato/codec aceito pelo firmware do player ainda é critério de prova físi
 
 O painel informa versão dos binários, estado do NQPTP, mDNS, porta (sem publicar IP privado), endpoint por zona, clientes, bytes e último erro. Ainda assim, `streaming` significa apenas que PCM foi recebido e a chamada HA foi aceita; `physical_audio` só pode ser atualizado após o operador ouvir as caixas.
 
-O teste deve ser executado nesta ordem: Cozinha individual, Piscina com o amplificador livre para arbitrar ARC, dois destinos simultâneos, volumes separados e depois app Casa. O volume AirPlay é aplicado no PCM pelo Shairport Sync (`ignore_volume_control = "no"`); o volume físico do LinkPlay continua disponível separadamente no painel TecnoHead. Não se deve chamar `media_player.join` durante uma seleção dupla do iPhone.
+O teste deve ser executado nesta ordem: Cozinha individual, Piscina com o amplificador livre para arbitrar ARC, dois destinos simultâneos, volumes separados e depois app Casa. Em cada zona, mover o slider do iPhone deve alterar também o valor do player no AudioCast/LinkPlay; não se deve chamar `media_player.join` durante uma seleção dupla do iPhone.
 
 Referências: [AIRPLAY2.md](https://github.com/mikebrady/shairport-sync/blob/master/AIRPLAY2.md), [múltiplas instâncias](https://github.com/mikebrady/shairport-sync/blob/master/ADVANCED%20TOPICS/RunningMultipleInstances.md) e [integração ao app Casa](https://github.com/mikebrady/shairport-sync/blob/master/ADDINGTOHOME.md).
 

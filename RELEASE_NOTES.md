@@ -1,5 +1,11 @@
 # Release notes
 
+## v1.4.9 — volume AirPlay no player LinkPlay
+
+Corrige o caso em que o slider do AirPlay alterava somente o ganho digital do receptor virtual, enquanto o AudioCast/LinkPlay permanecia no mesmo valor. O Shairport Sync agora mantém o PCM em ganho pleno, lê o evento de volume `ssnc/pvol` por uma FIFO exclusiva e encaminha a porcentagem à entidade `media_player` da mesma zona pela API autenticada do Home Assistant.
+
+O limite máximo configurado continua sendo aplicado. Com o teto em 100%, o valor escolhido no iPhone é enviado ao player; o teste físico deve confirmar que o número do AudioCast/LinkPlay acompanha o slider e que não há dupla atenuação audível.
+
 ## v1.4.8 — volume AirPlay ativo
 
 Corrige o caso em que Cozinha e Piscina reproduziam áudio, mas não respondiam ao volume do iPhone. O receptor AirPlay 2 agora aplica o volume recebido no PCM antes do encoder/stream LinkPlay. O volume da zona pelo TecnoHead continua sendo enviado separadamente por `media_player.volume_set`.

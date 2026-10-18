@@ -102,6 +102,23 @@ async def test_audio_volume_uses_ha_and_enforces_zone_limit(fake_ha):
         raise AssertionError("volume acima do limite deveria ser recusado")
 
 
+async def test_airplay_volume_forwards_to_physical_player_with_zone_ceiling(fake_ha):
+    _audio_snapshot(fake_ha)
+    discovery = DiscoveryService(fake_ha)
+    manager = AudioManager(fake_ha, discovery)
+
+    result = await manager.set_airplay_volume(_config(), "kitchen", 80)
+
+    assert result["requested_percent"] == 80
+    assert result["applied_percent"] == 30
+    assert fake_ha.calls[-1] == {
+        "domain": "media_player",
+        "service": "volume_set",
+        "entity_id": "media_player.kitchen_amp",
+        "data": {"volume_level": 0.3},
+    }
+
+
 async def test_v13_migration_preserves_v12_areas(tmp_path):
     store = ConfigStore(tmp_path)
     migrated = store._migrate({"schema_version": 2, "areas": [{"area_id": "cinema", "enabled": True}]})
