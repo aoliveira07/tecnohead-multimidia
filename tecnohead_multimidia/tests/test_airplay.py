@@ -5,7 +5,13 @@ import base64
 
 from test_audio import _audio_snapshot, _config
 
-from app.core.airplay import AirPlayEndpointManager, AudioStreamBroker, _Endpoint, airplay_volume_to_percent
+from app.core.airplay import (
+    METADATA_STREAM_LIMIT,
+    AirPlayEndpointManager,
+    AudioStreamBroker,
+    _Endpoint,
+    airplay_volume_to_percent,
+)
 from app.core.audio import AudioManager
 from app.core.discovery import DiscoveryService
 from app.models import AudioZoneProfile
@@ -69,6 +75,27 @@ async def test_airplay_metadata_reader_decodes_pvol_payload(tmp_path):
     stream.feed_eof()
     header = await stream.readline()
     assert await manager._read_metadata_item(stream, header) == ("ssnc", "pvol", payload)
+
+
+async def test_airplay_metadata_reader_accepts_large_item_before_pvol(tmp_path):
+    async def record(**kwargs):
+        return None
+
+    manager = AirPlayEndpointManager(Settings(data_dir=tmp_path), None, None, record)  # type: ignore[arg-type]
+    payload = b"x" * 70000
+    encoded = base64.b64encode(payload)
+    stream = asyncio.StreamReader(limit=METADATA_STREAM_LIMIT)
+    stream.feed_data(
+        b"<item><type>73736e63</type><code>636f706c</code><length>"
+        + str(len(payload)).encode()
+        + b"</length>\n<data encoding=\"base64\">\n"
+        + encoded
+        + b"\n</data></item>\n"
+    )
+    stream.feed_eof()
+    header = await stream.readline()
+    item = await manager._read_metadata_item(stream, header)
+    assert item == ("ssnc", "copl", payload)
 
 
 async def test_airplay_pvol_is_forwarded_to_zone_player(fake_ha, tmp_path):

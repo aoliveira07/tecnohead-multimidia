@@ -1,5 +1,11 @@
 # Changelog
 
+## 1.4.10 — leitor de metadados AirPlay resiliente
+
+- Aumenta o limite do leitor FIFO de metadados para aceitar itens grandes antes do próximo evento `ssnc/pvol`.
+- Evita que uma mensagem longa encerre a ponte de volume e deixe o player LinkPlay preso no último valor.
+- Mantém o PCM em ganho pleno e o encaminhamento de volume pela API do Home Assistant.
+
 ## 1.4.9 — volume AirPlay encaminhado ao LinkPlay
 
 - Mantém o PCM AirPlay em ganho pleno e encaminha o evento `ssnc/pvol` para `media_player.volume_set` da zona correspondente via Home Assistant.

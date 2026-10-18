@@ -30,6 +30,7 @@ PCM_CHANNELS = 2
 PCM_SAMPLE_FORMAT = "s32le"
 STREAM_IDLE_SECONDS = 8.0
 MDNS_PROBE_TIMEOUT = 3.0
+METADATA_STREAM_LIMIT = 4 * 1024 * 1024
 IPV4_RE = re.compile(r"(?<![0-9])(?:[0-9]{1,3}\.){3}[0-9]{1,3}(?![0-9])")
 
 EventRecorder = Callable[..., Awaitable[None]]
@@ -570,6 +571,13 @@ publish-aaaa-on-ipv4=no
                 str(endpoint.metadata_pipe_path),
                 stdout=asyncio.subprocess.PIPE,
                 stderr=asyncio.subprocess.DEVNULL,
+                # Shairport can emit a large metadata item (for example a
+                # plist or artwork) before the next pvol update. The default
+                # asyncio StreamReader limit is 64 KiB; when that item has no
+                # separator within the limit, the metadata task dies and all
+                # later AirPlay volume changes are lost. Keep the FIFO local
+                # and bounded while allowing the largest normal item through.
+                limit=METADATA_STREAM_LIMIT,
             )
             endpoint.ffmpeg = await asyncio.create_subprocess_exec(
                 "ffmpeg",

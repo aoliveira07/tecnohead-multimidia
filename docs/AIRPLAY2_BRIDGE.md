@@ -2,7 +2,7 @@
 
 ## Estado desta versão
 
-A implementação está empacotada na release `v1.4.9`. A homologação física continua sendo registrada por zona: o operador precisa confirmar seleção, áudio audível, volume e parada. O App não marca áudio físico como concluído só porque um nome mDNS apareceu no iPhone. Se o processo Shairport Sync morrer na inicialização, a interface mostra o código e a cauda sanitizada do diagnóstico em vez de manter “Visível no AirPlay”.
+A implementação está empacotada na release `v1.4.10`. A homologação física continua sendo registrada por zona: o operador precisa confirmar seleção, áudio audível, volume e parada. O App não marca áudio físico como concluído só porque um nome mDNS apareceu no iPhone. Se o processo Shairport Sync morrer na inicialização, a interface mostra o código e a cauda sanitizada do diagnóstico em vez de manter “Visível no AirPlay”.
 
 ## Componentes fixados
 
@@ -23,7 +23,7 @@ A implementação está empacotada na release `v1.4.9`. A homologação física 
 
 ## Volume AirPlay e volume físico LinkPlay
 
-O fluxo PCM não aplica a atenuação do slider do iPhone. Cada instância usa `ignore_volume_control = "yes"` e uma FIFO de metadados exclusiva; o evento Shairport `ssnc/pvol` é convertido do intervalo AirPlay de `-30 dB..0 dB` para `0..100%` e enviado como uma chamada autenticada `media_player.volume_set` à entidade LinkPlay da mesma zona. Assim, o ganho digital permanece alto e o amplificador AudioCast/LinkPlay continua sendo o estágio que altera o volume audível.
+O fluxo PCM não aplica a atenuação do slider do iPhone. Cada instância usa `ignore_volume_control = "yes"` e uma FIFO de metadados exclusiva; o evento Shairport `ssnc/pvol` é convertido do intervalo AirPlay de `-30 dB..0 dB` para `0..100%` e enviado como uma chamada autenticada `media_player.volume_set` à entidade LinkPlay da mesma zona. O leitor FIFO aceita itens de metadados de até 4 MiB, para que um plist ou item grande não interrompa a leitura dos eventos de volume seguintes. Assim, o ganho digital permanece alto e o amplificador AudioCast/LinkPlay continua sendo o estágio que altera o volume audível.
 
 O limite máximo configurado da zona continua valendo. Com limite de 100%, o valor do iPhone chega integralmente ao player; com limite menor, o App aplica o teto sem aumentar o ganho do PCM. O painel do App e o Home Assistant permanecem controles físicos equivalentes. O diagnóstico registra a última porcentagem recebida e o resultado da chamada, sem registrar payload de áudio ou dados privados.
 
