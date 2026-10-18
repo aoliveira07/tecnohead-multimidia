@@ -48,7 +48,6 @@ RUN apk add --no-cache \
       libgcrypt-dev \
       libplist-dev \
       libplist-util \
-      libsoxr-dev \
       libtool \
       linux-headers \
       libsodium-dev \
@@ -77,7 +76,6 @@ RUN cd /src/shairport-sync \
       --with-metadata-pipe \
       --with-ssl=openssl \
       --with-pipe \
-      --with-soxr \
       --with-stdout \
     && make -j"$(getconf _NPROCESSORS_ONLN)" \
     && rm -rf /tmp/shairport-install \
@@ -88,7 +86,7 @@ RUN cd /src/shairport-sync \
 
 FROM ghcr.io/home-assistant/base:latest
 
-ARG BUILD_VERSION=1.4.1
+ARG BUILD_VERSION=1.4.2
 ARG BUILD_ARCH=local
 ARG NQPTP_COMMIT=ab8fb67483411640fd7f1e193889482f2421c37c
 ARG SHAIRPORT_SYNC_COMMIT=cf6998daa1876c5a8f97128a960c8afc0e731841
@@ -110,7 +108,6 @@ RUN apk add --no-cache \
       libconfig \
       libgcrypt \
       libplist \
-      libsoxr \
       libstdc++ \
       libuuid \
       libcrypto3 \

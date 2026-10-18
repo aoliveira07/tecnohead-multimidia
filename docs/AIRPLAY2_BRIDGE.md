@@ -2,11 +2,11 @@
 
 ## Estado desta versão
 
-A implementação está empacotada na release `v1.4.1`, mas a homologação física continua pendente. O App não marca áudio físico como concluído só porque um nome mDNS apareceu no iPhone. A prova precisa confirmar áudio audível no amplificador, volume/parada e a política HDMI ARC.
+A implementação está empacotada na release `v1.4.2`, mas a homologação física continua pendente. O App não marca áudio físico como concluído só porque um nome mDNS apareceu no iPhone. A prova precisa confirmar áudio audível no amplificador, volume/parada e a política HDMI ARC.
 
 ## Componentes fixados
 
-- Shairport Sync: `cf6998daa1876c5a8f97128a960c8afc0e731841`, compilado com `--with-airplay-2`, OpenSSL, Avahi, FFmpeg/metadata, stdout e soxr.
+- Shairport Sync: `cf6998daa1876c5a8f97128a960c8afc0e731841`, compilado com `--with-airplay-2`, OpenSSL, Avahi, FFmpeg/metadata e stdout. A imagem usa a interpolação básica embutida, porque `libsoxr-dev` não está disponível no Alpine 3.23 atual.
 - NQPTP: `ab8fb67483411640fd7f1e193889482f2421c37c`, uma única instância compartilhada nos UDP 319/320.
 - Duas identidades persistentes: `TecnoHead Cozinha` e `TecnoHead Piscina`, com portas RAOP distintas escolhidas pelo App (preferências 7000/7001, com varredura de conflito).
 - O App usa `host_network`, `host_ipc`, `host_dbus` e `realtime` no metadata do HAOS. O mDNS continua sendo o serviço Avahi do host; o App não inicia um segundo Avahi nem altera o serviço global.

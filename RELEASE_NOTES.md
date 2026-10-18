@@ -1,5 +1,9 @@
 # Release notes
 
+## v1.4.2 — imagem AirPlay 2 compatível com Alpine 3.23
+
+Corrige o build da imagem removendo `libsoxr-dev`, pacote que não existe no Alpine 3.23 atual. O Shairport Sync continua compilado com AirPlay 2, NQPTP, Avahi, stdout e FFmpeg; a saída usa a interpolação básica embutida. Não altera cenas, IR, LinkPlay, HDMI ARC, HomeKit Bridge ou a política de homologação física.
+
 ## v1.4.1 — build instalável do AirPlay 2
 
 Rebuild da v1.4.0 com o nome correto do pacote Alpine necessário pelo compilador AirPlay 2. Nenhuma lógica de cena, áudio, ARC ou HomeKit foi alterada.

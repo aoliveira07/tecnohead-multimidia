@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.4.2 — compatibilidade do build AirPlay 2
+
+- Remove a dependência opcional `libsoxr-dev`, ausente no Alpine 3.23, e usa a interpolação básica embutida do Shairport Sync.
+- Mantém AirPlay 2, NQPTP, PCM→LinkPlay, proteção ARC e o restante do App sem alteração funcional.
+
 ## 1.4.1 — correção de pacote Alpine
 
 - Corrige o nome do pacote `libplist-util` usado para compilar o suporte AirPlay 2 no Alpine.

@@ -1,4 +1,8 @@
-# Relatório de instalação e homologação — TecnoHead Multimídia v1.4.0
+# Relatório de instalação e homologação — TecnoHead Multimídia v1.4.2
+
+## Addendum v1.4.2 — correção do empacotamento AirPlay 2
+
+O build foi ajustado para a disponibilidade real do Alpine 3.23: a biblioteca opcional `libsoxr-dev` não é instalada e a configuração usa a interpolação básica embutida do Shairport Sync. Os testes automatizados continuam obrigatórios; a prova no iPhone e o áudio audível permanecem pendentes.
 
 ## Addendum v1.4.1 — AirPlay 2 virtual (implementação, sem falsa homologação)
 

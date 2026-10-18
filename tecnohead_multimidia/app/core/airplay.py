@@ -412,7 +412,7 @@ general = {{
   airplay_device_id = 0x{device_id}L;
   nqptp_shared_memory_interface_name = {_quote_config(shm_name)};
   ignore_volume_control = "yes";
-  interpolation = "soxr";
+  interpolation = "basic";
   mixdown = "stereo";
 }};
 stdout = {{
