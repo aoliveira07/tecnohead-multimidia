@@ -2,20 +2,22 @@
 
 Data da leitura: 18/10/2026. A leitura foi somente de registros, estados e integrações do Home Assistant; nenhuma fonte, volume, grupo, ARC, IR ou cena foi acionada.
 
-## Resultado sanitizado
+## Resultado sanitizado — atualização após cadastro LinkPlay
 
 | Zona | O que o Home Assistant expôs | Conclusão |
 |---|---|---|
-| Cozinha | Um `media_player` associado à integração Apple TV/HomePod, com leitura de volume disponível | Não é possível tratá-lo como amplificador LinkPlay sem confirmação adicional |
-| Piscina / Externo Piscina | Um wrapper de TV universal e uma entidade-base da integração Samsung TV, com fontes de TV/HDMI | O amplificador novo não apareceu como `media_player`; modelo, firmware e integração ainda não estão identificados |
-| LinkPlay | Nenhuma integração LinkPlay foi encontrada na configuração atual | G1 físico e a ponte PCM estão bloqueados até existir um player físico canônico |
-| MQTT / HomeKit Bridge | Integrações presentes no HAOS | Disponibilidade foi observada; comandos de voz, Casa e áudio físico não foram homologados |
+| Cozinha | `media_player.cozinha_room`, AudioCast M5, área `Cozinha`, fonte `Wifi`, volume 71%, estado `idle` | Player LinkPlay canônico confirmado e cadastrado no App |
+| Piscina / Externo Piscina | `media_player.piscina_room`, modelo reportado `Generic`, fontes `Wifi`, `Line In`, `Bluetooth`, `Optical`, `HDMI`, fonte `HDMI`, volume 100% | Player LinkPlay canônico confirmado; prioridade HDMI ARC preservada |
+| LinkPlay | Integração LinkPlay com 2 dispositivos e 6 entidades | G1 cadastral concluído; comandos físicos ainda aguardam teste manual |
+| MQTT / HomeKit Bridge | MQTT conectado; HomeKit Bridge passou a exibir Cozinha Room e Piscina Room como receivers | Adoção no app Casa e comandos de voz ainda não foram homologados |
 
 O App mantém o filtro estrito por área. A lista de uma zona só inclui `media_player` cuja área efetiva vem do registro da entidade ou do dispositivo; não há fallback por nome ou por cômodo parecido.
 
-## Bloqueio necessário
+## Estado atual e bloqueios restantes
 
-Para desbloquear a configuração real da Piscina, é necessário identificar o modelo atual do amplificador e a entidade `media_player` criada pela integração que o controla. O backup antigo não é usado como prova: o iEAST M5 não foi assumido.
+O amplificador atual da Piscina foi identificado pelo HA como `media_player.piscina_room`, mas o modelo detalhado continua reportado como `Generic`; o backup antigo não foi usado como prova e o iEAST M5 não foi assumido. O cadastro por área está concluído.
 
-O HDMI ARC/CEC não foi modificado. Enquanto a entidade do amplificador não for descoberta, o App não tenta trocar a fonte nem criar um agrupamento.
+O HDMI ARC/CEC não foi modificado. O estado observado da Piscina era `HDMI`/`playing` com volume 100%; nenhum comando foi emitido pelo App. O primeiro teste físico deve reduzir o volume manualmente e confirmar o comportamento do ARC antes de qualquer troca de fonte ou agrupamento.
+
+AirPlay 2 virtual ainda está bloqueado para a etapa de implementação/POC: Shairport Sync, NQPTP e a ponte PCM→LinkPlay não foram iniciados. Não há alegação de descoberta AirPlay, áudio audível ou sincronismo.
 

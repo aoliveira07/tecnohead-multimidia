@@ -1,8 +1,8 @@
 # Relatório de instalação e homologação — TecnoHead Multimídia v1.3.1
 
-## Addendum v1.3.0 — áudio multiroom (18/10/2026)
+## Registro inicial v1.3.0 — áudio multiroom (18/10/2026, superseded)
 
-A implementação v1.3 foi adicionada ao mesmo App e passou nos testes automatizados. O painel de áudio, migração de configuração, controles `media_player`, filtro estrito por área e estados MQTT foram instalados no HAOS em 18/10/2026. Esta versão ainda não pode ser chamada de “fisicamente homologada”: o levantamento real não encontrou integração LinkPlay nem entidade do amplificador novo da Piscina, e nenhum comando físico de áudio ou AirPlay foi enviado.
+A implementação v1.3 foi adicionada ao mesmo App e passou nos testes automatizados. O painel de áudio, migração de configuração, controles `media_player`, filtro estrito por área e estados MQTT foram instalados no HAOS em 18/10/2026. Este registro descreve a leitura inicial, anterior à inclusão dos dois equipamentos no LinkPlay; a descoberta atual está no addendum v1.3.1 abaixo. A versão ainda não pode ser chamada de “fisicamente homologada”: nenhum comando físico de áudio ou AirPlay foi enviado.
 
 O resultado fiel é: **código implementado e testado localmente; AirPlay 2/LinkPlay bloqueados por alvo físico ausente; v1.2 física ainda pendente de intervenção manual**. A evidência sanitizada está em [docs/AUDIO_DISCOVERY_REPORT.md](docs/AUDIO_DISCOVERY_REPORT.md) e a matriz B01–B45 em [docs/AUDIO_TEST_PLAN.md](docs/AUDIO_TEST_PLAN.md).
 
@@ -12,11 +12,26 @@ O próximo dado impeditivo é o modelo atual do amplificador da Piscina ou a ent
 
 A release `v1.3.1` restaura no código o default exigido pelo handoff: OFF uma vez, espera monotônica de 5,0 s após o retorno da chamada e OFF uma segunda vez. O perfil Cinema persistido no HAOS foi alinhado para `ON 1`, `OFF 2`, `5,0 s` sem transmitir IR.
 
+## Addendum v1.3.1 — descoberta LinkPlay e preparação HomeKit (18/10/2026)
+
+Após os dois equipamentos serem adicionados ao LinkPlay, a descoberta somente leitura confirmou:
+
+| Zona | Área HA efetiva | Entidade canônica | Observação observada |
+|---|---|---|---|
+| Cozinha | `Cozinha` | `media_player.cozinha_room` | AudioCast M5; fonte `Wifi`; estado `idle`; volume reportado em 71% |
+| Piscina | `Externo Piscina` | `media_player.piscina_room` | modelo reportado como `Generic`; fontes `Wifi`, `Line In`, `Bluetooth`, `Optical`, `HDMI`; fonte atual `HDMI`; volume reportado em 100% |
+
+O App foi configurado e salvo com essas duas entidades, mantendo o filtro estrito por área. A zona Piscina usa a área real `Externo Piscina` — o rótulo operacional continua “Piscina” — e a prioridade HDMI ARC permanece ativa. O limite de segurança do App ficou em 30%; nenhum comando de volume, fonte, reprodução ou agrupamento foi enviado nesta rodada. O volume reportado de 100% na Piscina exige redução manual e conferência auditiva antes de qualquer teste físico.
+
+O HomeKit Bridge passou a apresentar os receivers `Cozinha Room` e `Piscina Room` como acessórios, além das entradas já existentes. Isso prepara a adoção no app Casa sem criar um controle LAN paralelo. O pareamento/adopção no iPhone e os comandos efetivos ainda não foram testados.
+
+AirPlay 2 virtual continua **NÃO HOMOLOGADO**: Shairport Sync/NQPTP não foram iniciados e nenhum áudio foi encaminhado às caixas. A presença dos receivers no HomeKit Bridge não é prova de AirPlay 2.
+
 ## Status real em 18/10/2026
 
 **Instalado e configurado no HAOS; pronto para testes físicos manuais. Ainda não homologado fisicamente.**
 
-O App foi atualizado pelo catálogo de Apps a partir do repositório autorizado, de 1.3.0 para 1.3.1, e confirmado como “Em funcionamento”. O Ingress abriu com o indicador `v1.3.1` e “HAOS online”; a descoberta real do Home Assistant respondeu, o painel de áudio apareceu com as duas zonas sem cadastro físico e o perfil Cinema permaneceu persistido. O MQTT Discovery reconectou após a atualização. O intervalo OFF do perfil Cinema está em 5,0 s e foi salvo sem iniciar uma cena ou teste IR.
+O App foi atualizado pelo catálogo de Apps a partir do repositório autorizado, de 1.3.0 para 1.3.1, e confirmado como “Em funcionamento”. O Ingress abriu com o indicador `v1.3.1` e “HAOS online”; a descoberta real do Home Assistant respondeu, o painel de áudio apareceu e as duas zonas LinkPlay foram cadastradas com validação de área. O perfil Cinema permaneceu persistido. O MQTT Discovery reconectou após a atualização. O intervalo OFF do perfil Cinema está em 5,0 s e foi salvo sem iniciar uma cena ou teste IR.
 
 Durante esta revalidação do Denon, não foi acionado botão de cena nem teste IR; a etapa executada foi cadastral/operacional.
 
@@ -36,7 +51,7 @@ O sensor `sensor.ir_cinema_temperatura` não foi vinculado porque a leitura real
 
 ### Revalidação do Denon — 18/10/2026
 
-A integração **Denon AVR Network Receivers** voltou a apresentar um dispositivo. O dispositivo **Denon Cinema** está associado à área Cinema e reporta estado ligado no Home Assistant. A entidade `media_player.denon_cinema` foi confirmada no editor do TecnoHead. A lista real de fontes do receiver contém `Apple TV` e `TV Audio`; o perfil foi salvo com `Apple TV` para Cinema, `TV Audio` para TV e os volumes configurados anteriormente (0,20 e 0,15).
+A integração **Denon AVR Network Receivers** voltou a apresentar um dispositivo. O dispositivo **Denon Cinema** está associado à área Cinema e reporta estado ligado no Home Assistant. A entidade `media_player.denon_cinema` foi confirmada no editor do TecnoHead. A lista real de fontes do receiver contém `Apple TV` e `TV Audio`; o perfil foi salvo com `Apple TV` para Cinema, `TV Audio` para TV e volumes conservadores de 0,25 e 0,20.
 
 Essa validação confirma a conexão, a associação de área, a entidade e os rótulos de fonte. Ainda não confirma a troca física de fonte, volume ou resposta acústica; essas ações permanecem para o teste manual acompanhado.
 
@@ -91,4 +106,4 @@ Legenda: `PASSOU` = evidência observada; `PARCIAL` = parte validada, parte pend
 
 ## Próximo passo manual
 
-O bloqueio de conexão do receiver foi removido. O painel está em **Desligado / Pronto** e o operador pode executar o checklist físico em [docs/TEST_PLAN.md](docs/TEST_PLAN.md), começando pelo teste ON autorizado e observação direta do projetor. Nesta rodada, começar pelo teste do desligamento OFF→4 s→OFF e aguardar 30 s para verificar as três luzes. A troca física de fonte/volume do Denon e a homologação completa continuam pendentes até a observação manual.
+O bloqueio de conexão do receiver foi removido e as zonas de áudio estão cadastradas. Antes de testar áudio, reduzir manualmente o amplificador Piscina de 100% para um nível baixo e seguro, mantendo a TV/ARC como está. Depois, o operador pode executar o checklist físico em [docs/TEST_PLAN.md](docs/TEST_PLAN.md), começando pelo teste ON autorizado e observação direta do projetor; em seguida testar o LinkPlay zona por zona. A adoção no HomeKit exige ação manual no iPhone. A troca física de fonte/volume, o compartilhamento TV→Cozinha, AirPlay 2 e a homologação completa continuam pendentes até a observação manual.
