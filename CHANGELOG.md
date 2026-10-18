@@ -1,5 +1,15 @@
 # Changelog
 
+## 1.3.0 — áudio multiroom protegido
+
+- Adiciona zonas Cozinha/Piscina ao mesmo App, com filtro estrito por área e cadastro do `media_player` canônico.
+- Adiciona volume limitado, mudo, fontes anunciadas, diagnóstico e agrupamento explícito via serviços `media_player` do Home Assistant.
+- Preserva a prioridade HDMI ARC da Piscina e impede automaticamente a ponte AirPlay quando não existe destino físico LinkPlay comprovado.
+- Adiciona MQTT Discovery de estado e controles de áudio quando as capabilities reais existem.
+- Migra o schema local v1.2 para v1.3 sem perder perfis Cinema, IR, clima, luzes e MQTT.
+- Registra o bloqueio real atual: não foi encontrada integração LinkPlay nem entidade do amplificador novo da Piscina; AirPlay 2 e Apple Casa permanecem não homologados.
+- Adiciona documentação e matriz B01–B45 sanitizadas.
+
 ## 1.2.11
 
 - Corrige a manutenção do modo lógico em cenas parcialmente degradadas, permitindo que o temporizador de iluminação execute mesmo quando a aleta não puder ser confirmada.

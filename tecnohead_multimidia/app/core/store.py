@@ -8,7 +8,7 @@ import tempfile
 import uuid
 from pathlib import Path
 
-from app.models import AppConfig, AreaProfile, IRProfile, default_app_config
+from app.models import AppConfig, AreaProfile, IRProfile, MultiroomConfig, default_app_config
 
 LOGGER = logging.getLogger("tecnohead.store")
 
@@ -45,12 +45,14 @@ class ConfigStore:
         if not isinstance(raw, dict):
             raise ValueError("configuration root must be an object")
         data = dict(raw)
-        data.setdefault("schema_version", 1)
+        source_version = int(data.get("schema_version", 1) or 1)
         data.setdefault("installation_id", uuid.uuid4().hex)
         data.setdefault("areas", [])
-        # v0 had no schema version but already used the same area shape in early
-        # development builds. Pydantic performs the final strict validation.
-        data["schema_version"] = 1
+        # v0/v1/v2 already used the same area shape. The v1.3 migration only
+        # adds an empty, app-owned audio section; no HA registry data is moved.
+        if source_version < 3:
+            data.setdefault("audio", MultiroomConfig().model_dump(mode="json"))
+        data["schema_version"] = 3
         return AppConfig.model_validate(data)
 
     async def _write_locked(self) -> None:
@@ -74,7 +76,7 @@ class ConfigStore:
     async def save(self, config: AppConfig) -> AppConfig:
         async with self._lock:
             config.installation_id = config.installation_id or self._config.installation_id or uuid.uuid4().hex
-            config.schema_version = 1
+            config.schema_version = 3
             self._config = config.model_copy(deep=True)
             await self._write_locked()
             return self._config.model_copy(deep=True)
@@ -103,3 +105,10 @@ class ConfigStore:
                     await self._write_locked()
                     return current.model_copy(deep=True)
         raise KeyError(area_id)
+
+    async def update_audio(self, audio: MultiroomConfig) -> MultiroomConfig:
+        async with self._lock:
+            self._config.audio = audio.model_copy(deep=True)
+            self._config.schema_version = 3
+            await self._write_locked()
+            return self._config.audio.model_copy(deep=True)

@@ -1,5 +1,7 @@
 # Plano de testes e checklist de aceite
 
+> O plano de áudio v1.3, com gates G0–G6 e a matriz B01–B45, está em [AUDIO_TEST_PLAN.md](AUDIO_TEST_PLAN.md). A regressão A01–A26 continua obrigatória; nenhum teste físico de áudio deve ser inferido a partir de um retorno HTTP.
+
 Legenda: `PASSOU` = evidência disponível; `NÃO TESTADO` = requer HAOS/equipamento; `BLOQUEADO` = não há acesso autorizado; `FALHOU` = comportamento incorreto.
 
 ## Automatizados locais

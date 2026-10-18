@@ -1,5 +1,5 @@
 const $ = (id) => document.getElementById(id);
-const state = { areas: [], status: null, selectedAreaId: null, currentArea: null, formDirty: false };
+const state = { areas: [], status: null, audio: null, selectedAreaId: null, currentArea: null, formDirty: false, audioFormDirty: false };
 
 async function api(path, options = {}) {
   const response = await fetch(path, { headers: { "Content-Type": "application/json", ...(options.headers || {}) }, ...options });
@@ -22,6 +22,79 @@ function escapeHtml(value) {
 function modeLabel(value) { return ({ off: "Desligado", cinema: "Cinema", tv: "TV" }[value] || value || "—"); }
 function phaseLabel(value) { return ({ idle: "Pronto", starting: "Iniciando", active: "Ativo", stopping: "Desligando", error: "Degradado", uncertain: "UNCERTAIN" }[value] || value || "—"); }
 function selectedEngine(areaId) { return (state.status?.areas || []).find((item) => item.area_id === areaId) || {}; }
+
+function audioZoneConfig(zoneId) { return (state.audio?.config?.zones || []).find((zone) => zone.zone_id === zoneId) || {}; }
+function audioZoneStatus(zoneId) { return (state.audio?.zones || []).find((zone) => zone.zone_id === zoneId) || {}; }
+function audioArea(areaId) { return (state.audio?.areas || []).find((area) => area.area_id === areaId) || {}; }
+function audioStatusLabel(value) { return ({ ready: "Pronto", degraded: "Degradado", unavailable: "Indisponível", area_mismatch: "Área incompatível", unconfigured: "Não configurado" }[value] || value || "—"); }
+function audioAirplayLabel(value) { return ({ not_configured: "Não configurado", blocked: "Bloqueado", not_homologated: "Não homologado", ready: "Pronto" }[value] || value || "Não testado"); }
+
+function audioAreaOptions(selected) {
+  return `<option value="">Selecionar área HA</option>` + (state.audio?.areas || []).map((area) => `<option value="${escapeHtml(area.area_id)}" ${area.area_id === selected ? "selected" : ""}>${escapeHtml(area.name)}</option>`).join("");
+}
+
+function audioPlayerOptions(areaId, selected) {
+  const players = audioArea(areaId).media_players || [];
+  return `<option value="">Selecionar media_player</option>` + players.map((entity) => `<option value="${escapeHtml(entity.entity_id)}" ${entity.entity_id === selected ? "selected" : ""}>${escapeHtml(entity.entity_id)}${entity.friendly_name ? ` — ${escapeHtml(entity.friendly_name)}` : ""}</option>`).join("");
+}
+
+function renderAudioForm() {
+  if (state.audioFormDirty) return;
+  const labels = { kitchen: "Cozinha", pool: "Piscina" };
+  const fields = $("audio-config-fields");
+  fields.innerHTML = ["kitchen", "pool"].map((zoneId) => {
+    const config = audioZoneConfig(zoneId); const status = audioZoneStatus(zoneId);
+    const areaId = config.area_id || status.area_id || ""; const entityId = config.media_player_entity_id || status.entity_id || "";
+    const priority = config.priority || (zoneId === "pool" ? "hdmi_arc" : "normal");
+    const airplay = config.airplay || {};
+    return `<article class="audio-config-card" data-audio-config-zone="${zoneId}">
+      <h3>${labels[zoneId]}</h3>
+      <label class="check-item"><input type="checkbox" data-audio-enabled="${zoneId}" ${config.enabled || status.enabled ? "checked" : ""} /><span>Habilitar zona no TecnoHead</span></label>
+      <label>Área Home Assistant<select data-audio-area="${zoneId}">${audioAreaOptions(areaId)}</select></label>
+      <label>Amplificador / media_player<select data-audio-player="${zoneId}">${audioPlayerOptions(areaId, entityId)}</select></label>
+      <div class="form-row two">
+        <label>Limite de volume (%)<input type="number" min="0" max="100" step="1" data-audio-max="${zoneId}" value="${escapeHtml(config.max_volume_percent ?? status.max_volume_percent ?? 30)}" /></label>
+        <label>Prioridade<select data-audio-priority="${zoneId}"><option value="normal" ${priority === "normal" ? "selected" : ""}>Normal</option><option value="hdmi_arc" ${priority === "hdmi_arc" ? "selected" : ""}>HDMI ARC</option></select></label>
+      </div>
+      <label class="check-item"><input type="checkbox" data-audio-airplay="${zoneId}" ${airplay.enabled ? "checked" : ""} /><span>Preparar identidade AirPlay desta zona</span></label>
+      ${zoneId === "pool" ? `<label class="check-item"><input type="checkbox" data-audio-arc-override="${zoneId}" ${config.airplay_may_override_arc ? "checked" : ""} /><span>Permitir AirPlay substituir ARC (somente explícito)</span></label>` : ""}
+      <p class="muted">${escapeHtml(status.diagnostic || "Selecione somente entidades descobertas nesta área.")}</p>
+    </article>`;
+  }).join("");
+  fields.querySelectorAll("[data-audio-area]").forEach((select) => select.addEventListener("change", () => {
+    const zoneId = select.dataset.audioArea; const player = document.querySelector(`[data-audio-player="${zoneId}"]`);
+    player.innerHTML = audioPlayerOptions(select.value, ""); state.audioFormDirty = true;
+  }));
+  $("audio-group-strategy").value = state.audio?.config?.group_strategy || "none";
+  $("audio-group-master").value = state.audio?.config?.group_master_zone_id || "";
+}
+
+function renderAudioZones() {
+  const zones = (state.audio?.zones || []).filter((zone) => ["kitchen", "pool"].includes(zone.zone_id));
+  $("audio-zones").innerHTML = zones.map((zone) => {
+    const entity = zone.entity || {}; const supports = entity.supports || {}; const sourceList = entity.source_list || [];
+    const volume = entity.volume_level == null ? "não observado" : `${Math.round(Number(entity.volume_level) * 100)}%`;
+    const currentSource = entity.source || "fonte não confirmada"; const metadata = [entity.media_title, entity.media_artist].filter(Boolean).join(" — "); const max = zone.max_volume_percent ?? 30;
+    const volumeInput = supports.volume ? `<div class="audio-control-row"><label class="field">Volume até ${max}%<input type="number" min="0" max="${max}" step="1" value="${entity.volume_level == null ? "" : Math.min(max, Math.round(Number(entity.volume_level) * 100))}" data-audio-volume="${zone.zone_id}" placeholder="%" /></label><button type="button" class="button button-secondary audio-apply-volume" data-zone="${zone.zone_id}">Aplicar</button></div>` : `<p class="muted">A entidade não anunciou volume absoluto; nenhum slider seguro foi criado.</p>`;
+    const sourceControl = supports.source ? `<div class="audio-control-row"><label class="field">Fonte<select data-audio-source="${zone.zone_id}">${sourceList.map((source) => `<option value="${escapeHtml(source)}" ${String(source).toLowerCase() === String(currentSource).toLowerCase() ? "selected" : ""}>${escapeHtml(source)}</option>`).join("")}</select></label><button type="button" class="button button-secondary audio-apply-source" data-zone="${zone.zone_id}">Trocar</button></div>` : `<p class="muted">Nenhuma lista de fontes foi anunciada.</p>`;
+    const muteButton = supports.mute ? `<button type="button" class="button button-ghost audio-apply-mute" data-zone="${zone.zone_id}" data-mute="${entity.is_volume_muted ? "false" : "true"}">${entity.is_volume_muted ? "Desmutar" : "Mudo"}</button>` : "";
+    const playback = supports.playback ? `<div class="audio-actions"><button type="button" class="button button-ghost audio-playback" data-zone="${zone.zone_id}" data-action="play">Reproduzir</button><button type="button" class="button button-ghost audio-playback" data-zone="${zone.zone_id}" data-action="pause">Pausar</button><button type="button" class="button button-ghost audio-playback" data-zone="${zone.zone_id}" data-action="stop">Parar</button></div>` : "";
+    return `<article class="audio-zone-card"><div class="audio-zone-head"><div><p class="eyebrow">ZONA</p><h3>${escapeHtml(zone.label)}</h3></div><span class="audio-state ${escapeHtml(zone.status)}">${escapeHtml(audioStatusLabel(zone.status))}</span></div><div class="audio-meta"><span>Entidade: <code>${escapeHtml(zone.entity_id || "não selecionada")}</code></span><span>Fonte: ${escapeHtml(currentSource)} · Volume: ${escapeHtml(volume)}</span>${metadata ? `<span>Reproduzindo: ${escapeHtml(metadata)}</span>` : ""}<span>${escapeHtml(zone.diagnostic || "")}</span>${zone.priority === "hdmi_arc" ? `<span class="audio-notice warning">TV/HDMI ARC tem prioridade. O App não troca a fonte automaticamente.</span>` : ""}</div><div class="audio-controls">${volumeInput}${sourceControl}${playback}<div class="audio-actions">${muteButton}</div></div></article>`;
+  }).join("");
+  $("audio-group-state").textContent = state.audio?.config?.group_strategy && state.audio.config.group_strategy !== "none" ? `Estratégia: ${state.audio.config.group_strategy} · líder: ${state.audio.config.group_master_zone_id || "—"}` : "Nenhum grupo solicitado";
+  const airplay = state.audio?.airplay || {}; const airplayState = $("audio-airplay-state");
+  airplayState.textContent = audioAirplayLabel(airplay.state); airplayState.className = `hint audio-state ${airplay.state || ""}`;
+  $("audio-airplay-details").textContent = `${airplay.reason || "Aguardando descoberta."} Shairport: ${airplay.shairport_sync || "—"}; NQPTP: ${airplay.nqptp || "—"}; áudio físico: ${airplay.physical_audio || "—"}.`;
+  const overall = $("audio-overall-state"); const configured = zones.filter((zone) => zone.enabled).length;
+  overall.textContent = airplay.state === "blocked" ? "Áudio físico pendente" : configured ? `${configured} zona(s) cadastrada(s)` : "Não configurado";
+  overall.className = `mode-chip ${airplay.state === "blocked" ? "tv" : configured ? "cinema" : "off"}`;
+  document.querySelectorAll(".audio-apply-volume").forEach((button) => button.addEventListener("click", () => applyAudioVolume(button.dataset.zone)));
+  document.querySelectorAll(".audio-apply-mute").forEach((button) => button.addEventListener("click", () => applyAudioMute(button.dataset.zone, button.dataset.mute === "true")));
+  document.querySelectorAll(".audio-apply-source").forEach((button) => button.addEventListener("click", () => applyAudioSource(button.dataset.zone)));
+  document.querySelectorAll(".audio-playback").forEach((button) => button.addEventListener("click", () => applyAudioPlayback(button.dataset.zone, button.dataset.action)));
+}
+
+function renderAudio() { if (!state.audio) return; renderAudioZones(); renderAudioForm(); }
 
 function renderStatus() {
   const status = state.status || {};
@@ -161,13 +234,67 @@ async function restoreIr() {
   try { await api(`api/areas/${encodeURIComponent(state.selectedAreaId)}/ir/restore`, { method: "POST", body: JSON.stringify({ confirmed: true }) }); toast("Presets restaurados"); await loadProfile(state.selectedAreaId); } catch (error) { toast(error.message); }
 }
 
+function audioBaseZone(zoneId) {
+  return audioZoneConfig(zoneId) || {};
+}
+
+function buildAudioConfig() {
+  const labels = { kitchen: "Cozinha", pool: "Piscina" };
+  const zones = ["kitchen", "pool"].map((zoneId) => {
+    const base = audioBaseZone(zoneId); const status = audioZoneStatus(zoneId); const area = document.querySelector(`[data-audio-area="${zoneId}"]`).value || null;
+    const player = document.querySelector(`[data-audio-player="${zoneId}"]`).value || null; const oldAirplay = base.airplay || {};
+    const stableId = oldAirplay.stable_id || (crypto.randomUUID ? crypto.randomUUID().replaceAll("-", "") : `${zoneId}-${Date.now()}`);
+    return { zone_id: zoneId, area_id: area, enabled: document.querySelector(`[data-audio-enabled="${zoneId}"]`).checked, media_player_entity_id: player, max_volume_percent: Number(document.querySelector(`[data-audio-max="${zoneId}"]`).value || 30), allow_absolute_volume: base.allow_absolute_volume || false, priority: document.querySelector(`[data-audio-priority="${zoneId}"]`).value, airplay_may_override_arc: !!document.querySelector(`[data-audio-arc-override="${zoneId}"]`)?.checked, airplay: { ...oldAirplay, enabled: !!document.querySelector(`[data-audio-airplay="${zoneId}"]`).checked, service_name: oldAirplay.service_name || `TecnoHead ${labels[zoneId]}`, stable_id: stableId, output_backend: oldAirplay.output_backend || "pcm_bridge", pairing_state: oldAirplay.pairing_state || "not_configured" } };
+  });
+  const strategy = $("audio-group-strategy").value; const master = $("audio-group-master").value.trim() || null; const old = state.audio?.config || {};
+  return { enabled: zones.some((zone) => zone.enabled), zones, group_strategy: strategy, group_master_zone_id: master, members: strategy === "none" ? [] : (old.members || []), share_pool_tv_to_kitchen: !!old.share_pool_tv_to_kitchen };
+}
+
+async function saveAudio(event) {
+  event.preventDefault(); const message = $("audio-form-message"); message.textContent = "Validando áreas, domínio e capacidades…";
+  try { await api("api/audio", { method: "PUT", body: JSON.stringify(buildAudioConfig()) }); state.audioFormDirty = false; message.textContent = "Zonas salvas com validação estrita por área."; toast("Configuração de áudio salva"); await loadAll(false); } catch (error) { state.audioFormDirty = true; message.textContent = `Falha: ${error.message}`; toast(`Áudio: ${error.message}`); }
+}
+
+async function applyAudioVolume(zoneId) {
+  const input = document.querySelector(`[data-audio-volume="${zoneId}"]`); const value = Number(input?.value);
+  if (!Number.isFinite(value)) { toast("Informe um volume válido."); return; }
+  if (!confirm(`Aplicar volume ${value}% na zona ${audioZoneStatus(zoneId).label || zoneId}?`)) return;
+  try { await api(`api/audio/zones/${encodeURIComponent(zoneId)}/volume`, { method: "POST", body: JSON.stringify({ volume_percent: value, confirmed: true }) }); toast("Volume enviado ao Home Assistant; confirmação física depende do player."); await loadAll(false); } catch (error) { toast(`Volume: ${error.message}`); }
+}
+
+async function applyAudioMute(zoneId, muted) {
+  if (!confirm(`${muted ? "Ativar" : "Desativar"} mudo na zona ${audioZoneStatus(zoneId).label || zoneId}?`)) return;
+  try { await api(`api/audio/zones/${encodeURIComponent(zoneId)}/mute`, { method: "POST", body: JSON.stringify({ is_volume_muted: muted, confirmed: true }) }); toast("Mudo enviado ao Home Assistant."); await loadAll(false); } catch (error) { toast(`Mudo: ${error.message}`); }
+}
+
+async function applyAudioSource(zoneId) {
+  const source = document.querySelector(`[data-audio-source="${zoneId}"]`)?.value; if (!source) return;
+  if (!confirm(`Trocar a fonte da zona ${audioZoneStatus(zoneId).label || zoneId} para “${source}”?`)) return;
+  try { await api(`api/audio/zones/${encodeURIComponent(zoneId)}/source`, { method: "POST", body: JSON.stringify({ source, confirmed: true }) }); toast("Fonte enviada ao Home Assistant; estado será reavaliado."); await loadAll(false); } catch (error) { toast(`Fonte: ${error.message}`); }
+}
+
+async function applyAudioPlayback(zoneId, action) {
+  if (!confirm(`${action === "play" ? "Reproduzir" : action === "pause" ? "Pausar" : "Parar"} na zona ${audioZoneStatus(zoneId).label || zoneId}?`)) return;
+  try { await api(`api/audio/zones/${encodeURIComponent(zoneId)}/playback`, { method: "POST", body: JSON.stringify({ action, confirmed: true }) }); toast("Ação de reprodução enviada ao Home Assistant."); await loadAll(false); } catch (error) { toast(`Reprodução: ${error.message}`); }
+}
+
+async function sharePoolToKitchen() {
+  if (!confirm("Compartilhar a fonte atual da Piscina com a Cozinha pelo grupo do Home Assistant? A TV/ARC da Piscina permanece líder; isso pode interromper a fonte atual da Cozinha.")) return;
+  try { await api("api/audio/group/share-pool-to-kitchen", { method: "POST", body: JSON.stringify({ confirmed: true }) }); toast("Agrupamento solicitado; confirme o áudio fisicamente."); await loadAll(false); } catch (error) { toast(`Grupo: ${error.message}`); }
+}
+
+async function unjoinPool() {
+  if (!confirm("Separar o grupo da Piscina? O App não altera HDMI ARC/CEC.")) return;
+  try { await api("api/audio/group/pool/unjoin", { method: "POST", body: JSON.stringify({ confirmed: true }) }); toast("Separação solicitada ao Home Assistant."); await loadAll(false); } catch (error) { toast(`Separação: ${error.message}`); }
+}
+
 function renderEvents() {
   const events = state.status?.events || [];
   $("events").innerHTML = events.length ? events.slice().reverse().map((event) => `<div class="event ${escapeHtml(event.level)}"><div class="event-top"><span>${escapeHtml(event.event)}</span><time>${new Date(event.timestamp).toLocaleTimeString("pt-BR")}</time></div><div class="event-message">${escapeHtml(event.message)}</div></div>`).join("") : `<div class="empty-state">Sem eventos ainda.</div>`;
 }
 
 async function loadAll(refresh = false) {
-  try { [state.status, state.areas] = await Promise.all([api("api/status"), api(`api/areas?refresh=${refresh}`)]); renderStatus(); renderCards(); renderAreasSelect(); renderEvents(); } catch (error) { toast(`Descoberta: ${error.message}`); renderStatus(); renderEvents(); }
+  try { [state.status, state.areas, state.audio] = await Promise.all([api("api/status"), api(`api/areas?refresh=${refresh}`), api("api/audio")]); renderStatus(); renderCards(); renderAreasSelect(); renderAudio(); renderEvents(); } catch (error) { toast(`Descoberta: ${error.message}`); renderStatus(); renderEvents(); }
 }
 
 $("refresh").addEventListener("click", () => loadAll(true));
@@ -175,6 +302,12 @@ $("area-select").addEventListener("change", (event) => loadProfile(event.target.
 $("area-form").addEventListener("submit", saveProfile);
 $("area-form").addEventListener("input", () => { state.formDirty = true; });
 $("area-form").addEventListener("change", () => { state.formDirty = true; });
+$("audio-form").addEventListener("submit", saveAudio);
+$("audio-form").addEventListener("input", () => { state.audioFormDirty = true; });
+$("audio-form").addEventListener("change", () => { state.audioFormDirty = true; });
+$("audio-share-pool").addEventListener("click", sharePoolToKitchen);
+$("audio-unjoin-pool").addEventListener("click", unjoinPool);
+$("audio-refresh").addEventListener("click", async () => { state.audioFormDirty = false; await loadAll(true); });
 $("reload-profile").addEventListener("click", () => loadProfile(state.selectedAreaId));
 $("remote-entity").addEventListener("change", () => renderRemoteHint(state.currentArea?.profile || {}));
 $("climate-entity").addEventListener("change", () => renderClimateOptions(state.currentArea?.profile || {}));

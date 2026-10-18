@@ -9,6 +9,7 @@ from typing import Any
 
 from app import __version__
 from app.core.actions import ActionExecutor
+from app.core.audio import AudioActionError, AudioManager
 from app.core.discovery import DiscoveryService
 from app.core.engine import AreaEngine
 from app.core.ha_client import HomeAssistantClient, HomeAssistantError
@@ -21,8 +22,17 @@ from app.models import (
     AreaDescriptor,
     AreaProfile,
     AreaProfileUpdate,
+    AudioCommandRequest,
+    AudioGroupRequest,
+    AudioGroupStrategy,
+    AudioMuteRequest,
+    AudioPlaybackRequest,
+    AudioSourceRequest,
+    AudioVolumeRequest,
     DiagnosticEvent,
     Mode,
+    MultiroomConfig,
+    MultiroomUpdate,
 )
 from app.settings import Settings
 
@@ -41,6 +51,7 @@ class Runtime:
         self.engines: dict[str, AreaEngine] = {}
         self.actions: ActionExecutor | None = None
         self.ir: HomeAssistantRemoteTransport | None = None
+        self.audio: AudioManager | None = None
         self.mqtt: MqttBridge | None = None
         self._event_stop = asyncio.Event()
         self._event_task: asyncio.Task[None] | None = None
@@ -51,6 +62,7 @@ class Runtime:
         await self.ha.start()
         self.actions = ActionExecutor(self.ha, self.discovery, self.record_event)
         self.ir = HomeAssistantRemoteTransport(self.ha, self.discovery, self.record_event)
+        self.audio = AudioManager(self.ha, self.discovery, self.record_event)
         await self._refresh_discovery_safe()
         await self._sync_engines()
         self.mqtt = MqttBridge(
@@ -60,6 +72,8 @@ class Runtime:
             self.list_profiles,
             self.engine_states,
             self.handle_mqtt_mode,
+            self.audio_payload,
+            self.handle_mqtt_audio,
         )
         await self.mqtt.start()
         if self.settings.supervisor_token:
@@ -153,6 +167,89 @@ class Runtime:
             result="completed",
         )
         return profile
+
+    async def audio_payload(self) -> dict[str, Any]:
+        if not self.audio:
+            raise AudioActionError("módulo de áudio não está disponível")
+        return await self.audio.discovery_payload(self.config.audio)
+
+    async def save_audio(self, update: MultiroomUpdate) -> MultiroomConfig:
+        if not self.audio:
+            raise AudioActionError("módulo de áudio não está disponível")
+        zone_ids = [zone.zone_id for zone in update.zones]
+        if len(zone_ids) != len(set(zone_ids)):
+            raise ValueError("zonas de áudio duplicadas")
+        if update.group_master_zone_id and update.group_master_zone_id not in zone_ids:
+            raise ValueError("líder do grupo não está cadastrado")
+        if any(zone_id not in zone_ids for zone_id in update.members):
+            raise ValueError("membro do grupo não está cadastrado")
+        await self.discovery.refresh()
+        for zone in update.zones:
+            if not zone.enabled:
+                continue
+            if not zone.area_id or not zone.media_player_entity_id:
+                raise ValueError(f"zona {zone.zone_id} habilitada sem área/media_player")
+            await self.discovery.validate_entity(zone.area_id, zone.media_player_entity_id, {"media_player"}, required=True)
+        audio = MultiroomConfig.model_validate(update.model_dump(mode="json"))
+        await self.store.update_audio(audio)
+        self.config = await self.store.snapshot()
+        if self.mqtt:
+            await self.mqtt.sync_discovery()
+        await self.record_event(
+            event="audio_profile_saved",
+            message="zonas de áudio salvas com validação estrita de área e domínio",
+            result="completed",
+        )
+        return audio
+
+    async def audio_set_volume(self, zone_id: str, request: AudioVolumeRequest) -> dict[str, Any]:
+        assert self.audio is not None
+        return await self.audio.set_volume(self.config.audio, zone_id, request)
+
+    async def audio_set_mute(self, zone_id: str, request: AudioMuteRequest) -> dict[str, Any]:
+        assert self.audio is not None
+        return await self.audio.set_mute(self.config.audio, zone_id, request)
+
+    async def audio_select_source(self, zone_id: str, request: AudioSourceRequest) -> dict[str, Any]:
+        assert self.audio is not None
+        return await self.audio.select_source(self.config.audio, zone_id, request)
+
+    async def audio_playback(self, zone_id: str, request: AudioPlaybackRequest) -> dict[str, Any]:
+        assert self.audio is not None
+        return await self.audio.playback(self.config.audio, zone_id, request)
+
+    async def audio_join(self, request: AudioGroupRequest) -> dict[str, Any]:
+        assert self.audio is not None
+        result = await self.audio.join(self.config.audio, request)
+        audio = self.config.audio.model_copy(deep=True)
+        audio.group_strategy = AudioGroupStrategy.LINKPLAY
+        audio.group_master_zone_id = request.master_zone_id
+        audio.members = list(dict.fromkeys([request.master_zone_id, *request.member_zone_ids]))
+        await self.store.update_audio(audio)
+        self.config = await self.store.snapshot()
+        return result
+
+    async def audio_share_pool_to_kitchen(self, request: AudioCommandRequest) -> dict[str, Any]:
+        result = await self.audio_join(
+            AudioGroupRequest(master_zone_id="pool", member_zone_ids=["kitchen"], confirmed=request.confirmed)
+        )
+        audio = self.config.audio.model_copy(deep=True)
+        audio.share_pool_tv_to_kitchen = True
+        await self.store.update_audio(audio)
+        self.config = await self.store.snapshot()
+        return result
+
+    async def audio_unjoin(self, zone_id: str, request: AudioCommandRequest) -> dict[str, Any]:
+        assert self.audio is not None
+        result = await self.audio.unjoin(self.config.audio, zone_id, request)
+        audio = self.config.audio.model_copy(deep=True)
+        audio.group_strategy = AudioGroupStrategy.NONE
+        audio.group_master_zone_id = None
+        audio.members = []
+        audio.share_pool_tv_to_kitchen = False
+        await self.store.update_audio(audio)
+        self.config = await self.store.snapshot()
+        return result
 
     async def _validate_profile_entities(self, profile: AreaProfile) -> None:
         checks = (
@@ -251,6 +348,28 @@ class Runtime:
                 result="failed",
             )
 
+    async def handle_mqtt_audio(self, zone_id: str, key: str, payload: str) -> None:
+        try:
+            if key == "volume":
+                await self.audio_set_volume(zone_id, AudioVolumeRequest(volume_percent=int(float(payload)), confirmed=True))
+            elif key == "mute":
+                await self.audio_set_mute(zone_id, AudioMuteRequest(is_volume_muted=payload.casefold() in {"on", "1", "true"}, confirmed=True))
+            elif key == "source":
+                await self.audio_select_source(zone_id, AudioSourceRequest(source=payload, confirmed=True))
+            elif zone_id == "group" and key == "share_pool_to_kitchen":
+                if payload.casefold() in {"on", "1", "true"}:
+                    await self.audio_share_pool_to_kitchen(AudioCommandRequest(confirmed=True))
+                else:
+                    await self.audio_unjoin("pool", AudioCommandRequest(confirmed=True))
+            elif zone_id == "group" and key == "unjoin_pool" and payload.casefold() in {"on", "1", "true"}:
+                await self.audio_unjoin("pool", AudioCommandRequest(confirmed=True))
+            else:
+                return
+            if self.mqtt:
+                await self.mqtt.publish_audio_discovery()
+        except Exception as exc:
+            await self.record_event(event="mqtt_audio_command_failed", message=str(exc), level="error", result="failed")
+
     async def handle_state_event(self, event: dict[str, Any]) -> None:
         data = event.get("data", {})
         entity_id = data.get("entity_id")
@@ -272,6 +391,7 @@ class Runtime:
         return [engine.status() for engine in self.engines.values()]
 
     async def status(self) -> dict[str, Any]:
+        audio_status = self.audio.status_payload(self.config.audio) if self.audio else {"zones": [], "airplay": {"state": "not_started"}}
         return {
             "app_version": __version__,
             "uptime_seconds": round(time.monotonic() - self.started_at, 1),
@@ -281,6 +401,7 @@ class Runtime:
                 "last_error": self.discovery.last_error,
             },
             "mqtt": self.mqtt.status() if self.mqtt else {"connected": False, "last_error": "not_started"},
+            "audio": audio_status,
             "areas": await self.engine_states(),
             "events": [event.model_dump(mode="json") for event in list(self.events)[-50:]],
         }
@@ -294,7 +415,8 @@ class Runtime:
                 data["ir"]["on"]["value"] = "[redacted]"
                 data["ir"]["off"]["value"] = "[redacted]"
             profiles.append(data)
-        return {"status": status, "profiles": profiles, "areas": [item.model_dump(mode="json") for item in await self.discover()]}
+        audio = await self.audio_payload() if self.audio else {"config": {}, "zones": [], "areas": [], "airplay": {"state": "not_started"}}
+        return {"status": status, "profiles": profiles, "areas": [item.model_dump(mode="json") for item in await self.discover()], "audio": audio}
 
     async def record_event(
         self,

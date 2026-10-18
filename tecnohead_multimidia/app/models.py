@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import base64
 import re
+import uuid
 from enum import Enum
 from typing import Any
 
@@ -12,6 +13,17 @@ class Mode(str, Enum):
     OFF = "off"
     CINEMA = "cinema"
     TV = "tv"
+
+
+class AudioGroupStrategy(str, Enum):
+    NONE = "none"
+    LINKPLAY = "linkplay"
+    AIRPLAY2_APPLE = "airplay2_apple"
+
+
+class AudioPriority(str, Enum):
+    NORMAL = "normal"
+    HDMI_ARC = "hdmi_arc"
 
 
 class Phase(str, Enum):
@@ -125,12 +137,106 @@ class AreaProfile(BaseModel):
     ir: IRProfile | None = None
 
 
+class AirPlayEndpointProfile(BaseModel):
+    """Persisted identity only; a stream is never resumed after a restart."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    enabled: bool = False
+    service_name: str | None = None
+    stable_id: str = Field(default_factory=lambda: uuid.uuid4().hex)
+    listen_port: int | None = Field(default=None, ge=1024, le=65535)
+    output_backend: str = "pcm_bridge"
+    pairing_state: str = "not_configured"
+
+
+class AudioZoneProfile(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    zone_id: str = Field(min_length=1, max_length=64)
+    area_id: str | None = None
+    enabled: bool = False
+    media_player_entity_id: str | None = None
+    max_volume_percent: int = Field(default=30, ge=0, le=100)
+    allow_absolute_volume: bool = False
+    priority: AudioPriority = AudioPriority.NORMAL
+    airplay_may_override_arc: bool = False
+    airplay: AirPlayEndpointProfile = Field(default_factory=AirPlayEndpointProfile)
+
+
+class MultiroomConfig(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    enabled: bool = False
+    zones: list[AudioZoneProfile] = Field(default_factory=list)
+    group_strategy: AudioGroupStrategy = AudioGroupStrategy.NONE
+    group_master_zone_id: str | None = None
+    members: list[str] = Field(default_factory=list)
+    share_pool_tv_to_kitchen: bool = False
+
+
+class AudioZoneUpdate(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    zone_id: str = Field(min_length=1, max_length=64)
+    area_id: str | None = None
+    enabled: bool = False
+    media_player_entity_id: str | None = None
+    max_volume_percent: int = Field(default=30, ge=0, le=100)
+    allow_absolute_volume: bool = False
+    priority: AudioPriority = AudioPriority.NORMAL
+    airplay_may_override_arc: bool = False
+    airplay: AirPlayEndpointProfile = Field(default_factory=AirPlayEndpointProfile)
+
+
+class MultiroomUpdate(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    enabled: bool = False
+    zones: list[AudioZoneUpdate] = Field(default_factory=list)
+    group_strategy: AudioGroupStrategy = AudioGroupStrategy.NONE
+    group_master_zone_id: str | None = None
+    members: list[str] = Field(default_factory=list)
+    share_pool_tv_to_kitchen: bool = False
+
+
+class AudioCommandRequest(BaseModel):
+    confirmed: bool = False
+
+
+class AudioVolumeRequest(BaseModel):
+    volume_percent: int = Field(ge=0, le=100)
+    confirmed: bool = False
+
+
+class AudioMuteRequest(BaseModel):
+    is_volume_muted: bool
+    confirmed: bool = False
+
+
+class AudioSourceRequest(BaseModel):
+    source: str = Field(min_length=1, max_length=128)
+    confirmed: bool = False
+
+
+class AudioPlaybackRequest(BaseModel):
+    action: str = Field(pattern="^(play|pause|stop)$")
+    confirmed: bool = False
+
+
+class AudioGroupRequest(BaseModel):
+    master_zone_id: str = Field(min_length=1, max_length=64)
+    member_zone_ids: list[str] = Field(min_length=1, max_length=8)
+    confirmed: bool = False
+
+
 class AppConfig(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
-    schema_version: int = 1
+    schema_version: int = 3
     installation_id: str | None = None
     areas: list[AreaProfile] = Field(default_factory=list)
+    audio: MultiroomConfig = Field(default_factory=MultiroomConfig)
 
 
 class ModeRequest(BaseModel):
@@ -176,6 +282,7 @@ class EntityDescriptor(BaseModel):
     friendly_name: str | None = None
     area_id: str | None = None
     device_id: str | None = None
+    integration: str | None = None
     attributes: dict[str, Any] = Field(default_factory=dict)
     roles: list[str] = Field(default_factory=list)
 

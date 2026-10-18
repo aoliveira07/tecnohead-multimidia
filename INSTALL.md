@@ -8,6 +8,7 @@ Este App não requer servidor externo, banco PostgreSQL, HACS, arquivo YAML de a
 - Entidades dos equipamentos já visíveis no HA, associadas às áreas corretas.
 - Para IR: uma entidade `remote` funcional integrada no HA; a instalação BroadLink existente deve permanecer no HA.
 - MQTT e, se desejado, HomeKit Bridge/Alexa configurados no próprio HA.
+- Para o módulo de áudio: amplificadores atuais já integrados ao HA, com um `media_player` canônico por área. O App não instala HACS, AudioCast, LinkPlay ou servidor externo.
 
 ## Instalação
 
@@ -22,6 +23,15 @@ Este App não requer servidor externo, banco PostgreSQL, HACS, arquivo YAML de a
 9. Confirme a fonte Cinema lendo `source_list` real do receiver. Não adivinhe o rótulo da entrada Apple TV.
 10. Classifique somente switches que sejam comprovadamente iluminação. Luzes do domínio `light` são descobertas automaticamente.
 11. Salve o perfil, teste o telão e as ações de receiver em volume baixo, depois execute os testes IR com confirmação.
+
+## Áudio v1.3
+
+1. Abra **Áudio Multiroom** e confirme as áreas reais de Cozinha e Piscina.
+2. Cadastre somente os `media_player` que o HA mostra na respectiva área. Não use uma TV universal como substituto do amplificador.
+3. Comece com limite de volume baixo. Teste leitura, volume e mudo antes de fontes ou grupo.
+4. Na Piscina, preserve HDMI ARC: o App não troca a fonte automaticamente quando a TV liga.
+5. Só use **Compartilhar TV Piscina → Cozinha** depois de confirmar suporte `join` no player LinkPlay novo e observar áudio nas duas zonas.
+6. A ponte AirPlay 2 requer o gate físico G2 de [AUDIO_TEST_PLAN.md](docs/AUDIO_TEST_PLAN.md); encontrar um nome no iPhone não basta.
 
 ## Reversão
 

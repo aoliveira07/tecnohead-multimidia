@@ -2,10 +2,23 @@ from __future__ import annotations
 
 from fastapi import APIRouter, HTTPException, Query, Request
 
+from app.core.audio import AudioActionError
 from app.core.discovery import AreaValidationError
 from app.core.ha_client import HomeAssistantError
 from app.core.ir_transport import IRSequenceError, IRSequenceUncertain
-from app.models import AreaProfileUpdate, IRTestRequest, ModeRequest, RestorePresetRequest
+from app.models import (
+    AreaProfileUpdate,
+    AudioCommandRequest,
+    AudioGroupRequest,
+    AudioMuteRequest,
+    AudioPlaybackRequest,
+    AudioSourceRequest,
+    AudioVolumeRequest,
+    IRTestRequest,
+    ModeRequest,
+    MultiroomUpdate,
+    RestorePresetRequest,
+)
 from app.runtime import Runtime
 
 router = APIRouter(prefix="/api")
@@ -20,6 +33,8 @@ def translate_error(exc: Exception) -> HTTPException:
         return HTTPException(status_code=409, detail=str(exc))
     if isinstance(exc, (AreaValidationError, ValueError)):
         return HTTPException(status_code=400, detail=str(exc))
+    if isinstance(exc, AudioActionError):
+        return HTTPException(status_code=409, detail=str(exc))
     if isinstance(exc, IRSequenceUncertain):
         return HTTPException(status_code=409, detail=str(exc))
     if isinstance(exc, (IRSequenceError, HomeAssistantError)):
@@ -119,6 +134,79 @@ async def events(request: Request, limit: int = Query(default=100, ge=1, le=300)
 @router.get("/diagnostics")
 async def diagnostics(request: Request):
     return await runtime_from(request).diagnostics()
+
+
+@router.get("/audio")
+async def audio(request: Request):
+    try:
+        return await runtime_from(request).audio_payload()
+    except Exception as exc:
+        raise translate_error(exc) from exc
+
+
+@router.put("/audio")
+async def save_audio(payload: MultiroomUpdate, request: Request):
+    try:
+        config = await runtime_from(request).save_audio(payload)
+        return config.model_dump(mode="json")
+    except Exception as exc:
+        raise translate_error(exc) from exc
+
+
+@router.post("/audio/zones/{zone_id}/volume")
+async def audio_volume(zone_id: str, payload: AudioVolumeRequest, request: Request):
+    try:
+        return await runtime_from(request).audio_set_volume(zone_id, payload)
+    except Exception as exc:
+        raise translate_error(exc) from exc
+
+
+@router.post("/audio/zones/{zone_id}/mute")
+async def audio_mute(zone_id: str, payload: AudioMuteRequest, request: Request):
+    try:
+        return await runtime_from(request).audio_set_mute(zone_id, payload)
+    except Exception as exc:
+        raise translate_error(exc) from exc
+
+
+@router.post("/audio/zones/{zone_id}/source")
+async def audio_source(zone_id: str, payload: AudioSourceRequest, request: Request):
+    try:
+        return await runtime_from(request).audio_select_source(zone_id, payload)
+    except Exception as exc:
+        raise translate_error(exc) from exc
+
+
+@router.post("/audio/zones/{zone_id}/playback")
+async def audio_playback(zone_id: str, payload: AudioPlaybackRequest, request: Request):
+    try:
+        return await runtime_from(request).audio_playback(zone_id, payload)
+    except Exception as exc:
+        raise translate_error(exc) from exc
+
+
+@router.post("/audio/group/join")
+async def audio_join(payload: AudioGroupRequest, request: Request):
+    try:
+        return await runtime_from(request).audio_join(payload)
+    except Exception as exc:
+        raise translate_error(exc) from exc
+
+
+@router.post("/audio/group/share-pool-to-kitchen")
+async def audio_share_pool_to_kitchen(payload: AudioCommandRequest, request: Request):
+    try:
+        return await runtime_from(request).audio_share_pool_to_kitchen(payload)
+    except Exception as exc:
+        raise translate_error(exc) from exc
+
+
+@router.post("/audio/group/{zone_id}/unjoin")
+async def audio_unjoin(zone_id: str, payload: AudioCommandRequest, request: Request):
+    try:
+        return await runtime_from(request).audio_unjoin(zone_id, payload)
+    except Exception as exc:
+        raise translate_error(exc) from exc
 
 
 @router.get("/manual")

@@ -1,5 +1,13 @@
 # Release notes
 
+## v1.3.0 — módulo Áudio Multiroom
+
+Esta release preserva Cinema/TV/IR/clima/luzes/MQTT da v1.2 e adiciona o painel de áudio para zonas por área. Volume, mudo, fontes e agrupamento só usam entidades `media_player` reais do Home Assistant; não há cliente LinkPlay proprietário e HDMI ARC da Piscina não é alterado automaticamente.
+
+O HAOS real consultado em 18/10/2026 não apresentou integração LinkPlay nem o `media_player` do amplificador novo da Piscina. Consequentemente, a ponte AirPlay 2 virtual não foi iniciada, nenhum destino Apple foi anunciado e nenhum teste físico de áudio foi alegado. O desbloqueio requer o modelo/entidade do amplificador atual e, depois, iPhone para a homologação G2–G5.
+
+Testes automatizados desta alteração: `15 passed`, Ruff e sintaxe JavaScript passaram. A instalação/atualização e os testes físicos permanecem uma etapa posterior ao commit/release.
+
 ## v1.2.11
 
 Correção operacional observada no comissionamento: uma cena Cinema com degradação opcional (por exemplo, posição de aleta não confirmada) agora permanece logicamente ativa e executa o temporizador cancelável de iluminação. O intervalo padrão entre as duas chamadas independentes de desligamento IR foi ajustado para 4,0 s, mantendo a validação por entidade `remote` do Home Assistant e sem `num_repeats`.

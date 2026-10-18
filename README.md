@@ -2,11 +2,11 @@
 
 App para Home Assistant OS que transforma áreas cadastradas no HA em ambientes multimídia com cenas Cinema, TV e Desligar. A interface é em português brasileiro, responsiva, aparece na sidebar por Ingress e usa um motor próprio por área — sem criar automações YAML intermediárias.
 
-## Estado da entrega 1.2.11
+## Estado da entrega 1.3.0
 
-O App está instalado e configurado no HAOS autorizado, com Ingress e MQTT Discovery ativos, perfil Cinema persistido e `remote.ir_cinema` validado na área correta sem transmitir IR. A homologação física continua pendente até a intervenção manual do operador; este repositório não afirma teste físico que não foi observado.
+O módulo v1.2 permanece instalado/configurado com Ingress e MQTT Discovery, perfil Cinema persistido e `remote.ir_cinema` validado sem transmitir IR. A v1.3 acrescenta o painel de áudio, cadastro estrito de zonas, volume/mudo/fonte/grupo via entidades `media_player` do HA e estados MQTT. A descoberta real de 18/10/2026 não encontrou LinkPlay nem o amplificador novo da Piscina; por isso a ponte AirPlay 2 está explicitamente bloqueada e não é anunciada como homologada.
 
-Os testes locais atuais são executados com um HA simulado e cobrem o intervalo OFF de 4 segundos, o desligamento das luzes mesmo com degradação não bloqueante, isolamento por área, cenas e evento de TV física. Veja [HOMOLOGATION.md](HOMOLOGATION.md) e [TEST_PLAN.md](docs/TEST_PLAN.md) para o status por critério.
+Os testes locais atuais são executados com um HA simulado e cobrem cenas, isolamento por área, migração v1.2→v1.3 e controles de áudio com limite seguro. Veja [HOMOLOGATION.md](HOMOLOGATION.md), [AUDIO_DISCOVERY_REPORT.md](docs/AUDIO_DISCOVERY_REPORT.md) e [AUDIO_TEST_PLAN.md](docs/AUDIO_TEST_PLAN.md) para o status por critério.
 
 ## Arquitetura de segurança
 
@@ -15,6 +15,7 @@ Os testes locais atuais são executados com um HA simulado e cobrem o intervalo 
 - O projetor usa `remote.send_command` com os presets próprios do App. BroadLink Base64 vira `b64:<payload>` somente no limite do transporte.
 - Desligamento atual: primeira chamada HA → espera monotônica de 4,0 s após o retorno → segunda chamada HA. Não usa `num_repeats` como substituto e não reinicia o ciclo em timeout.
 - O retorno da API confirma processamento pelo HA, não a resposta física do projetor. A UI e os diagnósticos deixam essa limitação explícita.
+- O áudio segue a mesma regra: o retorno do serviço `media_player` não prova som audível. LinkPlay, ARC, AirPlay 2 e Casa só são marcados como homologados após evidência física.
 - A configuração do cliente vive no volume privado `/data`; diagnósticos exportados redigem os códigos IR.
 
 ## Instalação no HAOS
@@ -25,6 +26,8 @@ Os testes locais atuais são executados com um HA simulado e cobrem o intervalo 
 4. Execute a descoberta e habilite somente as áreas que deseja comissionar.
 5. No editor, selecione entidades oferecidas apenas pela área atual. A entidade `remote.ir_cinema` será sugerida quando realmente estiver associada à área Cinema no HA.
 6. Salve o perfil e valide primeiro ações sem IR; use os botões de teste IR somente com confirmação local e o projetor em condição segura.
+
+Para áudio, siga [AUDIO_MULTIROOM.md](docs/AUDIO_MULTIROOM.md). Não selecione a TV universal como amplificador da Piscina: primeiro confirme o `media_player` e o modelo real. A ponte AirPlay 2 só deve ser habilitada depois de [AIRPLAY2_BRIDGE.md](docs/AIRPLAY2_BRIDGE.md) e da prova física na Cozinha.
 
 Para clientes novos, siga [INSTALL.md](INSTALL.md) e [MANUAL_IMPLANTACAO_CLIENTE.md](docs/MANUAL_IMPLANTACAO_CLIENTE.md).
 
@@ -47,6 +50,12 @@ O build da imagem é feito pelo GitHub Actions para `amd64` e `aarch64`. O works
 - [MQTT, HomeKit e Alexa](docs/MQTT_HOMEKIT_ALEXA.md)
 - [Troubleshooting](docs/TROUBLESHOOTING.md)
 - [Plano e checklist de testes](docs/TEST_PLAN.md)
+- [Áudio Multiroom](docs/AUDIO_MULTIROOM.md)
+- [Descoberta real de áudio](docs/AUDIO_DISCOVERY_REPORT.md)
+- [Ponte AirPlay 2](docs/AIRPLAY2_BRIDGE.md)
+- [Adaptador LinkPlay](docs/LINKPLAY_ADAPTER.md)
+- [Apple Casa / HomeKit / AirPlay](docs/APPLE_HOME.md)
+- [Plano B01–B45](docs/AUDIO_TEST_PLAN.md)
 - [Relatório de homologação](HOMOLOGATION.md)
 - [Changelog](CHANGELOG.md)
 

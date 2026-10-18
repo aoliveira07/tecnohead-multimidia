@@ -106,6 +106,7 @@ class DiscoveryService:
                         friendly_name=attributes.get("friendly_name"),
                         area_id=effective_area,
                         device_id=registry.get("device_id"),
+                        integration=registry.get("platform") or registry.get("integration_domain"),
                         attributes=attributes,
                         roles=self._roles(entity_id, state),
                     )
@@ -121,6 +122,17 @@ class DiscoveryService:
                 )
             )
         return sorted(result, key=lambda item: item.name.casefold())
+
+    def area_descriptor(self, area_id: str) -> AreaDescriptor | None:
+        """Return one already-discovered area without widening its scope."""
+
+        return next((area for area in self._area_descriptors({}) if area.area_id == area_id), None)
+
+    def media_players_for_area(self, area_id: str) -> list[EntityDescriptor]:
+        area = self.area_descriptor(area_id)
+        if not area:
+            return []
+        return [entity for entity in area.entities if entity.domain == "media_player"]
 
     async def areas(self, profiles: dict[str, AreaProfile], *, refresh: bool = False) -> list[AreaDescriptor]:
         await self.snapshot(refresh=refresh)

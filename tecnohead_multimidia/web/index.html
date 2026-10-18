@@ -110,6 +110,38 @@
         </aside>
       </section>
 
+      <section class="panel audio-panel">
+        <div class="section-heading compact">
+          <div><p class="eyebrow">ÁUDIO MULTIROOM v1.3</p><h2>Cozinha e Piscina</h2></div>
+          <span id="audio-overall-state" class="mode-chip off">Não configurado</span>
+        </div>
+        <p class="panel-copy">Controle de volume, fonte e grupos usa somente as entidades <code>media_player</code> do Home Assistant associadas à área. HDMI ARC da Piscina permanece prioritário; AirPlay 2 só aparece como disponível após prova de entrega física.</p>
+        <div id="audio-zones" class="audio-zone-grid"></div>
+        <div class="audio-group-box">
+          <div class="subsection-heading"><div><p class="eyebrow">GRUPOS</p><h3>LinkPlay / fontes compartilhadas</h3></div><span id="audio-group-state" class="hint">Nenhum grupo solicitado</span></div>
+          <div class="button-row">
+            <button type="button" id="audio-share-pool" class="button button-secondary">Compartilhar TV Piscina → Cozinha</button>
+            <button type="button" id="audio-unjoin-pool" class="button button-ghost">Separar Piscina</button>
+          </div>
+          <p class="muted">O botão só envia <code>media_player.join/unjoin</code> após confirmação. Não mistura agrupamento LinkPlay com seleção dupla do iPhone.</p>
+        </div>
+        <div class="audio-airplay-box">
+          <div class="subsection-heading"><div><p class="eyebrow">AIRPLAY 2 VIRTUAL</p><h3>Estado real da ponte</h3></div><span id="audio-airplay-state" class="hint">Não testado</span></div>
+          <div id="audio-airplay-details" class="inline-notice">Aguardando descoberta.</div>
+          <p class="muted">A ponte Shairport Sync/NQPTP exige uma compilação AirPlay 2 real, mDNS compartilhado, portas e um destino físico LinkPlay validado. Encontrar o nome no iPhone não é homologação.</p>
+        </div>
+        <form id="audio-form" class="form audio-form">
+          <div class="subsection-heading"><div><p class="eyebrow">CADASTRO POR ÁREA</p><h3>Entidades canônicas das zonas</h3></div><span class="hint">listas estritas por área HA</span></div>
+          <div id="audio-config-fields" class="audio-config-grid"></div>
+          <div class="form-row two">
+            <label>Estratégia de grupo<select id="audio-group-strategy"><option value="none">Nenhuma</option><option value="linkplay">LinkPlay</option><option value="airplay2_apple">AirPlay 2 pelo iPhone</option></select></label>
+            <label>Zona líder<input id="audio-group-master" placeholder="pool ou kitchen" /></label>
+          </div>
+          <div id="audio-form-message" class="form-message"></div>
+          <div class="button-row form-actions"><button type="submit" class="button button-primary">Salvar zonas de áudio</button><button type="button" id="audio-refresh" class="button button-ghost">Redescobrir áudio</button></div>
+        </form>
+      </section>
+
       <section class="panel help-panel">
         <div><p class="eyebrow">SEGURANÇA OPERACIONAL</p><h2>O que o App confirma</h2><p>Uma chamada aceita pelo Home Assistant confirma processamento pela integração. O App não inventa confirmação física do projetor, telão ou aleta; estados desconhecidos aparecem como degradação ou <strong>UNCERTAIN</strong>.</p></div>
         <div class="help-links"><a href="api/docs" target="_blank">API local</a><a href="https://github.com/aoliveira07/tecnohead-multimidia" target="_blank">Repositório</a><a href="api/manual" target="_blank">Manual de implantação</a></div>

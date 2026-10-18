@@ -1,5 +1,13 @@
 # Relatório de instalação e homologação — TecnoHead Multimídia v1.2.11
 
+## Addendum v1.3.0 — áudio multiroom (18/10/2026)
+
+A implementação v1.3 foi adicionada ao mesmo App e passou nos testes automatizados. O painel de áudio, migração de configuração, controles `media_player`, filtro estrito por área e estados MQTT estão prontos para atualização. Esta alteração ainda não pode ser chamada de “implantada e homologada” no HAOS: o levantamento real não encontrou integração LinkPlay nem entidade do amplificador novo da Piscina, e nenhum comando físico de áudio ou AirPlay foi enviado.
+
+O resultado fiel é: **código implementado e testado localmente; AirPlay 2/LinkPlay bloqueados por alvo físico ausente; v1.2 física ainda pendente de intervenção manual**. A evidência sanitizada está em [docs/AUDIO_DISCOVERY_REPORT.md](docs/AUDIO_DISCOVERY_REPORT.md) e a matriz B01–B45 em [docs/AUDIO_TEST_PLAN.md](docs/AUDIO_TEST_PLAN.md).
+
+O próximo dado impeditivo é o modelo atual do amplificador da Piscina ou a entidade `media_player` que o Home Assistant criou para ele. Depois disso, será possível testar G1 antes de decidir as permissões de rede necessárias para G2. Não foi alterado HDMI ARC/CEC.
+
 ## Status real em 18/10/2026
 
 **Instalado e configurado no HAOS; pronto para testes físicos manuais. Ainda não homologado fisicamente.**

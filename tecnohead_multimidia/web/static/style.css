@@ -101,5 +101,28 @@ input:focus, select:focus { border-color: var(--cyan); box-shadow: 0 0 0 3px rgb
 .event-top { display: flex; justify-content: space-between; gap: 8px; color: var(--muted); font-size: .67rem; }.event-message { margin-top: 5px; color: var(--ink); font-size: .76rem; line-height: 1.42; }
 .help-panel { display: flex; justify-content: space-between; gap: 30px; margin-top: 18px; color: var(--muted); line-height: 1.6; }.help-panel h2 { margin-bottom: 9px; }.help-links { display: flex; align-items: center; gap: 16px; white-space: nowrap; }.help-links a { color: #097f89; font-weight: 700; font-size: .8rem; text-decoration: none; }
 .toast { position: fixed; right: 24px; bottom: 24px; max-width: 360px; padding: 13px 16px; color: white; background: var(--petrol); border-radius: 12px; box-shadow: var(--shadow); transform: translateY(120px); opacity: 0; transition: .2s ease; z-index: 10; font-size: .82rem; }.toast.show { transform: translateY(0); opacity: 1; }
+/* Áudio Multiroom v1.3 */
+.audio-panel { margin-top: 22px; }
+.audio-zone-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; }
+.audio-zone-card { padding: 16px; border: 1px solid var(--line); border-radius: 14px; background: #fbfdfd; }
+.audio-zone-card h3 { margin: 0; color: var(--petrol); }
+.audio-zone-head { display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; }
+.audio-state { display: inline-flex; padding: 5px 8px; border-radius: 999px; background: #e8f7f6; color: var(--petrol); font-size: .68rem; font-weight: 700; }
+.audio-state.blocked, .audio-state.unavailable, .audio-state.degraded { background: #fff2dd; color: #8d5c00; }
+.audio-state.ready { background: #e8f7ed; color: #22633a; }
+.audio-meta { display: grid; gap: 5px; margin: 12px 0; color: var(--muted); font-size: .75rem; line-height: 1.4; }
+.audio-controls { display: grid; gap: 9px; margin-top: 14px; }
+.audio-control-row { display: grid; grid-template-columns: 1fr auto; gap: 8px; align-items: end; }
+.audio-control-row .field { margin: 0; }
+.audio-control-row input, .audio-control-row select { min-height: 38px; }
+.audio-actions { display: flex; flex-wrap: wrap; gap: 8px; }
+.audio-actions .button { flex: 1 1 125px; }
+.audio-config-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; }
+.audio-config-card { padding: 15px; border: 1px solid var(--line); border-radius: 13px; background: #fff; }
+.audio-config-card h3 { margin: 0 0 12px; color: var(--petrol); }
+.audio-config-card .form-row { margin-top: 10px; }
+.audio-notice { padding: 12px 14px; border-left: 3px solid var(--cyan); border-radius: 9px; background: #f1fbfb; color: var(--ink); line-height: 1.45; font-size: .79rem; }
+.audio-notice.warning { border-left-color: var(--warning); background: #fff8ed; }
+.audio-group-actions { display: flex; flex-wrap: wrap; gap: 9px; margin-top: 14px; }
 @media (max-width: 1050px) { .workspace-grid { grid-template-columns: 1fr; }.diagnostics-panel { min-height: auto; }.event-feed { max-height: 330px; } }
-@media (max-width: 720px) { .topbar { padding: 0 5%; }.page-shell { width: 90vw; padding-top: 30px; }.hero { display: block; padding-bottom: 34px; }.hero-note { margin-top: 20px; }.form-row.two, .form-row.three, .form-row.four { grid-template-columns: 1fr; }.section-heading { align-items: start; flex-direction: column; }.section-heading.compact { flex-direction: row; align-items: center; }.help-panel { display: block; }.help-links { margin-top: 18px; white-space: normal; flex-wrap: wrap; }.top-actions .status-pill { display: none; } }
+@media (max-width: 720px) { .topbar { padding: 0 5%; }.page-shell { width: 90vw; padding-top: 30px; }.hero { display: block; padding-bottom: 34px; }.hero-note { margin-top: 20px; }.form-row.two, .form-row.three, .form-row.four { grid-template-columns: 1fr; }.section-heading { align-items: start; flex-direction: column; }.section-heading.compact { flex-direction: row; align-items: center; }.help-panel { display: block; }.help-links { margin-top: 18px; white-space: normal; flex-wrap: wrap; }.top-actions .status-pill { display: none; }.audio-zone-grid, .audio-config-grid { grid-template-columns: 1fr; }.audio-control-row { grid-template-columns: 1fr; } }
