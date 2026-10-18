@@ -88,20 +88,25 @@ class HomeAssistantClient:
         return payload if isinstance(payload, dict) else {}
 
     async def call_service(self, domain: str, service: str, *, entity_id: str, data: dict[str, Any] | None = None) -> Any:
-        """Call one HA service exactly once.
+        """Call one HA service exactly once through the Core WebSocket API.
 
-        IR power calls deliberately do not retry and never use num_repeats. The
-        body uses entity_id because that is the REST representation of the HA
-        action target.
+        The Supervisor token is the supported credential for the Core API and
+        WebSocket proxy used by Apps. On newer HAOS/Supervisor combinations,
+        the REST service endpoint can answer ``401 Unauthorized`` even though
+        state reads and the WebSocket API are authorized. Using the WebSocket
+        service command keeps volume, source, playback and IR calls on the same
+        authenticated channel already used for discovery. There is deliberately
+        no REST fallback: retrying after an ambiguous response could duplicate
+        a physical IR command.
         """
-
-        payload: dict[str, Any] = {"entity_id": entity_id}
-        if data:
-            payload.update(data)
-        return await self._request(
-            "POST",
-            f"{self.settings.core_api_url}/services/{domain}/{service}",
-            json=payload,
+        return await self.websocket_command(
+            {
+                "type": "call_service",
+                "domain": domain,
+                "service": service,
+                "target": {"entity_id": entity_id},
+                "service_data": dict(data or {}),
+            }
         )
 
     async def get_mqtt_service(self) -> dict[str, Any] | None:

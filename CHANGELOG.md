@@ -1,5 +1,11 @@
 # Changelog
 
+## 1.3.2 — service calls via WebSocket
+
+- Corrige `401 Unauthorized` no controle de volume do LinkPlay usando a API WebSocket autenticada do Home Assistant para chamadas de serviço.
+- Mantém chamadas únicas, sem fallback REST que pudesse duplicar comandos físicos IR.
+- Adiciona teste automatizado da estrutura `call_service` com `target` e `service_data`.
+
 ## 1.3.1 — alinhamento do intervalo IR
 
 - Restaura o default do desligamento do projetor para duas chamadas independentes com espera de 5 s após o retorno da primeira, conforme o handoff v1.3.

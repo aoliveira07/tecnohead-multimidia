@@ -1,5 +1,9 @@
 # Release notes
 
+## v1.3.2 — correção do volume LinkPlay
+
+Esta versão corrige o erro `401 Unauthorized` ao aplicar volume no painel de áudio. O App agora envia chamadas `media_player` pela API WebSocket autenticada do Home Assistant, sem retry REST ambíguo. O teste físico continua sendo feito em volume baixo e com confirmação do operador.
+
 ## v1.3.1 — intervalo IR do handoff
 
 Corrige o default do desligamento do projetor para OFF → espera de 5,0 s após o retorno da primeira chamada → OFF. Nenhuma chamada IR é realizada durante a atualização; a confirmação física continua pendente.
