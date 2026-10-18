@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.4.3 — porta dedicada para host network
+
+- Move o Ingress e o stream local para a porta 18199, evitando o conflito observado na atualização para rede do host.
+- Mantém a ponte AirPlay 2, as duas identidades, proteção HDMI ARC, LinkPlay e todas as funções v1.2/v1.3.
+
 ## 1.4.2 — compatibilidade do build AirPlay 2
 
 - Remove a dependência opcional `libsoxr-dev`, ausente no Alpine 3.23, e usa a interpolação básica embutida do Shairport Sync.

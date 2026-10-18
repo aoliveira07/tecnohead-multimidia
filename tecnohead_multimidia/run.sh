@@ -1,3 +1,3 @@
 #!/command/with-contenv bashio
 set -eu
-exec python3 -m uvicorn app.main:app --host 0.0.0.0 --port "${INGRESS_PORT:-8099}"
+exec python3 -m uvicorn app.main:app --host 0.0.0.0 --port "${INGRESS_PORT:-18199}"

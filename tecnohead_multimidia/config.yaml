@@ -1,7 +1,7 @@
 name: "TecnoHead Multimídia"
 slug: "tecnohead_multimidia"
 description: "Motor de cenas multimídia multiambiente para Home Assistant"
-version: "1.4.2"
+version: "1.4.3"
 stage: experimental
 url: "https://github.com/aoliveira07/tecnohead-multimidia"
 startup: application
@@ -25,7 +25,7 @@ host_dbus: true
 realtime: true
 
 ingress: true
-ingress_port: 8099
+ingress_port: 18199
 panel_icon: mdi:projector-screen
 panel_title: TecnoHead Multimídia
 panel_admin: true

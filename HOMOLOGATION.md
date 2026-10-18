@@ -1,4 +1,8 @@
-# Relatório de instalação e homologação — TecnoHead Multimídia v1.4.2
+# Relatório de instalação e homologação — TecnoHead Multimídia v1.4.3
+
+## Addendum v1.4.3 — correção de conflito de porta
+
+A atualização v1.4.2 iniciou a imagem, mas falhou ao abrir o serviço porque a porta 8099 já estava ocupada no modo `host_network`. A v1.4.3 move o Ingress e o endpoint de stream local para a porta 18199. A correção não modifica entidades, integrações, LinkPlay, ARC ou configurações do cliente.
 
 ## Addendum v1.4.2 — correção do empacotamento AirPlay 2
 

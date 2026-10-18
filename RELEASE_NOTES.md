@@ -1,5 +1,9 @@
 # Release notes
 
+## v1.4.3 — porta dedicada para AirPlay 2 em rede do host
+
+A imagem usa a porta 18199 para o Ingress e para o stream local do App. A mudança resolve o conflito de bind observado quando a rede do host é necessária para mDNS/RAOP/NQPTP. Não altera a lógica de cenas, IR, LinkPlay, HDMI ARC ou HomeKit Bridge.
+
 ## v1.4.2 — imagem AirPlay 2 compatível com Alpine 3.23
 
 Corrige o build da imagem removendo `libsoxr-dev`, pacote que não existe no Alpine 3.23 atual. O Shairport Sync continua compilado com AirPlay 2, NQPTP, Avahi, stdout e FFmpeg; a saída usa a interpolação básica embutida. Não altera cenas, IR, LinkPlay, HDMI ARC, HomeKit Bridge ou a política de homologação física.

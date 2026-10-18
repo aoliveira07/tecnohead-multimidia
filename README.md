@@ -2,11 +2,13 @@
 
 App para Home Assistant OS que transforma áreas cadastradas no HA em ambientes multimídia com cenas Cinema, TV e Desligar. A interface é em português brasileiro, responsiva, aparece na sidebar por Ingress e usa um motor próprio por área — sem criar automações YAML intermediárias.
 
-## Estado da entrega 1.4.2
+## Estado da entrega 1.4.3
 
 O módulo v1.2 permanece no mesmo App, com Ingress, MQTT Discovery, cenas e IR pela entidade do Home Assistant. O áudio multiroom usa os players LinkPlay reais `media_player.cozinha_room` e `media_player.piscina_room`, descobertos por área. A v1.4 acrescenta a implementação do receptor AirPlay 2 virtual: duas instâncias Shairport Sync upstream fixadas, NQPTP compartilhado, mDNS do host e ponte PCM→stream local encaminhada ao LinkPlay por `media_player.play_media`.
 
 Esta release é uma implementação instalável e ainda precisa da prova manual no iPhone: aparecer no seletor AirPlay, ouvir áudio em cada zona, parar sem áudio fantasma e testar a política ARC. A presença de `Cozinha Room` e `Piscina Room` no app Casa continua sendo HomeKit Bridge do HA, não prova de AirPlay 2. Veja [HOMOLOGATION.md](HOMOLOGATION.md), [AUDIO_DISCOVERY_REPORT.md](docs/AUDIO_DISCOVERY_REPORT.md) e [AUDIO_TEST_PLAN.md](docs/AUDIO_TEST_PLAN.md) para o status real.
+
+Na v1.4.3, o Ingress e o stream local usam a porta 18199 para evitar conflito com serviços existentes quando o App opera em `host_network` para mDNS/AirPlay 2.
 
 ## Arquitetura de segurança
 
