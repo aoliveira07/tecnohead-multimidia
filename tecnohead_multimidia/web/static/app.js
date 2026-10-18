@@ -87,7 +87,7 @@ function renderAudioZones() {
   const airplay = state.audio?.airplay || {}; const airplayState = $("audio-airplay-state");
   airplayState.textContent = audioAirplayLabel(airplay.state); airplayState.className = `hint audio-state ${airplay.state || ""}`;
   const endpointSummary = Object.entries(airplay.endpoints || {}).map(([zoneId, endpoint]) => `${zoneId}: ${audioAirplayLabel(endpoint.state)}`).join(" · ");
-  $("audio-airplay-details").textContent = `${airplay.reason || "Aguardando descoberta."} Shairport: ${airplay.shairport_sync || "—"}; NQPTP: ${airplay.nqptp || "—"}; endpoints: ${endpointSummary || "nenhum"}; áudio físico: ${airplay.physical_audio || "—"}.`;
+  $("audio-airplay-details").textContent = `${airplay.reason || "Aguardando descoberta."} mDNS: ${airplay.mdns || "—"}${airplay.mdns_diagnostic ? ` (${airplay.mdns_diagnostic})` : ""}; Shairport: ${airplay.shairport_sync || "—"}; NQPTP: ${airplay.nqptp || "—"}; endpoints: ${endpointSummary || "nenhum"}; áudio físico: ${airplay.physical_audio || "—"}.`;
   const overall = $("audio-overall-state"); const configured = zones.filter((zone) => zone.enabled).length;
   overall.textContent = airplay.state === "blocked" ? "Áudio físico pendente" : configured ? `${configured} zona(s) cadastrada(s)` : "Não configurado";
   overall.className = `mode-chip ${airplay.state === "blocked" ? "tv" : configured ? "cinema" : "off"}`;

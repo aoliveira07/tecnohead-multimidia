@@ -1,5 +1,11 @@
 # Changelog
 
+## 1.4.5 — responder mDNS compartilhado para AirPlay 2
+
+- Verifica se o HAOS oferece Avahi no D-Bus antes de iniciar os receptores.
+- Quando o host não oferece Avahi, inicia um único D-Bus/Avahi interno do App para as duas instâncias, sem iniciar dois respondentes nem alterar o serviço global do HAOS.
+- Propaga o barramento selecionado aos processos Shairport Sync e expõe diagnóstico sanitizado do modo mDNS e dos processos auxiliares.
+
 ## 1.4.4 — diagnóstico de anúncio AirPlay 2
 
 - Vincula cada receptor Shairport Sync ao endereço LAN resolvido em tempo de execução e explicita o registro mDNS AirPlay 2.

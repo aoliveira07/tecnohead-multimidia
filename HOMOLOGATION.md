@@ -1,4 +1,8 @@
-# Relatório de instalação e homologação — TecnoHead Multimídia v1.4.4
+# Relatório de instalação e homologação — TecnoHead Multimídia v1.4.5
+
+## Addendum v1.4.5 — responder mDNS
+
+A v1.4.4 deixou os processos Shairport Sync ativos, porém a consulta mDNS na LAN continuou sem os nomes TecnoHead. A v1.4.5 adiciona a verificação do Avahi do host e fallback para um único D-Bus/Avahi compartilhado dentro do App quando o serviço não estiver disponível. A release precisa ser instalada e o mesmo teste mDNS repetido antes de iniciar a prova no iPhone.
 
 ## Addendum v1.4.4 — anúncio AirPlay 2
 

@@ -26,6 +26,7 @@ PCM_RATE = 48000
 PCM_CHANNELS = 2
 PCM_SAMPLE_FORMAT = "s32le"
 STREAM_IDLE_SECONDS = 8.0
+MDNS_PROBE_TIMEOUT = 3.0
 IPV4_RE = re.compile(r"(?<![0-9])(?:[0-9]{1,3}\.){3}[0-9]{1,3}(?![0-9])")
 
 EventRecorder = Callable[..., Awaitable[None]]
@@ -163,6 +164,13 @@ class AirPlayEndpointManager:
         self._endpoints: dict[str, _Endpoint] = {}
         self._nqptp: asyncio.subprocess.Process | None = None
         self._nqptp_log_task: asyncio.Task[None] | None = None
+        self._dbus_process: asyncio.subprocess.Process | None = None
+        self._avahi_process: asyncio.subprocess.Process | None = None
+        self._mdns_log_tasks: list[asyncio.Task[None]] = []
+        self._mdns_log_tail: deque[str] = deque(maxlen=24)
+        self._mdns_mode = "not_started"
+        self._mdns_diagnostic = "mDNS ainda não verificado"
+        self._mdns_env: dict[str, str] = {}
         self._lock = asyncio.Lock()
         self._dependency_error: str | None = None
         self._shairport_version = "not_started"
@@ -205,6 +213,20 @@ class AirPlayEndpointManager:
                     self._dependency_error = str(exc)
                     await self.event_recorder(
                         event="airplay_nqptp_unavailable",
+                        level="error",
+                        message=self._dependency_error,
+                        result="blocked",
+                    )
+                    for endpoint in self._endpoints.values():
+                        endpoint.state = "blocked"
+                        endpoint.diagnostic = self._dependency_error
+                    return
+                try:
+                    await self._ensure_mdns()
+                except (OSError, RuntimeError, TimeoutError) as exc:
+                    self._dependency_error = str(exc)
+                    await self.event_recorder(
+                        event="airplay_mdns_unavailable",
                         level="error",
                         message=self._dependency_error,
                         result="blocked",
@@ -320,6 +342,151 @@ class AirPlayEndpointManager:
             result="started",
         )
 
+    async def _probe_host_avahi(self) -> str:
+        """Return host, private, or blocked without starting another mDNS stack."""
+
+        bus_socket = Path("/run/dbus/system_bus_socket")
+        if not bus_socket.exists():
+            return "private"
+        try:
+            process = await asyncio.create_subprocess_exec(
+                "dbus-send",
+                "--system",
+                "--print-reply",
+                "--dest=org.freedesktop.Avahi",
+                "/",
+                "org.freedesktop.Avahi.Server.GetVersionString",
+                stdout=asyncio.subprocess.PIPE,
+                stderr=asyncio.subprocess.STDOUT,
+            )
+            output, _ = await asyncio.wait_for(process.communicate(), timeout=MDNS_PROBE_TIMEOUT)
+        except (OSError, asyncio.TimeoutError) as exc:
+            self._mdns_diagnostic = f"não foi possível consultar o Avahi do host: {_redact_process_line(str(exc))}"
+            return "blocked"
+        text = _redact_process_line((output or b"").decode("utf-8", errors="replace"))
+        if process.returncode == 0:
+            self._mdns_diagnostic = "Avahi do host acessível pelo D-Bus"
+            return "host"
+        lowered = text.casefold()
+        if any(marker in lowered for marker in ("serviceunknown", "namehasnoowner", "failed to connect", "could not connect")):
+            self._mdns_diagnostic = "Avahi não está publicado no D-Bus do host; usando responder compartilhado interno"
+            return "private"
+        self._mdns_diagnostic = f"Avahi do host existe, mas o App não obteve acesso: {text or 'erro não informado'}"
+        return "blocked"
+
+    @staticmethod
+    def _private_avahi_config() -> str:
+        return '''[server]
+host-name=tecnohead-multimedia
+domain-name=local
+use-ipv4=yes
+use-ipv6=no
+enable-dbus=yes
+allow-point-to-point=no
+
+[publish]
+disable-publishing=no
+disable-user-service-publishing=no
+publish-addresses=yes
+publish-hinfo=no
+publish-workstation=no
+publish-domain=no
+publish-aaaa-on-ipv4=no
+'''
+
+    @staticmethod
+    def _private_dbus_config(socket_path: Path) -> str:
+        return f'''<!DOCTYPE busconfig PUBLIC "-//freedesktop//DTD D-Bus Bus Configuration 1.0//EN"
+  "http://www.freedesktop.org/standards/dbus/1.0/busconfig.dtd">
+<busconfig>
+  <type>system</type>
+  <listen>unix:path={socket_path}</listen>
+  <policy context="default">
+    <allow user="root"/>
+    <allow own="org.freedesktop.Avahi"/>
+    <allow own="org.gnome.ShairportSync"/>
+    <allow own_prefix="org.mpris.MediaPlayer2.ShairportSync"/>
+    <allow send_destination="org.freedesktop.Avahi"/>
+    <allow send_destination="org.freedesktop.DBus"/>
+    <allow receive_sender="org.freedesktop.Avahi"/>
+  </policy>
+</busconfig>
+'''
+
+    async def _wait_for_path(self, path: Path, process: asyncio.subprocess.Process) -> None:
+        for _ in range(30):
+            if process.returncode is not None:
+                details = "; ".join(self._mdns_log_tail)
+                raise RuntimeError(f"D-Bus interno encerrou durante a inicialização: {details or process.returncode}")
+            if path.exists():
+                return
+            await asyncio.sleep(0.1)
+        raise RuntimeError("D-Bus interno não criou o socket do responder mDNS")
+
+    async def _start_private_mdns(self) -> None:
+        directory = self.settings.data_dir / "airplay" / "mdns"
+        directory.mkdir(parents=True, exist_ok=True)
+        socket_path = directory / "system_bus_socket"
+        with contextlib.suppress(FileNotFoundError):
+            socket_path.unlink()
+        dbus_config = directory / "dbus.conf"
+        dbus_config.write_text(self._private_dbus_config(socket_path), encoding="utf-8")
+        avahi_config = directory / "avahi-daemon.conf"
+        avahi_config.write_text(self._private_avahi_config(), encoding="utf-8")
+
+        self._dbus_process = await asyncio.create_subprocess_exec(
+            "dbus-daemon",
+            f"--config-file={dbus_config}",
+            "--nofork",
+            "--nopidfile",
+            stdout=asyncio.subprocess.PIPE,
+            stderr=asyncio.subprocess.STDOUT,
+        )
+        self._mdns_log_tasks.append(asyncio.create_task(self._consume_mdns_log(self._dbus_process, "dbus")))
+        private_env = {"DBUS_SYSTEM_BUS_ADDRESS": f"unix:path={socket_path}"}
+        try:
+            await self._wait_for_path(socket_path, self._dbus_process)
+            self._avahi_process = await asyncio.create_subprocess_exec(
+                "avahi-daemon",
+                "--no-chroot",
+                "--no-drop-root",
+                "--no-rlimits",
+                "--debug",
+                f"--file={avahi_config}",
+                env={**os.environ, **private_env},
+                stdout=asyncio.subprocess.PIPE,
+                stderr=asyncio.subprocess.STDOUT,
+            )
+            self._mdns_log_tasks.append(asyncio.create_task(self._consume_mdns_log(self._avahi_process, "avahi")))
+            await asyncio.sleep(0.5)
+            if self._avahi_process.returncode is not None:
+                details = "; ".join(self._mdns_log_tail)
+                raise RuntimeError(f"Avahi interno encerrou durante a inicialização: {details or self._avahi_process.returncode}")
+        except Exception:
+            await self._terminate_process(self._avahi_process)
+            await self._terminate_process(self._dbus_process)
+            self._avahi_process = None
+            self._dbus_process = None
+            self._mdns_env = {}
+            raise
+        self._mdns_env = private_env
+        self._mdns_mode = "private_avahi"
+        self._mdns_diagnostic = "responder D-Bus/Avahi compartilhado iniciado dentro do App"
+
+    async def _ensure_mdns(self) -> None:
+        if self._mdns_mode == "host_avahi":
+            return
+        if self._mdns_mode == "private_avahi" and self._avahi_process and self._avahi_process.returncode is None:
+            return
+        mode = await self._probe_host_avahi()
+        if mode == "host":
+            self._mdns_mode = "host_avahi"
+            self._mdns_env = {}
+            return
+        if mode == "blocked":
+            raise RuntimeError(self._mdns_diagnostic)
+        await self._start_private_mdns()
+
     async def _start_endpoint(self, zone: AudioZoneProfile, port: int) -> None:
         endpoint = _Endpoint(zone=zone, port=port)
         endpoint.state = "starting"
@@ -363,6 +530,7 @@ class AirPlayEndpointManager:
                 "shairport-sync",
                 "-c",
                 str(config_path),
+                env={**os.environ, **self._mdns_env},
                 stdout=asyncio.subprocess.PIPE,
                 stderr=asyncio.subprocess.PIPE,
             )
@@ -580,6 +748,17 @@ diagnostics = {{
         except asyncio.CancelledError:
             raise
 
+    async def _consume_mdns_log(self, process: asyncio.subprocess.Process, label: str) -> None:
+        if not process.stdout:
+            return
+        try:
+            async for raw in process.stdout:
+                line = _redact_process_line(raw.decode("utf-8", errors="replace"))
+                if line:
+                    self._mdns_log_tail.append(f"{label}: {line}")
+        except asyncio.CancelledError:
+            raise
+
     async def _stop_endpoint(self, zone_id: str) -> None:
         endpoint = self._endpoints.pop(zone_id, None)
         if not endpoint:
@@ -618,6 +797,19 @@ diagnostics = {{
                 with contextlib.suppress(asyncio.CancelledError):
                     await self._nqptp_log_task
             self._nqptp = None
+            for task in self._mdns_log_tasks:
+                if not task.done():
+                    task.cancel()
+            for task in self._mdns_log_tasks:
+                with contextlib.suppress(asyncio.CancelledError, Exception):
+                    await task
+            self._mdns_log_tasks.clear()
+            await self._terminate_process(self._avahi_process)
+            await self._terminate_process(self._dbus_process)
+            self._avahi_process = None
+            self._dbus_process = None
+            self._mdns_env = {}
+            self._mdns_mode = "not_started"
 
     def stream(self, zone_id: str, token: str) -> AsyncIterator[bytes]:
         endpoint = self._endpoints.get(zone_id)
@@ -647,7 +839,12 @@ diagnostics = {{
             "shairport_sync": self._shairport_version,
             "airplay2_handshake": "not_tested",
             "nqptp": self._nqptp_version if self._nqptp else "not_started",
-            "mdns": "host_dbus_avahi" if Path("/run/dbus/system_bus_socket").exists() else "not_available",
+            "mdns": self._mdns_mode,
+            "mdns_diagnostic": self._mdns_diagnostic,
+            "mdns_process_alive": bool(self._avahi_process and self._avahi_process.returncode is None)
+            if self._mdns_mode == "private_avahi"
+            else None,
+            "mdns_log_tail": list(self._mdns_log_tail),
             "physical_audio": "not_tested",
             "stream_host_resolved": bool(self._lan_address),
             "stream_port": self.stream_port,

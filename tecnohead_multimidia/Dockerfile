@@ -86,7 +86,7 @@ RUN cd /src/shairport-sync \
 
 FROM ghcr.io/home-assistant/base:latest
 
-ARG BUILD_VERSION=1.4.4
+ARG BUILD_VERSION=1.4.5
 ARG BUILD_ARCH=local
 ARG NQPTP_COMMIT=ab8fb67483411640fd7f1e193889482f2421c37c
 ARG SHAIRPORT_SYNC_COMMIT=cf6998daa1876c5a8f97128a960c8afc0e731841
@@ -100,8 +100,10 @@ LABEL \
 
 RUN apk add --no-cache \
       alsa-lib \
+      avahi \
       avahi-libs \
       ca-certificates \
+      dbus \
       dbus-libs \
       ffmpeg \
       glib \

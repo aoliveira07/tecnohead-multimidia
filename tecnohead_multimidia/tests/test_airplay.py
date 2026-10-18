@@ -54,6 +54,19 @@ def test_airplay_config_binds_runtime_lan_address_without_persisting_it(tmp_path
     assert 'address = "192.0.2.10";' in config
 
 
+def test_private_mdns_fallback_uses_one_shared_bus_and_avahi(tmp_path):
+    async def record(**kwargs):
+        return None
+
+    manager = AirPlayEndpointManager(Settings(data_dir=tmp_path), None, None, record)  # type: ignore[arg-type]
+    dbus_config = manager._private_dbus_config(tmp_path / "system_bus_socket")
+    avahi_config = manager._private_avahi_config()
+    assert "org.freedesktop.Avahi" in dbus_config
+    assert "unix:path=" in dbus_config
+    assert "enable-dbus=yes" in avahi_config
+    assert "disable-user-service-publishing=no" in avahi_config
+
+
 async def test_airplay_output_never_takes_pool_arc_without_explicit_policy(fake_ha):
     _audio_snapshot(fake_ha)
     discovery = DiscoveryService(fake_ha)

@@ -1,5 +1,11 @@
 # Release notes
 
+## v1.4.5
+
+Corrige o bloqueio observado na rede real: os processos Shairport Sync estavam ativos, mas o host não publicava os serviços TecnoHead no mDNS. O App agora consulta o Avahi do host; se o serviço não existir, sobe um único D-Bus/Avahi compartilhado dentro do próprio App, sem iniciar um Avahi por zona e sem alterar o serviço global do HAOS. O painel passa a mostrar o modo e o diagnóstico do responder mDNS.
+
+A descoberta AirPlay 2 e o áudio físico continuam pendentes até a seleção no iPhone, entrega ao amplificador e escuta nas caixas.
+
 ## v1.4.4
 
 Esta atualização corrige a verificação operacional dos endpoints AirPlay 2. O App não apresenta mais um processo encerrado como se estivesse anunciado: o endereço LAN é aplicado somente em runtime, o registro `_airplay._tcp` é explícito e o diagnóstico mantém as últimas linhas sanitizadas do Shairport Sync.

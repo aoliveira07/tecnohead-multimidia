@@ -2,14 +2,15 @@
 
 ## Estado desta versão
 
-A implementação está empacotada na release `v1.4.4`, mas a homologação física continua pendente. O App não marca áudio físico como concluído só porque um nome mDNS apareceu no iPhone. A prova precisa confirmar áudio audível no amplificador, volume/parada e a política HDMI ARC. Se o processo Shairport Sync morrer na inicialização, a interface mostra o código e a cauda sanitizada do diagnóstico em vez de manter “Visível no AirPlay”.
+A implementação está empacotada na release `v1.4.5`, mas a homologação física continua pendente. O App não marca áudio físico como concluído só porque um nome mDNS apareceu no iPhone. A prova precisa confirmar áudio audível no amplificador, volume/parada e a política HDMI ARC. Se o processo Shairport Sync morrer na inicialização, a interface mostra o código e a cauda sanitizada do diagnóstico em vez de manter “Visível no AirPlay”.
 
 ## Componentes fixados
 
 - Shairport Sync: `cf6998daa1876c5a8f97128a960c8afc0e731841`, compilado com `--with-airplay-2`, OpenSSL, Avahi, FFmpeg/metadata e stdout. A imagem usa a interpolação básica embutida, porque `libsoxr-dev` não está disponível no Alpine 3.23 atual.
 - NQPTP: `ab8fb67483411640fd7f1e193889482f2421c37c`, uma única instância compartilhada nos UDP 319/320.
 - Duas identidades persistentes: `TecnoHead Cozinha` e `TecnoHead Piscina`, com portas RAOP distintas escolhidas pelo App (preferências 7000/7001, com varredura de conflito).
-- O App usa `host_network`, `host_ipc`, `host_dbus` e `realtime` no metadata do HAOS. O mDNS continua sendo o serviço Avahi do host; o App não inicia um segundo Avahi nem altera o serviço global.
+- O App usa `host_network`, `host_ipc`, `host_dbus` e `realtime` no metadata do HAOS. Primeiro tenta o Avahi do host pelo D-Bus; quando ele não existe, inicia um único D-Bus/Avahi compartilhado dentro do App. Nunca inicia um Avahi por zona nem altera o serviço global do HAOS.
+- O painel e a API informam `host_avahi` ou `private_avahi`, a saúde do processo auxiliar e uma cauda de log sanitizada. Se o host Avahi existir mas negar acesso, a ponte fica bloqueada em vez de iniciar um segundo respondente.
 - O Ingress e a rota de stream local usam a porta 18199 no host; ela foi escolhida para não colidir com o serviço que ocupava 8099 durante a atualização.
 
 ## Caminho do áudio
