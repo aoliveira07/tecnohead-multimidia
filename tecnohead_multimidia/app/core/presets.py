@@ -20,7 +20,7 @@ def default_ir_profile() -> IRProfile:
         off=IRCommand(format=CommandFormat.BROADLINK_B64, value=PROJECTOR_OFF_B64),
         on_sends=1,
         off_sends=2,
-        off_interval_seconds=4.0,
+        off_interval_seconds=5.0,
     )
 
 

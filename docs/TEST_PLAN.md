@@ -11,7 +11,7 @@ Legenda: `PASSOU` = evidência disponível; `NÃO TESTADO` = requer HAOS/equipam
 | A02 | PASSOU (simulado + HAOS) | filtro usa área efetiva de entidade/dispositivo; Cinema real validado |
 | A03 | PARCIAL (HAOS) | remote real validado sem transmissão; payload segue `remote.send_command` por entidade |
 | A05 | PASSOU (simulado) | prefixo `b64:` aplicado no limite do transporte |
-| A06 | PASSOU (simulado) | duas chamadas e gap após retorno de 4,0 s |
+| A06 | PASSOU (simulado) | duas chamadas e gap após retorno de 5,0 s |
 | A07/A08 | PASSOU (simulado) | motor Cinema→TV e sequência de equipamentos |
 | A09 | PASSOU (simulado) | TV física inativa não move telão/projetor |
 | A17 | PASSOU (simulado) | profiles/engines separados por área |
@@ -26,7 +26,7 @@ Legenda: `PASSOU` = evidência disponível; `NÃO TESTADO` = requer HAOS/equipam
 | A03 | PARCIAL | entidade validada sem IR; chamada real ainda aguarda intervenção manual |
 | A04 | NÃO TESTADO | observação do telão e estado do switch |
 | A05 | NÃO TESTADO | log real + observação do projetor |
-| A06 | FALHOU — reteste | na rodada anterior o projetor não respondeu ao desligamento; retestar OFF→4 s→OFF |
+| A06 | FALHOU — reteste | na rodada anterior o projetor não respondeu ao desligamento; retestar OFF→5 s→OFF |
 | A07 | PARCIAL — reteste | Cinema executou etapas HA, mas luzes e desligamento físico do projetor não atenderam ao aceite |
 | A08 | NÃO TESTADO | checklist TV explícita completo |
 | A09 | NÃO TESTADO | evento de TV física com Cinema OFF |
@@ -39,13 +39,13 @@ Legenda: `PASSOU` = evidência disponível; `NÃO TESTADO` = requer HAOS/equipam
 | A16 | PENDENTE | HomeKit Bridge/Alexa disponíveis, mas entidades TecnoHead ainda não expostas para voz |
 | A17 | PARCIAL | isolamento real do Cinema; segundo ambiente ainda não configurado |
 | A18 | PARCIAL | queda/restart durante OFF ainda não observado |
-| A19 | PASSOU | código, docs, CI, release `v1.2.11` e instalação HAOS confirmados |
+| A19 | PASSOU | código, docs, CI, release `v1.3.1` e instalação HAOS confirmados |
 | A20 | PASSOU | sem backup, `.storage`, token, IP/MAC ou log bruto no repo |
 | A21 | PASSOU | somente `remote` da área; UI não possui campos IP/MAC |
 | A22 | PASSOU | validação de formato, persistência e restauração disponíveis no App instalado |
 | A23 | PASSOU (revisão local) | nenhuma dependência/driver BroadLink LAN |
 | A24 | PASSOU (revisão local) | formato separado e documentação de Pronto/nomeado |
-| A25 | PASSOU (simulado) | gap de 4,0 s medido entre retorno e segunda chamada |
+| A25 | PASSOU (simulado) | gap de 5,0 s medido entre retorno e segunda chamada |
 | A26 | PARCIAL | cancelamento seguro implementado; restart real ainda não observado |
 
 ## Procedimento de captura

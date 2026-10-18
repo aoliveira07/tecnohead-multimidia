@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.3.1 — alinhamento do intervalo IR
+
+- Restaura o default do desligamento do projetor para duas chamadas independentes com espera de 5 s após o retorno da primeira, conforme o handoff v1.3.
+- Mantém valores personalizados persistidos; o perfil Cinema instalado foi alinhado para 5,0 s sem transmitir IR.
+
 ## 1.3.0 — áudio multiroom protegido
 
 - Adiciona zonas Cozinha/Piscina ao mesmo App, com filtro estrito por área e cadastro do `media_player` canônico.

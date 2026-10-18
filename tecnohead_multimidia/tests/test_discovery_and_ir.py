@@ -37,4 +37,4 @@ async def test_off_is_two_independent_ha_calls_with_four_seconds_after_first_ret
     assert all(call["entity_id"] == "remote.ir_cinema" for call in remote_calls)
     assert all(call["data"]["command"].startswith("b64:") for call in remote_calls)
     assert all("num_repeats" not in call["data"] for call in remote_calls)
-    assert result["gaps_after_return_seconds"] == [4.0]
+    assert result["gaps_after_return_seconds"] == [5.0]

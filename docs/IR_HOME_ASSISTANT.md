@@ -21,7 +21,7 @@ O App usa o proxy do Core fornecido pelo Supervisor e seu token de App. Não con
 Os presets genéricos ON/OFF autorizados ficam no código limpo e são copiados para o perfil quando necessário. O valor é salvo sem prefixo e recebe `b64:` apenas no envio. A validação rejeita prefixo duplo e Base64 inválido.
 
 - ON: uma chamada independente.
-- OFF: chamada independente 1 → retorno do HA → espera monotônica de 4,0 s → chamada independente 2.
+- OFF: chamada independente 1 → retorno do HA → espera monotônica de 5,0 s → chamada independente 2.
 - `num_repeats` não é usado como substituto.
 - Erro antes da primeira chamada não gera retry. Erro/queda durante a espera gera `UNCERTAIN` e não envia terceiro comando.
 

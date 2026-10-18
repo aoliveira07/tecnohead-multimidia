@@ -40,7 +40,7 @@ async def test_cinema_then_tv_runs_scene_and_off_confirmation(fake_ha, cinema_pr
     assert len(off_calls) == 3
     assert engine.mode.value == "tv"
     assert engine.projector_intent == "off_commanded_unknown_physical"
-    assert clock.value == 4.0
+    assert clock.value == 5.0
     assert any(item["event"] == "transition_completed" for item in events)
 
 

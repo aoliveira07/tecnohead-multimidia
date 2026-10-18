@@ -1,5 +1,9 @@
 # Release notes
 
+## v1.3.1 — intervalo IR do handoff
+
+Corrige o default do desligamento do projetor para OFF → espera de 5,0 s após o retorno da primeira chamada → OFF. Nenhuma chamada IR é realizada durante a atualização; a confirmação física continua pendente.
+
 ## v1.3.0 — módulo Áudio Multiroom
 
 Esta release preserva Cinema/TV/IR/clima/luzes/MQTT da v1.2 e adiciona o painel de áudio para zonas por área. Volume, mudo, fontes e agrupamento só usam entidades `media_player` reais do Home Assistant; não há cliente LinkPlay proprietário e HDMI ARC da Piscina não é alterado automaticamente.

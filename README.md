@@ -2,7 +2,7 @@
 
 App para Home Assistant OS que transforma áreas cadastradas no HA em ambientes multimídia com cenas Cinema, TV e Desligar. A interface é em português brasileiro, responsiva, aparece na sidebar por Ingress e usa um motor próprio por área — sem criar automações YAML intermediárias.
 
-## Estado da entrega 1.3.0
+## Estado da entrega 1.3.1
 
 O módulo v1.2 permanece instalado/configurado com Ingress e MQTT Discovery, perfil Cinema persistido e `remote.ir_cinema` validado sem transmitir IR. A v1.3 acrescenta o painel de áudio, cadastro estrito de zonas, volume/mudo/fonte/grupo via entidades `media_player` do HA e estados MQTT. A descoberta real de 18/10/2026 não encontrou LinkPlay nem o amplificador novo da Piscina; por isso a ponte AirPlay 2 está explicitamente bloqueada e não é anunciada como homologada.
 
@@ -13,7 +13,7 @@ Os testes locais atuais são executados com um HA simulado e cobrem cenas, isola
 - O App chama o proxy oficial do Home Assistant Core com `SUPERVISOR_TOKEN` e `homeassistant_api`.
 - O emissor IR é apenas uma entidade `remote` da mesma área. Não há IP/MAC, protocolo LAN, autenticação própria, `python-broadlink` ou driver BroadLink neste projeto.
 - O projetor usa `remote.send_command` com os presets próprios do App. BroadLink Base64 vira `b64:<payload>` somente no limite do transporte.
-- Desligamento atual: primeira chamada HA → espera monotônica de 4,0 s após o retorno → segunda chamada HA. Não usa `num_repeats` como substituto e não reinicia o ciclo em timeout.
+- Desligamento atual: primeira chamada HA → espera monotônica de 5,0 s após o retorno → segunda chamada HA. Não usa `num_repeats` como substituto e não reinicia o ciclo em timeout.
 - O retorno da API confirma processamento pelo HA, não a resposta física do projetor. A UI e os diagnósticos deixam essa limitação explícita.
 - O áudio segue a mesma regra: o retorno do serviço `media_player` não prova som audível. LinkPlay, ARC, AirPlay 2 e Casa só são marcados como homologados após evidência física.
 - A configuração do cliente vive no volume privado `/data`; diagnósticos exportados redigem os códigos IR.
