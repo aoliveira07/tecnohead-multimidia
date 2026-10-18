@@ -1,10 +1,10 @@
-# Relatório de instalação e homologação — TecnoHead Multimídia v1.2.10
+# Relatório de instalação e homologação — TecnoHead Multimídia v1.2.11
 
 ## Status real em 18/10/2026
 
 **Instalado e configurado no HAOS; pronto para testes físicos manuais. Ainda não homologado fisicamente.**
 
-O App foi instalado pelo catálogo de Apps a partir do repositório autorizado, atualizado de 1.2.8 para 1.2.10 e confirmado como “Em funcionamento”. O Ingress abriu, a descoberta real do Home Assistant respondeu, o perfil Cinema permaneceu persistido e o MQTT Discovery reconectou após a atualização. Nesta etapa foi revalidada a conexão do Denon no Home Assistant e o perfil do App foi salvo novamente sem iniciar uma cena ou teste IR.
+O App foi instalado pelo catálogo de Apps a partir do repositório autorizado, atualizado para 1.2.11 e confirmado como “Em funcionamento”. O Ingress abriu, a descoberta real do Home Assistant respondeu, o perfil Cinema permaneceu persistido e o MQTT Discovery reconectou após a atualização. O intervalo OFF do perfil Cinema foi ajustado para 4,0 s e salvo novamente sem iniciar uma cena ou teste IR.
 
 Durante esta revalidação do Denon, não foi acionado botão de cena nem teste IR; a etapa executada foi cadastral/operacional.
 
@@ -28,6 +28,10 @@ A integração **Denon AVR Network Receivers** voltou a apresentar um dispositiv
 
 Essa validação confirma a conexão, a associação de área, a entidade e os rótulos de fonte. Ainda não confirma a troca física de fonte, volume ou resposta acústica; essas ações permanecem para o teste manual acompanhado.
 
+### Observação da rodada física anterior e correção — 18/10/2026
+
+O operador acionou Cinema e observou que as luzes não foram apagadas após o atraso configurado e que o projetor não respondeu ao desligamento. O diagnóstico registrou a chamada HA de ON e a execução das etapas do receiver; a confirmação da API não foi tratada como confirmação física. A causa do timer de luzes foi identificada: a cena ficou em fase degradada por não confirmar a aleta e o modo lógico permaneceu OFF, bloqueando o timer. A v1.2.11 corrige esse estado parcial e mantém as luzes agendadas. O intervalo entre as duas chamadas OFF foi alterado de 5,0 s para 4,0 s; o comportamento físico precisa ser retestado.
+
 ## Checklist de aceite
 
 Legenda: `PASSOU` = evidência observada; `PARCIAL` = parte validada, parte pendente; `NÃO TESTADO` = requer intervenção física; `PENDENTE` = integração externa ou equipamento indisponível.
@@ -39,20 +43,20 @@ Legenda: `PASSOU` = evidência observada; `PARCIAL` = parte validada, parte pend
 | A03 | PARCIAL | entidade remote validada pelo HA sem nova transmissão nesta etapa; chamada física ainda não executada |
 | A04 | NÃO TESTADO | requer observação do telão |
 | A05 | NÃO TESTADO | requer envio ON autorizado e observação do projetor |
-| A06 | NÃO TESTADO | requer duas chamadas OFF reais, intervalo de 5 s e observação física |
-| A07 | NÃO TESTADO | cena Cinema completa aguarda teste manual; Denon agora conectado e fonte configurada |
+| A06 | FALHOU — reteste | na rodada anterior o projetor não respondeu ao desligamento; v1.2.11 usa duas chamadas independentes com 4 s, aguardando nova observação |
+| A07 | PARCIAL — reteste | Cinema acionado e etapas HA registradas, mas luzes e desligamento físico do projetor não atenderam ao aceite anterior |
 | A08 | NÃO TESTADO | cena TV completa aguarda teste manual; Denon agora conectado e fonte configurada |
 | A09 | NÃO TESTADO | evento de TV física aguarda teste manual |
 | A10 | NÃO TESTADO | proteção durante Cinema aguarda teste manual |
 | A11 | NÃO TESTADO | ar e aleta aguardam observação em temperatura real |
 | A12 | NÃO TESTADO | histerese e vento baixo aguardam observação |
-| A13 | NÃO TESTADO | temporizador de 30 s aguarda teste com luzes reais |
+| A13 | FALHOU — reteste | luzes não apagaram na rodada anterior; correção do estado degradado instalada em v1.2.11, aguardando nova observação após 30 s |
 | A14 | NÃO TESTADO | cancelamento de timer aguarda teste de cena |
-| A15 | PARCIAL | dispositivo MQTT real com 3 switches + 3 sensores, estado `idle/off` e firmware 1.2.10; birth/restart do broker ainda não observado |
+| A15 | PARCIAL | dispositivo MQTT real com 3 switches + 3 sensores, estado `idle/off` e firmware 1.2.11; birth/restart do broker ainda não observado |
 | A16 | PENDENTE | HomeKit Bridge e Alexa estão disponíveis, mas as entidades TecnoHead ainda não foram incluídas/expostas para teste de voz |
 | A17 | PARCIAL | isolamento por área implementado e Cinema configurado; segundo ambiente ainda não comissionado |
 | A18 | PARCIAL | proteção contra repetição cega coberta por testes; queda real durante sequência ainda não observada |
-| A19 | PASSOU | repositório, commit, tag/release, CI e imagem multiarch publicados |
+| A19 | PASSOU | repositório, commit `d415d33`, tag/release `v1.2.11`, CI e imagem multiarch publicados |
 | A20 | PASSOU | nenhuma alteração em outros Apps, banco, automações antigas ou arquivos `.storage`; nenhum segredo no repositório |
 | A21 | PASSOU | campo aceita somente `remote` da área e sugere `remote.ir_cinema`; nenhum campo IP/MAC |
 | A22 | PASSOU | presets e parâmetros persistentes, editor avançado e restauração disponíveis; valores sensíveis não aparecem nos diagnósticos |
@@ -63,15 +67,16 @@ Legenda: `PASSOU` = evidência observada; `PARCIAL` = parte validada, parte pend
 
 ## Evidências técnicas
 
-- `python -m pytest -q`: **11 passed**.
+- `python -m pytest -q`: **12 passed**.
 - `python -m ruff check app tests`: passou.
 - `python -m compileall -q app`: passou.
 - CI GitHub: sucesso no commit `79e7295`.
-- Release multiarch: `v1.2.10`, publicada após build `amd64`/`aarch64` bem-sucedido.
+- Release multiarch: `v1.2.11`, publicada após build `amd64`/`aarch64` bem-sucedido.
 - Validação no painel: `remote.ir_cinema` associado a Cinema; nesta revalidação do Denon não foi acionado botão de cena nem teste IR.
 - Denon real: integração com um dispositivo ativo, dispositivo na área Cinema, `media_player.denon_cinema` selecionado e fontes `Apple TV`/`TV Audio` gravadas no perfil.
+- Configuração real: perfil Cinema salvo com ON 1, OFF 2 e intervalo OFF de 4,0 s; atraso de luzes permanece 30 s.
 - MQTT real: dispositivo TecnoHead na área Cinema, seis entidades, estado inicial Desligado/idle/Pronto.
 
 ## Próximo passo manual
 
-O bloqueio de conexão do receiver foi removido. O painel está em **Desligado / Pronto** e o operador pode executar o checklist físico em [docs/TEST_PLAN.md](docs/TEST_PLAN.md), começando pelo teste ON autorizado e observação direta do projetor. A troca física de fonte/volume do Denon e a homologação completa continuam pendentes até a observação manual.
+O bloqueio de conexão do receiver foi removido. O painel está em **Desligado / Pronto** e o operador pode executar o checklist físico em [docs/TEST_PLAN.md](docs/TEST_PLAN.md), começando pelo teste ON autorizado e observação direta do projetor. Nesta rodada, começar pelo teste do desligamento OFF→4 s→OFF e aguardar 30 s para verificar as três luzes. A troca física de fonte/volume do Denon e a homologação completa continuam pendentes até a observação manual.

@@ -24,14 +24,14 @@ Legenda: `PASSOU` = evidência disponível; `NÃO TESTADO` = requer HAOS/equipam
 | A03 | PARCIAL | entidade validada sem IR; chamada real ainda aguarda intervenção manual |
 | A04 | NÃO TESTADO | observação do telão e estado do switch |
 | A05 | NÃO TESTADO | log real + observação do projetor |
-| A06 | NÃO TESTADO | duas chamadas reais + observação física |
-| A07 | NÃO TESTADO | checklist Cinema completo |
+| A06 | FALHOU — reteste | na rodada anterior o projetor não respondeu ao desligamento; retestar OFF→4 s→OFF |
+| A07 | PARCIAL — reteste | Cinema executou etapas HA, mas luzes e desligamento físico do projetor não atenderam ao aceite |
 | A08 | NÃO TESTADO | checklist TV explícita completo |
 | A09 | NÃO TESTADO | evento de TV física com Cinema OFF |
 | A10 | NÃO TESTADO | evento de TV física com Cinema ON |
 | A11 | NÃO TESTADO | temperatura ~26 °C, vento alto e aleta |
 | A12 | NÃO TESTADO | temperatura estável em 22 °C e vento baixo |
-| A13 | NÃO TESTADO | luzes e switch explicitamente classificado |
+| A13 | FALHOU — reteste | luzes não apagaram na rodada anterior; correção v1.2.11 instalada, repetir observação após 30 s |
 | A14 | NÃO TESTADO | troca/cancelamento de timers em equipamento real |
 | A15 | PARCIAL | dispositivo MQTT real com 6 entidades e firmware 1.2.11; birth/restart ainda pendente |
 | A16 | PENDENTE | HomeKit Bridge/Alexa disponíveis, mas entidades TecnoHead ainda não expostas para voz |
