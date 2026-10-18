@@ -1,7 +1,7 @@
 name: "TecnoHead Multimídia"
 slug: "tecnohead_multimidia"
 description: "Motor de cenas multimídia multiambiente para Home Assistant"
-version: "1.3.2"
+version: "1.4.0"
 stage: experimental
 url: "https://github.com/aoliveira07/tecnohead-multimidia"
 startup: application
@@ -15,6 +15,14 @@ arch:
 image: ghcr.io/aoliveira07/tecnohead-multimidia
 init: false
 apparmor: true
+
+# AirPlay 2 uses LAN mDNS/RAOP and a single NQPTP clock shared by both
+# receiver processes. The App does not modify the host Avahi daemon; it uses
+# the host D-Bus and host IPC only for the documented upstream integration.
+host_network: true
+host_ipc: true
+host_dbus: true
+realtime: true
 
 ingress: true
 ingress_port: 8099

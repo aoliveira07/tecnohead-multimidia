@@ -9,6 +9,7 @@ from typing import Any
 
 from app import __version__
 from app.core.actions import ActionExecutor
+from app.core.airplay import AirPlayEndpointManager
 from app.core.audio import AudioActionError, AudioManager
 from app.core.discovery import DiscoveryService
 from app.core.engine import AreaEngine
@@ -52,6 +53,7 @@ class Runtime:
         self.actions: ActionExecutor | None = None
         self.ir: HomeAssistantRemoteTransport | None = None
         self.audio: AudioManager | None = None
+        self.airplay: AirPlayEndpointManager | None = None
         self.mqtt: MqttBridge | None = None
         self._event_stop = asyncio.Event()
         self._event_task: asyncio.Task[None] | None = None
@@ -63,8 +65,11 @@ class Runtime:
         self.actions = ActionExecutor(self.ha, self.discovery, self.record_event)
         self.ir = HomeAssistantRemoteTransport(self.ha, self.discovery, self.record_event)
         self.audio = AudioManager(self.ha, self.discovery, self.record_event)
+        self.airplay = AirPlayEndpointManager(self.settings, self.ha, self.audio, self.record_event)
+        self.audio.set_airplay_report_provider(self.airplay.report)
         await self._refresh_discovery_safe()
         await self._sync_engines()
+        await self.airplay.start(self.config.audio)
         self.mqtt = MqttBridge(
             self.settings,
             self.ha,
@@ -101,6 +106,8 @@ class Runtime:
                 engine._task.cancel()
         if self.mqtt:
             await self.mqtt.stop()
+        if self.airplay:
+            await self.airplay.stop()
         await self.ha.stop()
 
     async def _refresh_discovery_safe(self) -> None:
@@ -196,6 +203,8 @@ class Runtime:
         audio = MultiroomConfig.model_validate(update.model_dump(mode="json"))
         await self.store.update_audio(audio)
         self.config = await self.store.snapshot()
+        if self.airplay:
+            await self.airplay.apply_config(self.config.audio)
         if self.mqtt:
             await self.mqtt.sync_discovery()
         await self.record_event(

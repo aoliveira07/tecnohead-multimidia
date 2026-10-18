@@ -2,21 +2,34 @@
 
 ## Estado desta versão
 
-A ponte Shairport Sync/NQPTP não foi iniciada nem anunciada nesta instalação. O motivo é objetivo: não há destino físico LinkPlay canônico para receber o PCM e não há modelo/codec/firmware do amplificador novo da Piscina confirmados. Publicar nomes mDNS agora produziria uma falsa homologação.
+A implementação está empacotada na release `v1.4.0`, mas a homologação física continua pendente. O App não marca áudio físico como concluído só porque um nome mDNS apareceu no iPhone. A prova precisa confirmar áudio audível no amplificador, volume/parada e a política HDMI ARC.
 
-## Arquitetura prevista, sob pré-condições
+## Componentes fixados
 
-- Shairport Sync upstream com suporte AirPlay 2 real, revisão fixada e licença registrada.
-- Uma identidade estável por zona: `TecnoHead Cozinha` e `TecnoHead Piscina`.
-- Portas RAOP distintas, uma instância NQPTP compartilhada e um registrador mDNS compatível, sem iniciar um segundo Avahi global.
-- Áudio PCM isolado por sessão, ponte local protegida e entrega ao player LinkPlay somente após comprovar URL, codec, buffering e parada.
-- Persistência das identidades e pareamentos no volume privado do App; nenhum stream é retomado automaticamente após reinício.
+- Shairport Sync: `cf6998daa1876c5a8f97128a960c8afc0e731841`, compilado com `--with-airplay-2`, OpenSSL, Avahi, FFmpeg/metadata, stdout e soxr.
+- NQPTP: `ab8fb67483411640fd7f1e193889482f2421c37c`, uma única instância compartilhada nos UDP 319/320.
+- Duas identidades persistentes: `TecnoHead Cozinha` e `TecnoHead Piscina`, com portas RAOP distintas escolhidas pelo App (preferências 7000/7001, com varredura de conflito).
+- O App usa `host_network`, `host_ipc`, `host_dbus` e `realtime` no metadata do HAOS. O mDNS continua sendo o serviço Avahi do host; o App não inicia um segundo Avahi nem altera o serviço global.
 
-Os requisitos de host networking, IPC, D-Bus/mDNS e portas só serão adicionados ao metadata do App depois de um destino físico confirmado e de uma verificação de conflito no HAOS. Não há sidecar, Compose manual ou alteração do serviço global do host nesta release.
+## Caminho do áudio
 
-## Critério de sucesso
+1. Shairport Sync recebe AirPlay 2 e entrega PCM S32_LE, 48 kHz, estéreo ao stdout.
+2. FFmpeg interno converte esse PCM para MP3 contínuo de 192 kbps.
+3. O App oferece o fluxo somente durante a sessão, por uma URL local com token aleatório e validade implícita pela sessão.
+4. O player LinkPlay é solicitado por `media_player.play_media` via API autenticada do Home Assistant. Não há cliente proprietário LinkPlay nem conexão direta ao BroadLink.
+5. Ao parar, o App solicita `media_player.media_stop` apenas se a zona não tiver retornado para ARC; não retoma a fonte anterior automaticamente.
 
-O iPhone encontrar o nome não é suficiente. É necessário provar handshake AirPlay 2, receber PCM, entregar ao amplificador, ouvir som em cada zona, parar sem áudio fantasma e medir latência/sincronia. A ponte só pode avançar para a Piscina depois da prova na Cozinha.
+O formato/codec aceito pelo firmware do player ainda é critério de prova física. Se `play_media` aceitar o comando mas não houver áudio, o diagnóstico será `AIRPLAY_BRIDGE_UNSUPPORTED`, sem declarar sucesso.
+
+## Política da Piscina
+
+`media_player.piscina_room` permanece com prioridade `HDMI ARC` e `airplay_may_override_arc=false`. Se a fonte observada for TV/ARC/HDMI, o App bloqueia a tomada silenciosa da fonte. O teste da Piscina só deve ocorrer com ARC inativo ou depois de o operador habilitar explicitamente a substituição, em volume baixo.
+
+## Diagnóstico e aceite
+
+O painel informa versão dos binários, estado do NQPTP, mDNS, porta (sem publicar IP privado), endpoint por zona, clientes, bytes e último erro. Ainda assim, `streaming` significa apenas que PCM foi recebido e a chamada HA foi aceita; `physical_audio` só pode ser atualizado após o operador ouvir as caixas.
+
+O teste deve ser executado nesta ordem: Cozinha individual, Piscina com ARC protegido, dois destinos simultâneos, volumes separados e depois app Casa. Não se deve chamar `media_player.join` durante uma seleção dupla do iPhone.
 
 Referências: [AIRPLAY2.md](https://github.com/mikebrady/shairport-sync/blob/master/AIRPLAY2.md), [múltiplas instâncias](https://github.com/mikebrady/shairport-sync/blob/master/ADVANCED%20TOPICS/RunningMultipleInstances.md) e [integração ao app Casa](https://github.com/mikebrady/shairport-sync/blob/master/ADDINGTOHOME.md).
 

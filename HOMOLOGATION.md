@@ -1,4 +1,10 @@
-# Relatório de instalação e homologação — TecnoHead Multimídia v1.3.2
+# Relatório de instalação e homologação — TecnoHead Multimídia v1.4.0
+
+## Addendum v1.4.0 — AirPlay 2 virtual (implementação, sem falsa homologação)
+
+O mesmo App recebeu duas identidades AirPlay 2 virtuais, compiladas com Shairport Sync upstream e NQPTP fixados. A ponte PCM→stream usa `media_player.play_media` pela API do Home Assistant e a Piscina conserva a prioridade HDMI ARC. Esta alteração foi validada por testes automatizados; a publicação e a atualização do HAOS ainda precisam ser comprovadas nesta rodada, e a prova física no iPhone continua pendente até o operador selecionar os destinos e ouvir as caixas.
+
+O fato de `Cozinha Room` e `Piscina Room` aparecerem no app Casa como receivers HomeKit Bridge não equivale a AirPlay 2. O aceite AirPlay exige descoberta no seletor AirPlay e som real em cada zona; o aceite Casa é separado.
 
 ## Addendum v1.3.2 — correção do volume LinkPlay e teste pelo App (18/10/2026)
 

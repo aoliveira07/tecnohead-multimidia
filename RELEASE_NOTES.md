@@ -1,5 +1,11 @@
 # Release notes
 
+## v1.4.0 — receptor AirPlay 2 virtual
+
+Esta versão mantém as cenas, IR via Home Assistant, LinkPlay, MQTT e HomeKit Bridge e adiciona a implementação do receptor AirPlay 2 no próprio App. Shairport Sync e NQPTP são compilados a partir de revisões upstream fixadas; Cozinha e Piscina têm identidades e portas independentes. O áudio recebido é convertido em PCM→MP3 e encaminhado ao `media_player` LinkPlay pela API autenticada do Home Assistant.
+
+O release ainda não representa homologação física. O operador precisa confirmar no iPhone que `TecnoHead Cozinha` aparece no seletor AirPlay e que o som sai nas caixas; depois repetir para a Piscina com HDMI ARC protegido. O app Casa/HomeKit Bridge deve ser avaliado separadamente. Nenhuma seleção dupla, grupo LinkPlay ou tomada da fonte ARC será feita automaticamente.
+
 ## v1.3.2 — correção do volume LinkPlay
 
 Esta versão corrige o erro `401 Unauthorized` ao aplicar volume no painel de áudio. O App agora envia chamadas `media_player` pela API WebSocket autenticada do Home Assistant, sem retry REST ambíguo. O teste físico continua sendo feito em volume baixo e com confirmação do operador.

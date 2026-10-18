@@ -16,6 +16,8 @@ O áudio v1.3 é um módulo do mesmo TecnoHead Multimídia. Ele cadastra zonas p
 
 O painel mostra fonte, volume observado, mudo, capabilities, grupo, disponibilidade, diagnóstico por zona e estado da ponte AirPlay. “Aceito pelo Home Assistant” não significa “som ouvido nas caixas”.
 
+As identidades AirPlay 2 virtuais são ativadas individualmente no cadastro da zona. O App inicia Shairport/NQPTP apenas para zonas habilitadas e encaminha o PCM recebido ao respectivo `media_player` LinkPlay por uma URL local temporária. A seleção dupla no iPhone não cria grupo LinkPlay; são estratégias diferentes e mutuamente exclusivas no motor.
+
 O MQTT publica sensores de estado e, quando a capability real é anunciada, controles Discovery de volume e mudo. Comandos MQTT não são retidos. O HomeKit Bridge/Alexa só podem expor o que o HAOS e a integração realmente suportarem.
 
 ## Compartilhar TV Piscina → Cozinha

@@ -19,7 +19,7 @@ O amplificador atual da Piscina foi identificado pelo HA como `media_player.pisc
 
 O HDMI ARC/CEC não foi modificado. O estado observado da Piscina era `HDMI`/`playing` com volume 100%; nenhum comando foi emitido pelo App. O primeiro teste físico deve reduzir o volume manualmente e confirmar o comportamento do ARC antes de qualquer troca de fonte ou agrupamento.
 
-AirPlay 2 virtual ainda está bloqueado para a etapa de implementação/POC: Shairport Sync, NQPTP e a ponte PCM→LinkPlay não foram iniciados. Não há alegação de descoberta AirPlay, áudio audível ou sincronismo.
+AirPlay 2 virtual foi implementado no App v1.4.0, mas ainda aguarda a POC física. O release inicia Shairport Sync/NQPTP somente quando a identidade da zona estiver habilitada; o diagnóstico deve mostrar `ready` antes de o iPhone selecionar o destino e `streaming` somente depois de PCM recebido e `media_player.play_media` aceito. Não há alegação de áudio audível, sincronismo ou compatibilidade Casa até o teste manual.
 
 ## Addendum v1.3.2 — volume da Cozinha
 

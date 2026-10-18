@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from fastapi import APIRouter, HTTPException, Query, Request
+from fastapi.responses import StreamingResponse
 
 from app.core.audio import AudioActionError
 from app.core.discovery import AreaValidationError
@@ -142,6 +143,34 @@ async def audio(request: Request):
         return await runtime_from(request).audio_payload()
     except Exception as exc:
         raise translate_error(exc) from exc
+
+
+@router.get("/audio/airplay/{zone_id}/stream")
+async def audio_airplay_stream(zone_id: str, request: Request, token: str = Query(min_length=16, max_length=256)):
+    """Serve only the short-lived PCM-to-MP3 stream for a running endpoint.
+
+    The URL is generated internally after Shairport Sync receives audio. It is
+    intentionally not listed in the UI or diagnostics, and the random token
+    prevents an unrelated LAN client from opening a zone stream by guessing a
+    path. There is no arbitrary URL proxy here.
+    """
+
+    runtime = runtime_from(request)
+    if not runtime.airplay:
+        raise HTTPException(status_code=404, detail="ponte AirPlay não está disponível")
+    try:
+        stream = runtime.airplay.stream(zone_id, token)
+    except KeyError as exc:
+        raise HTTPException(status_code=404, detail="stream AirPlay inexistente ou token expirado") from exc
+    return StreamingResponse(
+        stream,
+        media_type="audio/mpeg",
+        headers={
+            "Cache-Control": "no-store, no-cache, must-revalidate",
+            "Pragma": "no-cache",
+            "X-Content-Type-Options": "nosniff",
+        },
+    )
 
 
 @router.put("/audio")

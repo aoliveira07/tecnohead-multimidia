@@ -2,11 +2,11 @@
 
 App para Home Assistant OS que transforma áreas cadastradas no HA em ambientes multimídia com cenas Cinema, TV e Desligar. A interface é em português brasileiro, responsiva, aparece na sidebar por Ingress e usa um motor próprio por área — sem criar automações YAML intermediárias.
 
-## Estado da entrega 1.3.1
+## Estado da entrega 1.4.0
 
-O módulo v1.2 permanece instalado/configurado com Ingress e MQTT Discovery, perfil Cinema persistido e `remote.ir_cinema` validado sem transmitir IR. A v1.3 acrescenta o painel de áudio, cadastro estrito de zonas, volume/mudo/fonte/grupo via entidades `media_player` do HA e estados MQTT. A descoberta real de 18/10/2026 não encontrou LinkPlay nem o amplificador novo da Piscina; por isso a ponte AirPlay 2 está explicitamente bloqueada e não é anunciada como homologada.
+O módulo v1.2 permanece no mesmo App, com Ingress, MQTT Discovery, cenas e IR pela entidade do Home Assistant. O áudio multiroom usa os players LinkPlay reais `media_player.cozinha_room` e `media_player.piscina_room`, descobertos por área. A v1.4 acrescenta a implementação do receptor AirPlay 2 virtual: duas instâncias Shairport Sync upstream fixadas, NQPTP compartilhado, mDNS do host e ponte PCM→stream local encaminhada ao LinkPlay por `media_player.play_media`.
 
-Os testes locais atuais são executados com um HA simulado e cobrem cenas, isolamento por área, migração v1.2→v1.3 e controles de áudio com limite seguro. Veja [HOMOLOGATION.md](HOMOLOGATION.md), [AUDIO_DISCOVERY_REPORT.md](docs/AUDIO_DISCOVERY_REPORT.md) e [AUDIO_TEST_PLAN.md](docs/AUDIO_TEST_PLAN.md) para o status por critério.
+Esta release é uma implementação instalável e ainda precisa da prova manual no iPhone: aparecer no seletor AirPlay, ouvir áudio em cada zona, parar sem áudio fantasma e testar a política ARC. A presença de `Cozinha Room` e `Piscina Room` no app Casa continua sendo HomeKit Bridge do HA, não prova de AirPlay 2. Veja [HOMOLOGATION.md](HOMOLOGATION.md), [AUDIO_DISCOVERY_REPORT.md](docs/AUDIO_DISCOVERY_REPORT.md) e [AUDIO_TEST_PLAN.md](docs/AUDIO_TEST_PLAN.md) para o status real.
 
 ## Arquitetura de segurança
 
@@ -27,7 +27,7 @@ Os testes locais atuais são executados com um HA simulado e cobrem cenas, isola
 5. No editor, selecione entidades oferecidas apenas pela área atual. A entidade `remote.ir_cinema` será sugerida quando realmente estiver associada à área Cinema no HA.
 6. Salve o perfil e valide primeiro ações sem IR; use os botões de teste IR somente com confirmação local e o projetor em condição segura.
 
-Para áudio, siga [AUDIO_MULTIROOM.md](docs/AUDIO_MULTIROOM.md). Não selecione a TV universal como amplificador da Piscina: primeiro confirme o `media_player` e o modelo real. A ponte AirPlay 2 só deve ser habilitada depois de [AIRPLAY2_BRIDGE.md](docs/AIRPLAY2_BRIDGE.md) e da prova física na Cozinha.
+Para áudio, siga [AUDIO_MULTIROOM.md](docs/AUDIO_MULTIROOM.md) e [AIRPLAY2_BRIDGE.md](docs/AIRPLAY2_BRIDGE.md). Ative cada identidade AirPlay somente depois de confirmar os players físicos. A Piscina permanece protegida por HDMI ARC por padrão; o App não toma a fonte da TV sem uma decisão explícita.
 
 Para clientes novos, siga [INSTALL.md](INSTALL.md) e [MANUAL_IMPLANTACAO_CLIENTE.md](docs/MANUAL_IMPLANTACAO_CLIENTE.md).
 

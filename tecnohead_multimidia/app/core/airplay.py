@@ -1,0 +1,654 @@
+from __future__ import annotations
+
+import asyncio
+import contextlib
+import json
+import logging
+import os
+import re
+import secrets
+import socket
+import time
+from collections import deque
+from collections.abc import AsyncIterator, Awaitable, Callable
+from dataclasses import dataclass, field
+from datetime import UTC, datetime
+from pathlib import Path
+from typing import Any
+
+from app.core.ha_client import HomeAssistantError
+from app.models import AudioZoneProfile, MultiroomConfig
+
+LOGGER = logging.getLogger("tecnohead.airplay")
+
+DEFAULT_RAOP_PORTS = {"kitchen": 7000, "pool": 7001}
+PCM_RATE = 48000
+PCM_CHANNELS = 2
+PCM_SAMPLE_FORMAT = "s32le"
+STREAM_IDLE_SECONDS = 8.0
+IPV4_RE = re.compile(r"(?<![0-9])(?:[0-9]{1,3}\.){3}[0-9]{1,3}(?![0-9])")
+
+EventRecorder = Callable[..., Awaitable[None]]
+
+
+def _redact_process_line(line: str) -> str:
+    """Keep diagnostics useful without copying client network addresses."""
+
+    return IPV4_RE.sub("[redacted-ip]", line.strip())[:500]
+
+
+def _quote_config(value: str) -> str:
+    return json.dumps(value, ensure_ascii=True)
+
+
+def _resolve_lan_address() -> str | None:
+    """Resolve the host-network address without sending application data."""
+
+    override = os.getenv("AIRPLAY_STREAM_HOST", "").strip()
+    if override:
+        return override
+    candidates = ("8.8.8.8", "10.255.255.255")
+    for target in candidates:
+        sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        try:
+            sock.connect((target, 9))
+            address = sock.getsockname()[0]
+            if address and not address.startswith("127."):
+                return address
+        except OSError:
+            continue
+        finally:
+            sock.close()
+    return None
+
+
+class AudioStreamBroker:
+    """Small fan-out buffer for the live MP3 stream consumed by LinkPlay."""
+
+    def __init__(self) -> None:
+        self._subscribers: set[asyncio.Queue[bytes | None]] = set()
+        self._recent: deque[bytes] = deque(maxlen=32)
+        self.bytes_sent = 0
+        self.client_count = 0
+        self.last_chunk_at: float | None = None
+
+    async def publish(self, chunk: bytes) -> None:
+        if not chunk:
+            return
+        self._recent.append(chunk)
+        self.bytes_sent += len(chunk)
+        self.last_chunk_at = time.monotonic()
+        for queue in tuple(self._subscribers):
+            if queue.full():
+                with contextlib.suppress(asyncio.QueueEmpty):
+                    queue.get_nowait()
+            with contextlib.suppress(asyncio.QueueFull):
+                queue.put_nowait(chunk)
+
+    async def subscribe(self) -> AsyncIterator[bytes]:
+        queue: asyncio.Queue[bytes | None] = asyncio.Queue(maxsize=32)
+        for chunk in self._recent:
+            queue.put_nowait(chunk)
+        self._subscribers.add(queue)
+        self.client_count = len(self._subscribers)
+        try:
+            while True:
+                chunk = await queue.get()
+                if chunk is None:
+                    return
+                yield chunk
+        finally:
+            self._subscribers.discard(queue)
+            self.client_count = len(self._subscribers)
+
+    def reset(self) -> None:
+        self._recent.clear()
+        self.bytes_sent = 0
+        self.last_chunk_at = None
+
+    async def close(self) -> None:
+        for queue in tuple(self._subscribers):
+            with contextlib.suppress(asyncio.QueueFull):
+                queue.put_nowait(None)
+        self._subscribers.clear()
+        self.client_count = 0
+
+
+@dataclass
+class _Endpoint:
+    zone: AudioZoneProfile
+    port: int
+    token: str = field(default_factory=lambda: secrets.token_urlsafe(32))
+    broker: AudioStreamBroker = field(default_factory=AudioStreamBroker)
+    process: asyncio.subprocess.Process | None = None
+    ffmpeg: asyncio.subprocess.Process | None = None
+    pcm_task: asyncio.Task[None] | None = None
+    mp3_task: asyncio.Task[None] | None = None
+    process_log_task: asyncio.Task[None] | None = None
+    ffmpeg_log_task: asyncio.Task[None] | None = None
+    idle_task: asyncio.Task[None] | None = None
+    activation_task: asyncio.Task[None] | None = None
+    state: str = "starting"
+    diagnostic: str = "inicializando"
+    last_pcm_at: float | None = None
+    last_mp3_at: float | None = None
+    session_started_at: float | None = None
+    output_started: bool = False
+    linkplay_started: bool = False
+    last_error: str | None = None
+
+
+class AirPlayEndpointManager:
+    """Owns AirPlay 2 receiver processes and bridges PCM to a LinkPlay URL.
+
+    Shairport Sync and NQPTP are the only AirPlay transport components. The
+    physical amplifier is still controlled through Home Assistant's
+    ``media_player`` service API; this manager never opens a proprietary
+    LinkPlay socket.
+    """
+
+    def __init__(
+        self,
+        settings: Any,
+        ha: Any,
+        audio: Any,
+        event_recorder: EventRecorder,
+    ) -> None:
+        self.settings = settings
+        self.ha = ha
+        self.audio = audio
+        self.event_recorder = event_recorder
+        self._config = MultiroomConfig()
+        self._endpoints: dict[str, _Endpoint] = {}
+        self._nqptp: asyncio.subprocess.Process | None = None
+        self._nqptp_log_task: asyncio.Task[None] | None = None
+        self._lock = asyncio.Lock()
+        self._dependency_error: str | None = None
+        self._shairport_version = "not_started"
+        self._nqptp_version = "not_started"
+        self._ffmpeg_version = "not_started"
+        self._lan_address = _resolve_lan_address()
+
+    @property
+    def stream_port(self) -> int:
+        # The Ingress server itself serves the protected stream route. With
+        # host_network enabled this is reachable by a LinkPlay device on the
+        # LAN without opening a second unauthenticated web server.
+        return int(self.settings.app_port)
+
+    def _stream_url(self, endpoint: _Endpoint) -> str | None:
+        if not self._lan_address:
+            return None
+        return f"http://{self._lan_address}:{self.stream_port}/api/audio/airplay/{endpoint.zone.zone_id}/stream?token={endpoint.token}"
+
+    async def start(self, config: MultiroomConfig) -> None:
+        await self.apply_config(config)
+
+    async def apply_config(self, config: MultiroomConfig) -> None:
+        async with self._lock:
+            self._config = config.model_copy(deep=True)
+            wanted = {
+                zone.zone_id: zone
+                for zone in config.zones
+                if zone.enabled and zone.airplay.enabled and zone.area_id and zone.media_player_entity_id
+            }
+            if wanted and not await self._ensure_dependencies():
+                for endpoint in self._endpoints.values():
+                    endpoint.state = "blocked"
+                    endpoint.diagnostic = self._dependency_error or "dependências AirPlay não disponíveis"
+                return
+            if wanted:
+                try:
+                    await self._ensure_nqptp()
+                except (OSError, RuntimeError, TimeoutError) as exc:
+                    self._dependency_error = str(exc)
+                    await self.event_recorder(
+                        event="airplay_nqptp_unavailable",
+                        level="error",
+                        message=self._dependency_error,
+                        result="blocked",
+                    )
+                    for endpoint in self._endpoints.values():
+                        endpoint.state = "blocked"
+                        endpoint.diagnostic = self._dependency_error
+                    return
+            for zone_id in list(self._endpoints):
+                current = self._endpoints[zone_id]
+                desired = wanted.get(zone_id)
+                if desired is None or self._endpoint_changed(current.zone, desired):
+                    await self._stop_endpoint(zone_id)
+            occupied: set[int] = set()
+            for endpoint in self._endpoints.values():
+                occupied.add(endpoint.port)
+            for zone_id, zone in wanted.items():
+                if zone_id in self._endpoints:
+                    self._endpoints[zone_id].zone = zone
+                    continue
+                port = self._select_port(zone, occupied)
+                occupied.add(port)
+                await self._start_endpoint(zone, port)
+
+    @staticmethod
+    def _endpoint_changed(old: AudioZoneProfile, new: AudioZoneProfile) -> bool:
+        return (
+            old.area_id != new.area_id
+            or old.media_player_entity_id != new.media_player_entity_id
+            or old.airplay.service_name != new.airplay.service_name
+            or old.airplay.stable_id != new.airplay.stable_id
+            or old.airplay.listen_port != new.airplay.listen_port
+        )
+
+    @staticmethod
+    def _port_available(port: int) -> bool:
+        sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        try:
+            sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+            sock.bind(("0.0.0.0", port))
+            return True
+        except OSError:
+            return False
+        finally:
+            sock.close()
+
+    def _select_port(self, zone: AudioZoneProfile, occupied: set[int]) -> int:
+        preferred = zone.airplay.listen_port or DEFAULT_RAOP_PORTS.get(zone.zone_id, 7000)
+        for port in range(preferred, preferred + 100):
+            if port not in occupied and self._port_available(port):
+                return port
+        raise RuntimeError(f"não foi encontrada porta AirPlay livre para a zona {zone.zone_id}")
+
+    async def _run_version(self, executable: str, *args: str) -> str:
+        try:
+            process = await asyncio.create_subprocess_exec(
+                executable,
+                *args,
+                stdout=asyncio.subprocess.PIPE,
+                stderr=asyncio.subprocess.STDOUT,
+            )
+        except (OSError, ValueError) as exc:
+            raise RuntimeError(f"executável ausente: {executable}") from exc
+        stdout, _ = await asyncio.wait_for(process.communicate(), timeout=10)
+        text = (stdout or b"").decode("utf-8", errors="replace").strip()
+        if process.returncode not in (0, None):
+            raise RuntimeError(f"{executable} retornou código {process.returncode}")
+        return _redact_process_line(text.splitlines()[0] if text else "versão não informada")
+
+    async def _ensure_dependencies(self) -> bool:
+        if self._dependency_error is not None:
+            return False
+        try:
+            self._shairport_version = await self._run_version("shairport-sync", "-V")
+            self._nqptp_version = await self._run_version("nqptp", "-V")
+            self._ffmpeg_version = await self._run_version("ffmpeg", "-version")
+            version_text = self._shairport_version.casefold().replace(" ", "")
+            if "airplay2" not in version_text and "airplay-2" not in version_text:
+                raise RuntimeError("Shairport Sync foi compilado sem suporte AirPlay 2")
+            if not Path("/run/dbus/system_bus_socket").exists():
+                raise RuntimeError("barramento D-Bus do host não está disponível para o mDNS/Avahi")
+        except (OSError, RuntimeError, TimeoutError) as exc:
+            self._dependency_error = str(exc)
+            await self.event_recorder(
+                event="airplay_dependencies_unavailable",
+                level="error",
+                message=self._dependency_error,
+                result="blocked",
+            )
+            return False
+        return True
+
+    async def _ensure_nqptp(self) -> None:
+        if self._nqptp and self._nqptp.returncode is None:
+            return
+        if self._nqptp:
+            with contextlib.suppress(ProcessLookupError):
+                self._nqptp.terminate()
+        self._nqptp = await asyncio.create_subprocess_exec(
+            "nqptp",
+            "-v",
+            stdout=asyncio.subprocess.PIPE,
+            stderr=asyncio.subprocess.STDOUT,
+        )
+        self._nqptp_log_task = asyncio.create_task(self._consume_nqptp_log(), name="tecnohead-nqptp-log")
+        await asyncio.sleep(0.25)
+        if self._nqptp.returncode is not None:
+            raise RuntimeError("NQPTP não conseguiu reservar UDP 319/320")
+        await self.event_recorder(
+            event="airplay_nqptp_started",
+            message="NQPTP compartilhado iniciado para os receptores AirPlay 2",
+            command_kind="nqptp",
+            result="started",
+        )
+
+    async def _start_endpoint(self, zone: AudioZoneProfile, port: int) -> None:
+        endpoint = _Endpoint(zone=zone, port=port)
+        endpoint.state = "starting"
+        endpoint.diagnostic = "iniciando receptor AirPlay 2"
+        directory = self.settings.data_dir / "airplay"
+        directory.mkdir(parents=True, exist_ok=True)
+        config_path = directory / f"{zone.zone_id}.conf"
+        config_path.write_text(self._config_text(zone, port), encoding="utf-8")
+        try:
+            endpoint.ffmpeg = await asyncio.create_subprocess_exec(
+                "ffmpeg",
+                "-hide_banner",
+                "-loglevel",
+                "warning",
+                "-f",
+                PCM_SAMPLE_FORMAT,
+                "-ar",
+                str(PCM_RATE),
+                "-ac",
+                str(PCM_CHANNELS),
+                "-i",
+                "pipe:0",
+                "-f",
+                "mp3",
+                "-c:a",
+                "libmp3lame",
+                "-b:a",
+                "192k",
+                "-ar",
+                str(PCM_RATE),
+                "-ac",
+                str(PCM_CHANNELS),
+                "-flush_packets",
+                "1",
+                "pipe:1",
+                stdin=asyncio.subprocess.PIPE,
+                stdout=asyncio.subprocess.PIPE,
+                stderr=asyncio.subprocess.PIPE,
+            )
+            endpoint.process = await asyncio.create_subprocess_exec(
+                "shairport-sync",
+                "-c",
+                str(config_path),
+                stdout=asyncio.subprocess.PIPE,
+                stderr=asyncio.subprocess.PIPE,
+            )
+        except (OSError, ValueError) as exc:
+            endpoint.state = "blocked"
+            endpoint.last_error = str(exc)
+            endpoint.diagnostic = f"não foi possível iniciar processo AirPlay: {exc}"
+            await self.event_recorder(
+                event="airplay_endpoint_failed",
+                area_id=zone.area_id,
+                entity_id=zone.media_player_entity_id,
+                message=endpoint.diagnostic,
+                level="error",
+                result="blocked",
+            )
+            await self._terminate_process(endpoint.ffmpeg)
+            return
+        endpoint.state = "advertising"
+        endpoint.diagnostic = "AirPlay 2 anunciado; aguardando seleção Apple"
+        endpoint.pcm_task = asyncio.create_task(self._consume_pcm(endpoint), name=f"airplay-pcm-{zone.zone_id}")
+        endpoint.mp3_task = asyncio.create_task(self._consume_mp3(endpoint), name=f"airplay-mp3-{zone.zone_id}")
+        endpoint.process_log_task = asyncio.create_task(self._consume_process_log(endpoint), name=f"airplay-log-{zone.zone_id}")
+        endpoint.ffmpeg_log_task = asyncio.create_task(self._consume_ffmpeg_log(endpoint), name=f"airplay-ffmpeg-log-{zone.zone_id}")
+        endpoint.idle_task = asyncio.create_task(self._watch_idle(endpoint), name=f"airplay-idle-{zone.zone_id}")
+        self._endpoints[zone.zone_id] = endpoint
+        await self.event_recorder(
+            event="airplay_endpoint_started",
+            area_id=zone.area_id,
+            entity_id=zone.media_player_entity_id,
+            message=f"receptor AirPlay 2 TecnoHead {zone.zone_id} anunciado na porta {port}",
+            command_kind="shairport-sync",
+            result="advertising",
+        )
+
+    @staticmethod
+    def _config_text(zone: AudioZoneProfile, port: int) -> str:
+        service_name = zone.airplay.service_name or f"TecnoHead {zone.zone_id.title()}"
+        stable = re.sub(r"[^0-9a-f]", "", zone.airplay.stable_id.casefold())
+        device_id = (stable[:12] or secrets.token_hex(6)).ljust(12, "0")
+        shm_name = f"/tecnohead-{re.sub(r'[^a-z0-9-]', '-', zone.zone_id.casefold())}"[:63]
+        return f'''// Generated by TecnoHead Multimídia. Do not edit inside the container.
+general = {{
+  name = {_quote_config(service_name)};
+  service_type = "airplay2";
+  mdns_backend = "avahi";
+  output_backend = "stdout";
+  port = {port};
+  airplay_device_id = 0x{device_id}L;
+  nqptp_shared_memory_interface_name = {_quote_config(shm_name)};
+  ignore_volume_control = "yes";
+  interpolation = "soxr";
+  mixdown = "stereo";
+}};
+stdout = {{
+  output_rate = {PCM_RATE};
+  output_format = "S32_LE";
+  output_channels = {PCM_CHANNELS};
+}};
+sessioncontrol = {{
+  active_state_timeout = {STREAM_IDLE_SECONDS};
+}};
+diagnostics = {{
+  log_verbosity = 1;
+}};
+'''
+
+    async def _consume_pcm(self, endpoint: _Endpoint) -> None:
+        assert endpoint.process and endpoint.process.stdout and endpoint.ffmpeg and endpoint.ffmpeg.stdin
+        try:
+            while True:
+                chunk = await endpoint.process.stdout.read(65536)
+                if not chunk:
+                    break
+                endpoint.last_pcm_at = time.monotonic()
+                try:
+                    endpoint.ffmpeg.stdin.write(chunk)
+                    await endpoint.ffmpeg.stdin.drain()
+                except (BrokenPipeError, ConnectionResetError):
+                    break
+        except asyncio.CancelledError:
+            raise
+        except Exception as exc:
+            endpoint.last_error = _redact_process_line(str(exc))
+        finally:
+            if endpoint.ffmpeg and endpoint.ffmpeg.stdin:
+                with contextlib.suppress(BrokenPipeError, ConnectionResetError, OSError):
+                    endpoint.ffmpeg.stdin.close()
+            if endpoint.process and endpoint.process.returncode is None:
+                endpoint.state = "error"
+                endpoint.diagnostic = "Shairport Sync encerrou o fluxo de áudio"
+
+    async def _consume_mp3(self, endpoint: _Endpoint) -> None:
+        assert endpoint.ffmpeg and endpoint.ffmpeg.stdout
+        try:
+            while True:
+                chunk = await endpoint.ffmpeg.stdout.read(32768)
+                if not chunk:
+                    break
+                endpoint.last_mp3_at = time.monotonic()
+                await endpoint.broker.publish(chunk)
+                if not endpoint.output_started:
+                    endpoint.output_started = True
+                    endpoint.session_started_at = time.monotonic()
+                    endpoint.activation_task = asyncio.create_task(self._activate_linkplay(endpoint), name=f"airplay-activate-{endpoint.zone.zone_id}")
+        except asyncio.CancelledError:
+            raise
+        except Exception as exc:
+            endpoint.last_error = _redact_process_line(str(exc))
+
+    async def _activate_linkplay(self, endpoint: _Endpoint) -> None:
+        url = self._stream_url(endpoint)
+        if not url:
+            endpoint.state = "blocked"
+            endpoint.diagnostic = "não foi possível resolver um endereço LAN para a ponte de áudio"
+            return
+        try:
+            await self.audio.start_airplay_output(self._config, endpoint.zone.zone_id, url)
+            endpoint.linkplay_started = True
+            endpoint.state = "streaming"
+            endpoint.diagnostic = "PCM recebido; reprodução HTTP solicitada ao LinkPlay via Home Assistant"
+            await self.event_recorder(
+                event="airplay_linkplay_play_requested",
+                area_id=endpoint.zone.area_id,
+                entity_id=endpoint.zone.media_player_entity_id,
+                message="URL de áudio AirPlay encaminhada ao media_player pela API do Home Assistant",
+                command_kind="media_player.play_media",
+                result="accepted_by_home_assistant",
+                physical_confirmation="not_observable",
+            )
+        except (HomeAssistantError, RuntimeError, ValueError) as exc:
+            endpoint.state = "blocked"
+            endpoint.last_error = _redact_process_line(str(exc))
+            endpoint.diagnostic = endpoint.last_error
+            await self.event_recorder(
+                event="airplay_linkplay_play_blocked",
+                area_id=endpoint.zone.area_id,
+                entity_id=endpoint.zone.media_player_entity_id,
+                message=endpoint.last_error,
+                level="warning",
+                command_kind="media_player.play_media",
+                result="blocked",
+            )
+
+    async def _watch_idle(self, endpoint: _Endpoint) -> None:
+        try:
+            while endpoint.process and endpoint.process.returncode is None:
+                await asyncio.sleep(1)
+                if endpoint.output_started and endpoint.last_mp3_at and time.monotonic() - endpoint.last_mp3_at > STREAM_IDLE_SECONDS:
+                    await self._deactivate_linkplay(endpoint)
+        except asyncio.CancelledError:
+            raise
+
+    async def _deactivate_linkplay(self, endpoint: _Endpoint) -> None:
+        if not endpoint.output_started:
+            return
+        endpoint.output_started = False
+        if endpoint.linkplay_started:
+            with contextlib.suppress(Exception):
+                await self.audio.stop_airplay_output(self._config, endpoint.zone.zone_id)
+        endpoint.linkplay_started = False
+        endpoint.broker.reset()
+        endpoint.state = "advertising"
+        endpoint.diagnostic = "sessão AirPlay encerrada; aguardando nova seleção Apple"
+        await self.event_recorder(
+            event="airplay_session_stopped",
+            area_id=endpoint.zone.area_id,
+            entity_id=endpoint.zone.media_player_entity_id,
+            message="fluxo AirPlay sem áudio; saída LinkPlay liberada sem retomar fonte automaticamente",
+            command_kind="airplay-session",
+            result="stopped",
+        )
+
+    async def _consume_process_log(self, endpoint: _Endpoint) -> None:
+        if not endpoint.process or not endpoint.process.stderr:
+            return
+        try:
+            async for raw in endpoint.process.stderr:
+                line = _redact_process_line(raw.decode("utf-8", errors="replace"))
+                if line:
+                    endpoint.diagnostic = line
+        except asyncio.CancelledError:
+            raise
+
+    async def _consume_ffmpeg_log(self, endpoint: _Endpoint) -> None:
+        if not endpoint.ffmpeg or not endpoint.ffmpeg.stderr:
+            return
+        try:
+            async for raw in endpoint.ffmpeg.stderr:
+                line = _redact_process_line(raw.decode("utf-8", errors="replace"))
+                if line:
+                    endpoint.last_error = line
+        except asyncio.CancelledError:
+            raise
+
+    async def _consume_nqptp_log(self) -> None:
+        if not self._nqptp or not self._nqptp.stdout:
+            return
+        try:
+            async for raw in self._nqptp.stdout:
+                line = _redact_process_line(raw.decode("utf-8", errors="replace"))
+                if line and "error" in line.casefold():
+                    self._dependency_error = line
+        except asyncio.CancelledError:
+            raise
+
+    async def _stop_endpoint(self, zone_id: str) -> None:
+        endpoint = self._endpoints.pop(zone_id, None)
+        if not endpoint:
+            return
+        for task in (endpoint.activation_task, endpoint.idle_task, endpoint.pcm_task, endpoint.mp3_task, endpoint.process_log_task, endpoint.ffmpeg_log_task):
+            if task and not task.done():
+                task.cancel()
+        for task in (endpoint.activation_task, endpoint.idle_task, endpoint.pcm_task, endpoint.mp3_task, endpoint.process_log_task, endpoint.ffmpeg_log_task):
+            if task:
+                with contextlib.suppress(asyncio.CancelledError, Exception):
+                    await task
+        await self._terminate_process(endpoint.process)
+        await self._terminate_process(endpoint.ffmpeg)
+        await endpoint.broker.close()
+
+    @staticmethod
+    async def _terminate_process(process: asyncio.subprocess.Process | None) -> None:
+        if not process or process.returncode is not None:
+            return
+        with contextlib.suppress(ProcessLookupError):
+            process.terminate()
+        with contextlib.suppress(asyncio.TimeoutError):
+            await asyncio.wait_for(process.wait(), timeout=3)
+        if process.returncode is None:
+            with contextlib.suppress(ProcessLookupError):
+                process.kill()
+
+    async def stop(self) -> None:
+        async with self._lock:
+            for zone_id in list(self._endpoints):
+                await self._stop_endpoint(zone_id)
+            if self._nqptp:
+                await self._terminate_process(self._nqptp)
+            if self._nqptp_log_task and not self._nqptp_log_task.done():
+                self._nqptp_log_task.cancel()
+                with contextlib.suppress(asyncio.CancelledError):
+                    await self._nqptp_log_task
+            self._nqptp = None
+
+    def stream(self, zone_id: str, token: str) -> AsyncIterator[bytes]:
+        endpoint = self._endpoints.get(zone_id)
+        if not endpoint or not secrets.compare_digest(endpoint.token, token):
+            raise KeyError(zone_id)
+        return endpoint.broker.subscribe()
+
+    def report(self) -> dict[str, Any]:
+        if self._dependency_error:
+            overall_state = "blocked"
+            reason = self._dependency_error
+        elif not self._endpoints:
+            overall_state = "not_configured"
+            reason = "ative a identidade AirPlay 2 nas zonas habilitadas"
+        elif any(item.state == "streaming" for item in self._endpoints.values()):
+            overall_state = "streaming"
+            reason = "há uma sessão AirPlay encaminhada ao LinkPlay; o som ainda precisa de confirmação física"
+        elif any(item.state == "advertising" for item in self._endpoints.values()):
+            overall_state = "ready"
+            reason = "destinos AirPlay 2 anunciados; selecione um no iPhone para iniciar a prova física"
+        else:
+            overall_state = "starting"
+            reason = "processos AirPlay 2 em inicialização"
+        return {
+            "state": overall_state,
+            "reason": reason,
+            "shairport_sync": self._shairport_version,
+            "airplay2_handshake": "not_tested",
+            "nqptp": self._nqptp_version if self._nqptp else "not_started",
+            "mdns": "host_dbus_avahi" if Path("/run/dbus/system_bus_socket").exists() else "not_available",
+            "physical_audio": "not_tested",
+            "stream_host_resolved": bool(self._lan_address),
+            "stream_port": self.stream_port,
+            "endpoints": {
+                zone_id: {
+                    "service_name": endpoint.zone.airplay.service_name or f"TecnoHead {zone_id.title()}",
+                    "listen_port": endpoint.port,
+                    "state": endpoint.state,
+                    "diagnostic": endpoint.diagnostic,
+                    "clients": endpoint.broker.client_count,
+                    "bytes_sent": endpoint.broker.bytes_sent,
+                    "last_error": endpoint.last_error,
+                    "session_started_at": datetime.fromtimestamp(endpoint.session_started_at, UTC).isoformat() if endpoint.session_started_at else None,
+                }
+                for zone_id, endpoint in self._endpoints.items()
+            },
+        }

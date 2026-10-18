@@ -1,5 +1,14 @@
 # Changelog
 
+## 1.4.0 — AirPlay 2 virtual instalável
+
+- Empacota Shairport Sync upstream com AirPlay 2 real e NQPTP em revisões fixadas.
+- Adiciona duas identidades independentes, Cozinha e Piscina, com portas RAOP distintas, NQPTP compartilhado e mDNS do host.
+- Converte PCM recebido para stream local e solicita reprodução ao LinkPlay através de `media_player.play_media` do Home Assistant.
+- Protege HDMI ARC da Piscina por padrão e bloqueia tomada silenciosa da fonte da TV.
+- Mantém o HomeKit Bridge existente separado dos destinos AirPlay; homologação física no iPhone continua obrigatória.
+- Adiciona rota de stream temporária, diagnósticos por endpoint e testes unitários de ponte/ARC.
+
 ## 1.3.2 — service calls via WebSocket
 
 - Corrige `401 Unauthorized` no controle de volume do LinkPlay usando a API WebSocket autenticada do Home Assistant para chamadas de serviço.

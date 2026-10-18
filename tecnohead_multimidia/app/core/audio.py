@@ -44,6 +44,10 @@ class AudioManager:
         self.ha = ha
         self.discovery = discovery
         self.event_recorder = event_recorder
+        self._airplay_report_provider: Callable[[], dict[str, Any]] | None = None
+
+    def set_airplay_report_provider(self, provider: Callable[[], dict[str, Any]]) -> None:
+        self._airplay_report_provider = provider
 
     async def _record(self, **kwargs: Any) -> None:
         if self.event_recorder:
@@ -218,8 +222,9 @@ class AudioManager:
                 statuses.append({"zone_id": zone_id, "label": ZONE_LABELS[zone_id], "enabled": False, "status": "unconfigured", "diagnostic": "zona ainda não cadastrada"})
         return {"zones": statuses, "airplay": self.airplay_report(config, statuses), "group_strategy": config.group_strategy.value}
 
-    @staticmethod
-    def airplay_report(config: MultiroomConfig, statuses: list[dict[str, Any]]) -> dict[str, Any]:
+    def airplay_report(self, config: MultiroomConfig, statuses: list[dict[str, Any]]) -> dict[str, Any]:
+        if self._airplay_report_provider:
+            return self._airplay_report_provider()
         configured = [item for item in statuses if item.get("enabled") and item.get("entity_id")]
         linkplay_ready = all(
             (item.get("entity") or {}).get("integration") in {"linkplay", "link_play"}
@@ -244,6 +249,70 @@ class AudioManager:
             "physical_audio": "not_tested",
             "group_strategy": config.group_strategy.value,
         }
+
+    async def validate_airplay_zone(self, config: MultiroomConfig, zone_id: str) -> tuple[AudioZoneProfile, dict[str, Any], dict[str, Any]]:
+        return await self._checked_zone(config, zone_id)
+
+    async def start_airplay_output(self, config: MultiroomConfig, zone_id: str, stream_url: str) -> dict[str, Any]:
+        """Ask the configured LinkPlay entity to consume the local AirPlay stream."""
+
+        zone, entity, state = await self._checked_zone(config, zone_id)
+        attributes = state.get("attributes", {}) if isinstance(state, dict) else {}
+        current_source = attributes.get("source", entity.get("source"))
+        if zone.priority is AudioPriority.HDMI_ARC and not zone.airplay_may_override_arc:
+            if not current_source:
+                raise AudioActionError("fonte da Piscina não confirmada; o App não pode substituir HDMI ARC com segurança")
+            if self._is_tv_or_arc_source(str(current_source)):
+                raise AudioActionError("HDMI ARC tem prioridade; habilite a substituição explícita antes de usar AirPlay na Piscina")
+        await self.ha.call_service(
+            "media_player",
+            "play_media",
+            entity_id=zone.media_player_entity_id or "",
+            data={"media_content_type": "music", "media_content_id": stream_url},
+        )
+        await self._record(
+            area_id=zone.area_id,
+            event="airplay_output_requested",
+            message="stream AirPlay local encaminhado ao media_player pelo Home Assistant",
+            entity_id=zone.media_player_entity_id,
+            command_kind="media_player.play_media",
+            result="accepted_by_home_assistant",
+            physical_confirmation="not_observable",
+        )
+        return {"ok": True, "zone_id": zone_id, "transport": "home_assistant_media_player_play_media"}
+
+    async def stop_airplay_output(self, config: MultiroomConfig, zone_id: str) -> dict[str, Any]:
+        """Stop only the output that this App started, never reclaiming ARC."""
+
+        zone, entity, state = await self._checked_zone(config, zone_id)
+        attributes = state.get("attributes", {}) if isinstance(state, dict) else {}
+        current_source = attributes.get("source", entity.get("source"))
+        if zone.priority is AudioPriority.HDMI_ARC and self._is_tv_or_arc_source(str(current_source or "")):
+            await self._record(
+                area_id=zone.area_id,
+                event="airplay_output_stop_skipped_arc",
+                message="saída AirPlay não foi interrompida porque a Piscina voltou para HDMI ARC",
+                entity_id=zone.media_player_entity_id,
+                command_kind="media_player.media_stop",
+                result="skipped",
+            )
+            return {"ok": True, "skipped": True, "reason": "hdmi_arc_priority"}
+        await self.ha.call_service(
+            "media_player",
+            "media_stop",
+            entity_id=zone.media_player_entity_id or "",
+            data={},
+        )
+        await self._record(
+            area_id=zone.area_id,
+            event="airplay_output_stopped",
+            message="saída AirPlay parada pelo media_player via Home Assistant",
+            entity_id=zone.media_player_entity_id,
+            command_kind="media_player.media_stop",
+            result="accepted_by_home_assistant",
+            physical_confirmation="not_observable",
+        )
+        return {"ok": True, "zone_id": zone_id}
 
     async def _checked_zone(self, config: MultiroomConfig, zone_id: str) -> tuple[AudioZoneProfile, dict[str, Any], dict[str, Any]]:
         zone = self._zone_config(config, zone_id)

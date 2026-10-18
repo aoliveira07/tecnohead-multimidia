@@ -43,6 +43,10 @@ jobs:
           assert cfg['slug'] == 'tecnohead_multimidia'
           assert cfg['ingress'] is True and cfg['homeassistant_api'] is True
           assert 'mqtt:want' in cfg['services']
+          assert cfg['host_network'] is True
+          assert cfg['host_ipc'] is True
+          assert cfg['host_dbus'] is True
+          assert cfg['realtime'] is True
           assert set(cfg['arch']) == {'amd64', 'aarch64'}
           print('config.yaml OK')
           PY
