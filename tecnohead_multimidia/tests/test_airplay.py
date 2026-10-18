@@ -36,7 +36,22 @@ def test_airplay_config_has_distinct_airplay2_identity_and_port(tmp_path):
     assert 'service_type = "airplay2"' in config
     assert 'name = "TecnoHead Cozinha"' in config
     assert "port = 7000;" in config
+    assert 'regtype = "_airplay._tcp";' in config
     assert 'nqptp_shared_memory_interface_name = "/tecnohead-kitchen"' in config
+
+
+def test_airplay_config_binds_runtime_lan_address_without_persisting_it(tmp_path):
+    async def record(**kwargs):
+        return None
+
+    manager = AirPlayEndpointManager(Settings(data_dir=tmp_path), None, None, record)  # type: ignore[arg-type]
+    manager._lan_address = "192.0.2.10"
+    zone = AudioZoneProfile(
+        zone_id="pool",
+        airplay={"enabled": True, "service_name": "TecnoHead Piscina", "stable_id": "fedcba9876543210"},
+    )
+    config = manager._config_text(zone, 7001)
+    assert 'address = "192.0.2.10";' in config
 
 
 async def test_airplay_output_never_takes_pool_arc_without_explicit_policy(fake_ha):

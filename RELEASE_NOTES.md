@@ -1,5 +1,11 @@
 # Release notes
 
+## v1.4.4
+
+Esta atualização corrige a verificação operacional dos endpoints AirPlay 2. O App não apresenta mais um processo encerrado como se estivesse anunciado: o endereço LAN é aplicado somente em runtime, o registro `_airplay._tcp` é explícito e o diagnóstico mantém as últimas linhas sanitizadas do Shairport Sync.
+
+O seletor Apple ainda precisa ser testado com áudio real. `Cozinha Room` e `Piscina Room` continuam sendo os receivers LinkPlay existentes no HomeKit Bridge; eles não são usados como prova de que `TecnoHead Cozinha` e `TecnoHead Piscina` foram anunciados.
+
 ## v1.4.3 — porta dedicada para AirPlay 2 em rede do host
 
 A imagem usa a porta 18199 para o Ingress e para o stream local do App. A mudança resolve o conflito de bind observado quando a rede do host é necessária para mDNS/RAOP/NQPTP. Não altera a lógica de cenas, IR, LinkPlay, HDMI ARC ou HomeKit Bridge.

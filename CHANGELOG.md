@@ -1,5 +1,11 @@
 # Changelog
 
+## 1.4.4 — diagnóstico de anúncio AirPlay 2
+
+- Vincula cada receptor Shairport Sync ao endereço LAN resolvido em tempo de execução e explicita o registro mDNS AirPlay 2.
+- Detecta quando o processo Shairport Sync encerra após iniciar, em vez de manter um falso estado “Visível no AirPlay”.
+- Mantém uma cauda sanitizada do log do endpoint para diagnosticar Avahi/D-Bus sem expor IPs ou credenciais.
+
 ## 1.4.3 — porta dedicada para host network
 
 - Move o Ingress e o stream local para a porta 18199, evitando o conflito observado na atualização para rede do host.

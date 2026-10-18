@@ -1,4 +1,8 @@
-# Relatório de instalação e homologação — TecnoHead Multimídia v1.4.3
+# Relatório de instalação e homologação — TecnoHead Multimídia v1.4.4
+
+## Addendum v1.4.4 — anúncio AirPlay 2
+
+Durante a validação em 18/10/2026, uma consulta mDNS na LAN não encontrou `TecnoHead Cozinha` nem `TecnoHead Piscina`; encontrou somente os receivers LinkPlay já existentes. A release v1.4.4 corrige o diagnóstico de encerramento precoce, vincula cada endpoint ao endereço LAN resolvido em runtime e explicita `_airplay._tcp`. A etapa de descoberta e áudio físico permanece NÃO TESTADA até novo teste no iPhone.
 
 ## Addendum v1.4.3 — correção de conflito de porta
 
