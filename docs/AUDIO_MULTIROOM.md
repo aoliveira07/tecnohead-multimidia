@@ -8,7 +8,7 @@ O áudio v1.3 é um módulo do mesmo TecnoHead Multimídia. Ele cadastra zonas p
 - Uma zona só aceita `media_player` da própria área efetiva.
 - Volume, mudo, fonte e grupo são enviados pela API oficial do Home Assistant.
 - `media_player.join`/`unjoin` só são chamados após confirmação explícita do operador.
-- A Piscina tem prioridade HDMI ARC. O App não muda sua fonte automaticamente quando a TV liga e não reconfigura CEC.
+- A Piscina observa HDMI ARC. Quando a TV liga, o próprio amplificador pode assumir ARC via CEC; o App não reconfigura CEC. Uma seleção AirPlay/Spotify explícita também é encaminhada ao player, sem bloqueio adicional no App.
 - O agrupamento LinkPlay e a seleção dupla do iPhone são estratégias distintas; não são executados juntos automaticamente.
 - Após reinício, o App restaura configuração, mas não retoma stream, grupo ou fonte por conta própria.
 

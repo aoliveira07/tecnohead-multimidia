@@ -2,11 +2,10 @@ from __future__ import annotations
 
 import asyncio
 
-import pytest
 from test_audio import _audio_snapshot, _config
 
 from app.core.airplay import AirPlayEndpointManager, AudioStreamBroker
-from app.core.audio import AudioActionError, AudioManager
+from app.core.audio import AudioManager
 from app.core.discovery import DiscoveryService
 from app.models import AudioZoneProfile
 from app.settings import Settings
@@ -70,14 +69,22 @@ def test_private_mdns_fallback_uses_one_shared_bus_and_avahi(tmp_path):
     assert "disable-user-service-publishing=no" in avahi_config
 
 
-async def test_airplay_output_never_takes_pool_arc_without_explicit_policy(fake_ha):
+async def test_airplay_output_allows_pool_request_when_last_source_is_arc(fake_ha):
     _audio_snapshot(fake_ha)
     discovery = DiscoveryService(fake_ha)
     manager = AudioManager(fake_ha, discovery)
     config = _config()
-    with pytest.raises(AudioActionError, match="HDMI ARC tem prioridade"):
-        await manager.start_airplay_output(config, "pool", "http://192.0.2.1:18199/stream")
-    assert not any(call["service"] == "play_media" for call in fake_ha.calls)
+    result = await manager.start_airplay_output(config, "pool", "http://192.0.2.1:18199/stream")
+    assert result["transport"] == "home_assistant_media_player_play_media"
+    assert fake_ha.calls[-1] == {
+        "domain": "media_player",
+        "service": "play_media",
+        "entity_id": "media_player.pool_amp",
+        "data": {
+            "media_content_type": "music",
+            "media_content_id": "http://192.0.2.1:18199/stream",
+        },
+    }
 
 
 async def test_airplay_output_uses_ha_play_media_for_kitchen(fake_ha):

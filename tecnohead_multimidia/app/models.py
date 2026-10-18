@@ -160,7 +160,9 @@ class AudioZoneProfile(BaseModel):
     max_volume_percent: int = Field(default=30, ge=0, le=100)
     allow_absolute_volume: bool = False
     priority: AudioPriority = AudioPriority.NORMAL
-    airplay_may_override_arc: bool = False
+    # Kept for backwards-compatible config files. ARC is observed and left to
+    # the physical amplifier; it no longer gates an explicit AirPlay request.
+    airplay_may_override_arc: bool = True
     airplay: AirPlayEndpointProfile = Field(default_factory=AirPlayEndpointProfile)
 
 
@@ -185,7 +187,9 @@ class AudioZoneUpdate(BaseModel):
     max_volume_percent: int = Field(default=30, ge=0, le=100)
     allow_absolute_volume: bool = False
     priority: AudioPriority = AudioPriority.NORMAL
-    airplay_may_override_arc: bool = False
+    # Legacy field retained so v1.4.x configs can be saved without a reset.
+    # The audio engine no longer blocks AirPlay based on this value.
+    airplay_may_override_arc: bool = True
     airplay: AirPlayEndpointProfile = Field(default_factory=AirPlayEndpointProfile)
 
 

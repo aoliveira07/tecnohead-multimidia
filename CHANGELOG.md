@@ -1,5 +1,12 @@
 # Changelog
 
+## 1.4.7 — AirPlay explícito com ARC observado
+
+- Remove o bloqueio que recusava AirPlay na Piscina quando a última fonte observada era HDMI/ARC.
+- Mantém a troca automática de fonte da TV/CEC sob responsabilidade do amplificador, sem o App disputar a fonte.
+- Ao parar, preserva a proteção da TV: se o player já retornou a ARC, o App não envia `media_stop`.
+- Atualiza o editor e a documentação para refletir a política operacional real.
+
 ## 1.4.6 — política D-Bus do responder mDNS
 
 - Permite no barramento D-Bus privado do App as respostas e sinais necessários entre Avahi e Shairport Sync.

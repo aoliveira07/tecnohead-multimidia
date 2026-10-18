@@ -29,7 +29,7 @@ Na v1.4.5, o App consulta o Avahi do host antes de publicar. Se o HAOS não ofer
 5. No editor, selecione entidades oferecidas apenas pela área atual. A entidade `remote.ir_cinema` será sugerida quando realmente estiver associada à área Cinema no HA.
 6. Salve o perfil e valide primeiro ações sem IR; use os botões de teste IR somente com confirmação local e o projetor em condição segura.
 
-Para áudio, siga [AUDIO_MULTIROOM.md](docs/AUDIO_MULTIROOM.md) e [AIRPLAY2_BRIDGE.md](docs/AIRPLAY2_BRIDGE.md). Ative cada identidade AirPlay somente depois de confirmar os players físicos. A Piscina permanece protegida por HDMI ARC por padrão; o App não toma a fonte da TV sem uma decisão explícita.
+Para áudio, siga [AUDIO_MULTIROOM.md](docs/AUDIO_MULTIROOM.md) e [AIRPLAY2_BRIDGE.md](docs/AIRPLAY2_BRIDGE.md). Ative cada identidade AirPlay somente depois de confirmar os players físicos. A Piscina mantém o comportamento ARC do amplificador: a TV pode assumir a fonte ao ligar, enquanto uma seleção AirPlay explícita é encaminhada pelo App sem um bloqueio adicional.
 
 Para clientes novos, siga [INSTALL.md](INSTALL.md) e [MANUAL_IMPLANTACAO_CLIENTE.md](docs/MANUAL_IMPLANTACAO_CLIENTE.md).
 

@@ -1,5 +1,11 @@
 # Release notes
 
+## v1.4.7 — AirPlay explícito e HDMI ARC observado
+
+A Piscina não bloqueia mais uma seleção AirPlay/Spotify quando a última fonte observada é HDMI/ARC. O App encaminha a solicitação ao `media_player` do Home Assistant e deixa o amplificador fazer sua própria arbitragem de fonte. Ao ligar a TV, o comportamento CEC/ARC permanece intocado; ao parar uma sessão que já voltou a ARC, o App evita enviar `media_stop`.
+
+Esta versão não altera o controle BroadLink/IR, o HomeKit Bridge, o LinkPlay físico ou as cenas Cinema/TV. O teste físico da Piscina deve ser repetido em volume baixo e com a seleção AirPlay feita pelo operador.
+
 ## v1.4.6
 
 Corrige a política do D-Bus privado usado pelo responder Avahi interno. A versão anterior iniciava o processo, mas rejeitava respostas de método e sinais necessários para a publicação dos serviços AirPlay 2. A correção permanece isolada ao barramento interno do App e não altera o serviço mDNS global do HAOS.

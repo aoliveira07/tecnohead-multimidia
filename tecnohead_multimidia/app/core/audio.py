@@ -256,14 +256,12 @@ class AudioManager:
     async def start_airplay_output(self, config: MultiroomConfig, zone_id: str, stream_url: str) -> dict[str, Any]:
         """Ask the configured LinkPlay entity to consume the local AirPlay stream."""
 
-        zone, entity, state = await self._checked_zone(config, zone_id)
-        attributes = state.get("attributes", {}) if isinstance(state, dict) else {}
-        current_source = attributes.get("source", entity.get("source"))
-        if zone.priority is AudioPriority.HDMI_ARC and not zone.airplay_may_override_arc:
-            if not current_source:
-                raise AudioActionError("fonte da Piscina não confirmada; o App não pode substituir HDMI ARC com segurança")
-            if self._is_tv_or_arc_source(str(current_source)):
-                raise AudioActionError("HDMI ARC tem prioridade; habilite a substituição explícita antes de usar AirPlay na Piscina")
+        zone, _entity, _state = await self._checked_zone(config, zone_id)
+        # The amplifier owns source arbitration. When the TV is turned on it
+        # may select ARC through its native CEC/ARC path; an explicit AirPlay
+        # request must still be allowed to reach the player, even if the last
+        # observed source was HDMI/ARC. Do not fight that hardware behavior or
+        # implement a second source lock in the App.
         await self.ha.call_service(
             "media_player",
             "play_media",

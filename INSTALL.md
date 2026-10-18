@@ -29,7 +29,7 @@ Este App não requer servidor externo, banco PostgreSQL, HACS, arquivo YAML de a
 1. Abra **Áudio Multiroom** e confirme as áreas reais de Cozinha e Piscina.
 2. Cadastre somente os `media_player` que o HA mostra na respectiva área. Não use uma TV universal como substituto do amplificador.
 3. Comece com limite de volume baixo. Teste leitura, volume e mudo antes de fontes ou grupo.
-4. Na Piscina, preserve HDMI ARC: o App não troca a fonte automaticamente quando a TV liga.
+4. Na Piscina, preserve HDMI ARC: o amplificador continua assumindo ARC quando a TV liga. O App não envia troca automática concorrente, mas encaminha uma seleção AirPlay/Spotify explícita ao player.
 5. Só use **Compartilhar TV Piscina → Cozinha** depois de confirmar suporte `join` no player LinkPlay novo e observar áudio nas duas zonas.
 6. A ponte AirPlay 2 requer o gate físico G2 de [AUDIO_TEST_PLAN.md](docs/AUDIO_TEST_PLAN.md); encontrar um nome no iPhone não basta.
 
