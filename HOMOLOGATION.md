@@ -1,4 +1,4 @@
-# Relatório de instalação e homologação — TecnoHead Multimídia v1.3.0
+# Relatório de instalação e homologação — TecnoHead Multimídia v1.3.1
 
 ## Addendum v1.3.0 — áudio multiroom (18/10/2026)
 
@@ -8,11 +8,15 @@ O resultado fiel é: **código implementado e testado localmente; AirPlay 2/Link
 
 O próximo dado impeditivo é o modelo atual do amplificador da Piscina ou a entidade `media_player` que o Home Assistant criou para ele. Depois disso, será possível testar G1 antes de decidir as permissões de rede necessárias para G2. Não foi alterado HDMI ARC/CEC.
 
+## Addendum v1.3.1 — correção do intervalo e atualização live (18/10/2026)
+
+A release `v1.3.1` restaura no código o default exigido pelo handoff: OFF uma vez, espera monotônica de 5,0 s após o retorno da chamada e OFF uma segunda vez. O perfil Cinema persistido no HAOS foi alinhado para `ON 1`, `OFF 2`, `5,0 s` sem transmitir IR.
+
 ## Status real em 18/10/2026
 
 **Instalado e configurado no HAOS; pronto para testes físicos manuais. Ainda não homologado fisicamente.**
 
-O App foi atualizado pelo catálogo de Apps a partir do repositório autorizado, de 1.2.11 para 1.3.0, e confirmado como “Em funcionamento”. O Ingress abriu com o indicador `v1.3.0` e “HAOS online”; a descoberta real do Home Assistant respondeu, o painel de áudio apareceu com as duas zonas sem cadastro físico e o perfil Cinema permaneceu persistido. O MQTT Discovery reconectou após a atualização. O intervalo OFF do perfil Cinema permanece em 4,0 s e foi preservado sem iniciar uma cena ou teste IR.
+O App foi atualizado pelo catálogo de Apps a partir do repositório autorizado, de 1.3.0 para 1.3.1, e confirmado como “Em funcionamento”. O Ingress abriu com o indicador `v1.3.1` e “HAOS online”; a descoberta real do Home Assistant respondeu, o painel de áudio apareceu com as duas zonas sem cadastro físico e o perfil Cinema permaneceu persistido. O MQTT Discovery reconectou após a atualização. O intervalo OFF do perfil Cinema está em 5,0 s e foi salvo sem iniciar uma cena ou teste IR.
 
 Durante esta revalidação do Denon, não foi acionado botão de cena nem teste IR; a etapa executada foi cadastral/operacional.
 
@@ -82,7 +86,7 @@ Legenda: `PASSOU` = evidência observada; `PARCIAL` = parte validada, parte pend
 - Release multiarch: `v1.2.11`, publicada após build `amd64`/`aarch64` bem-sucedido.
 - Validação no painel: `remote.ir_cinema` associado a Cinema; nesta revalidação do Denon não foi acionado botão de cena nem teste IR.
 - Denon real: integração com um dispositivo ativo, dispositivo na área Cinema, `media_player.denon_cinema` selecionado e fontes `Apple TV`/`TV Audio` gravadas no perfil.
-- Configuração real: perfil Cinema salvo com ON 1, OFF 2 e intervalo OFF de 4,0 s; atraso de luzes permanece 30 s.
+- Configuração real: perfil Cinema salvo com ON 1, OFF 2 e intervalo OFF de 5,0 s; atraso de luzes permanece 30 s.
 - MQTT real: dispositivo TecnoHead na área Cinema, seis entidades, estado inicial Desligado/idle/Pronto.
 
 ## Próximo passo manual
