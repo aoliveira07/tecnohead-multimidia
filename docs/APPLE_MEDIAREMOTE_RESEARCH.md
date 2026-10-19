@@ -1,0 +1,40 @@
+# Apple MediaRemote no próprio destino AirPlay 2 — pesquisa v1.3.2
+
+Estado em 19/10/2026: **parcial, sem homologação física desta alteração**. Este documento é a trilha de evidência do handoff v1.3.2. Não há segundo `media_player`, Receiver, tile HomeKit ou mudança de identidade Apple nesta investigação.
+
+## Inventário e rollback
+
+- Repositório: `https://github.com/aoliveira07/tecnohead-multimidia`.
+- Base estável publicada: tag `v1.4.16`, commit `7c391d665ca9889debf800d33d25e536215ccbe5`. O commit de pesquisa anterior é `3eebe82caece7cf75f15f37b6b30f2aef25b46cc` em `main`.
+- Ensaio isolado: branch `experiment/mediaremote-now-playing`, criado a partir de `3eebe82`. Retorno do código: `git switch main` ou tag `v1.4.16`; isso **não** substitui backup de `/data` e das identidades/pairings da instalação HAOS.
+- A sessão autenticada do HAOS confirmou **App v1.4.16 em execução** no painel de Apps e no próprio Ingress. O diagnóstico do App mostra Shairport `cf6998d-AirPlay2-smi11-OpenSSL-Avahi-ALSA-stdout-pipe-metadata-dbus-mpris` e NQPTP `1.2.9`, `smi11`, ambos em execução, com endpoints Cozinha/Piscina publicados. Core e Supervisor: `2026.10.2`; HAOS: `18.3`. Essa verificação é de runtime, não de controles no Casa. Não copiar URL/IP/identidade do cliente ao repositório.
+- Dockerfile do código-fonte fixa Shairport Sync `cf6998daa1876c5a8f97128a960c8afc0e731841`, 7 commits após a tag 5.6, sem arquivos C alterados nessa diferença; compila `--with-airplay-2 --with-dbus-interface --with-mpris-interface --with-metadata --with-metadata-pipe`. NQPTP fixa `ab8fb67483411640fd7f1e193889482f2421c37c`, o commit da tag 1.2.9. A compatibilidade `smi11` precisa ser confirmada **nos binários em execução** antes de atualização.
+- Duas instâncias Shairport, D-Bus de sessão separado por zona, um NQPTP, Avahi e saída PCM→LinkPlay permanecem inalterados no branch. O leitor de metadados anterior só tratava `ssnc/pvol` para volume. O painel em execução confirmou um player canônico por zona, limite de volume 100% configurado em ambas e política HDMI ARC da Piscina. Os IDs específicos do cliente ficam fora do repositório. Nenhum comando físico foi enviado nesta inspeção.
+
+## Evidência e classificação
+
+| Nível | Observação | O que ela **não** prova |
+| --- | --- | --- |
+| Upstream implementado | [Release Shairport Sync 5.6](https://github.com/mikebrady/shairport-sync/releases/tag/5.6): comandos AirPlay 2 para o emissor, `NowPlayingInformation` e `CommandInformation` em D-Bus; `RemoteControl.Available` pode ser `false` apesar de comandos ativos. | Que o app Casa exponha controles no cartão do acessório. |
+| Código do App | O Shairport fixado já é posterior a 5.6; o pipe recebe `ssnc/copl`. A sonda opcional deste branch observa somente presença de campos/comandos do emissor, sem guardar seus valores. | Que o hub recebeu Now Playing, ou que a Apple habilitou a UI. |
+| Experimento comunitário | [Issue #2182](https://github.com/mikebrady/shairport-sync/issues/2182): um build **modificado** encaminhou Now Playing/artwork por Remote Control Only; o hub respondeu, mas o cartão Casa continuou vazio. O autor corrigiu explicitamente a alegação inicial: o build stock não faz esse encaminhamento. | Resultado na instalação TecnoHead ou especificação oficial Apple. |
+| Engenharia reversa, hipótese | A #2182 e um [pseudocódigo de MediaRemote](https://github.com/EthanArbuckle/iPhone18-3_26.1_23B85_Restore/blob/90aa0cfe59d9682b4265e1354c8b19ec3c7823ab/System/Library/PrivateFrameworks/MediaRemote.framework/MediaRemote/MRAVConcreteOutputDevice.mm) associam o cartão a `isAddedToHomeKit`/`isRemoteControllable` e classificação do dispositivo. Um ensaio de identificação como HomePod foi rejeitado pelo iPhone/hub. | Que não exista **nenhuma** implementação legítima para terceiros; a fonte não é API pública Apple. |
+| Canal de comandos | A [discussão #2262](https://github.com/mikebrady/shairport-sync/discussions/2262) demonstrou `sendMediaRemoteCommand` na sessão de áudio/PTP; Remote Control Only usa outro mecanismo. | Que esses comandos possam ser enviados como plist ao canal RC ou acionados pelo Casa. |
+
+## Código de diagnóstico deste branch
+
+O [commit experimental `7d889d5`](https://github.com/aoliveira07/tecnohead-multimidia/commit/7d889d55e1835146064bf4bf2f5ad8dbcd456f4d) adiciona `APPLE_MEDIAREMOTE_EXPERIMENTAL`, `false` por padrão. Quando explicitamente habilitado no ambiente de um ensaio local/autorizado, `MediaRemoteProbe` interpreta até 1 MiB de `ssnc/copl` por zona e publica **somente** contagens, existência de título/artista/álbum/capa/duração/posição, códigos de comandos habilitados e horários no diagnóstico do App. Nunca guarda título, artista, imagem, identificador ou plist bruto. O relatório rotula a origem como `sender_to_receiver_only` e o cartão Casa como `not_observed`.
+
+O leitor do pipe agora ignora itens declarados acima de 2 MiB e continua a ler o próximo item; um teste sintético verifica que um `copl` excessivo não faz perder o `pvol` subsequente. Isto evita interpretar um teste de arte grande como falha no volume. Não há `include_cover_art=yes`, retransmissão RC, alteração de anúncios mDNS, comandos a fontes, modificação de pairing ou mudança na saída de áudio. Habilitar a sonda em HAOS exigirá atualização/reinício do App e teste acompanhado; ela **não** é a correção da interface do Casa.
+
+## Sequência de campo ainda necessária
+
+1. Antes de **deploy/POC**, criar backup específico e recuperável do App `/data`/pairings. O HAOS mostrou uma cópia automática bem-sucedida há 9 horas e armazenada em duas localizações, mas não foi testada sua restauração; a cópia específica ainda não foi feita. A versão runtime e `smi11` já foram confirmados pelo Ingress. Registrar cartão Casa antes do ensaio, Cozinha e Piscina, sem publicar mídia privada.
+2. Reproduzir Apple Music em uma zona por vez. Comparar D-Bus `NowPlayingInformation` e `CommandInformation`, `ssnc/copl`, comandos reais play/pause/skip, estado e áudio. Não deduzir suporte de `Available=false`.
+3. Instrumentar apenas logs sanitizados de `RTSP SETUP Remote Control Only`, origem/hub e ACK. Correlacionar cada conexão com sua zona/sessão; não capturar chaves, áudio, capa ou endereços identificáveis.
+4. Só se os dados do emissor existirem e houver conexão RC legítima, avaliar POC de encaminhamento no **mesmo** endpoint. O `ap2_event_port_post_command()` stock usa buffer fixo de 4096 bytes: corrigir limite/alocação e testar payload grande antes de qualquer retransmissão. Um `200 OK` do hub é apenas D14, não D16–D19.
+5. Testar visualmente no iPhone real, por zona. Se o Casa continuar vazio apesar da entrega, documentar classificação/capacidades observadas e consultar o usuário antes de qualquer alternativa. Jamais anunciar HomePod/Apple TV ou criar segundo acessório.
+
+## Estado de acesso/governança
+
+Houve acesso autenticado **somente ao HAOS via navegador** para inventário read-only; ainda não houve acesso ao iPhone/hub para os testes novos. A busca por conexão oficial do Kanban Smart House não encontrou o serviço; Trello e ClickHouse não são substitutos autorizados. Checklist e bloqueios permanecem em [MEDIAREMOTE_D01_D24.md](MEDIAREMOTE_D01_D24.md) até que a API oficial esteja disponível. Nenhuma escrita em PostgreSQL foi feita.
