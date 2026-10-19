@@ -1,16 +1,16 @@
 # Plano de testes de áudio v1.3
 
-Cada teste físico precisa registrar data, modelo/firmware, entidade HA, versão do App, passos, resultado, evidência real e commit corretivo. Nesta execução nenhum comando físico de áudio foi enviado.
+Cada teste físico precisa registrar data, modelo/firmware, entidade HA, versão do App, passos, resultado, evidência real e commit corretivo. Esta matriz substitui o retrato inicial v1.3.2; últimos relatos físicos e capturas privadas recebidos em 18/10/2026, com App v1.4.15. `PASSOU (relato)` identifica observação do operador, não medição independente. As capturas do iPhone não entram no repositório por conterem dados de uso pessoal. Modelo/firmware detalhado da Piscina continuam não informados pelo HA.
 
 ## Gates
 
-- G0: **PARCIAL** — áreas e players atuais lidos; novo amplificador Piscina não identificado.
-- G1: **PARCIAL** — entidades canônicas cadastradas; volume da Cozinha aceito e confirmado pelo HA, grupo e teste acústico ainda pendentes.
-- G2: **BLOQUEADO** — sem destino físico LinkPlay confirmado, a ponte PCM não pode ser validada.
-- G3: **BLOQUEADO** — depende de G2 e do amplificador Piscina com ARC.
-- G4: **BLOQUEADO** — depende de duas saídas físicas e iPhone real.
-- G5: **NÃO TESTADO** — depende da ponte e do app Casa.
-- G6: **PARCIAL** — regressão automatizada do código v1.2 passou; homologação física permanece manual.
+- G0: **PARCIAL** — áreas e players atuais mapeados; modelo/firmware detalhado da Piscina permanece `Generic` no HA.
+- G1: **PARCIAL** — volume físico das duas zonas foi confirmado pelo operador; compartilhamento TV Piscina→Cozinha e retorno do grupo não testados.
+- G2: **PASSOU (relato)** — Cozinha descoberta no iPhone e áudio audível relatado pelo operador; estabilidade prolongada pendente.
+- G3: **PARCIAL** — Piscina anunciada e volume AirPlay com efeito físico relatado; retorno ARC durante stream ainda requer teste controlado.
+- G4: **NÃO TESTADO** — os dois nomes aparecem juntos, mas não há prova de seleção/reprodução simultânea nem de sincronia.
+- G5: **PARCIAL** — `TecnoHead Cozinha` adotado no app Casa como ShairportSync; cartão sem controles; Piscina ainda não comprovada no Casa.
+- G6: **PARCIAL** — release v1.4.15 instalada e testes automatizados anteriores; regressão física v1.2 e checklist completo pendentes.
 
 ## Matriz B01–B45
 
@@ -19,46 +19,46 @@ Cada teste físico precisa registrar data, modelo/firmware, entidade HA, versão
 | B01 | PASSOU | Descoberta por área implementada e coberta por teste; leitura real separou Cozinha/Piscina |
 | B02 | PARCIAL | O novo equipamento aparece como `media_player.piscina_room` e não foi confundido com o M5 antigo; o HA ainda reporta modelo `Generic`, sem firmware detalhado |
 | B03 | PARCIAL | Entidade canônica foi escolhida para cada zona; reconciliação completa com eventuais espelhos Music Assistant ainda não foi executada |
-| B04 | PASSOU (controle HA) | v1.3.2: volume 30% enviado pelo App, `audio_volume_set` registrado e `volume_level: 0.3` confirmado no Template nativo; escuta acústica ainda pendente |
-| B05 | NÃO TESTADO | Player `media_player.piscina_room` existe, mas nenhum comando de volume foi enviado para preservar o HDMI ARC durante esta correção |
+| B04 | PASSOU (relato) | Volume da Cozinha responde no App e no player físico; o operador também testou o slider do iPhone |
+| B05 | PASSOU (relato) | Volume da Piscina responde no App e no player físico; o operador também testou o slider do iPhone |
 | B06 | NÃO TESTADO | Mudo e recuperação aguardam alvo real |
-| B07 | BLOQUEADO | Grupo físico indisponível |
+| B07 | NÃO TESTADO | Grupo físico/volume relativo ainda requer teste acompanhado |
 | B08 | PARCIAL | Fontes observadas apenas nos players atuais; fontes do amplificador pendentes |
-| B09 | NÃO TESTADO | ARC não foi acionado |
+| B09 | PASSOU (relato) | Operador confirmou que a TV, ao ligar, faz o amplificador assumir ARC automaticamente; o App não envia troca concorrente |
 | B10 | NÃO TESTADO | CEC não foi acionado |
 | B11 | NÃO TESTADO | Nenhuma troca física de fonte |
-| B12 | BLOQUEADO | Sem player LinkPlay Piscina/Cozinha |
-| B13 | BLOQUEADO | Sem grupo físico |
-| B14 | BLOQUEADO | Spotify Connect do amplificador não identificado |
-| B15 | NÃO TESTADO | AudioCast externo não usado |
-| B16 | BLOQUEADO | Shairport Sync AirPlay 2 não compilado |
-| B17 | NÃO TESTADO | NQPTP/mDNS não iniciado |
-| B18 | NÃO TESTADO | iPhone não utilizado |
-| B19 | BLOQUEADO | Ponte física sem destino |
-| B20 | BLOQUEADO | Identidade Piscina não criada |
-| B21 | BLOQUEADO | Áudio Piscina sem alvo |
-| B22 | BLOQUEADO | Sem duas saídas |
-| B23 | BLOQUEADO | Sem duas saídas |
+| B12 | NÃO TESTADO | TV Piscina→Cozinha por grupo LinkPlay ainda não foi executado |
+| B13 | NÃO TESTADO | Desagrupamento após TV compartilhada ainda não foi executado |
+| B14 | NÃO TESTADO | Spotify Connect individual funcionou; compartilhamento Spotify LinkPlay ainda não foi comprovado |
+| B15 | PARCIAL | Alterar volume no AudioCast refletiu no slider AirPlay em teste da Cozinha; fonte/grupo externos não retestados |
+| B16 | PARCIAL | Binário Shairport Sync fixado foi compilado com AirPlay 2 e destinos funcionam no iPhone; não há captura independente do handshake da sessão |
+| B17 | PARCIAL | NQPTP/mDNS anunciaram duas identidades simultâneas; colisão/robustez prolongada ainda não medida |
+| B18 | PASSOU | Capturas privadas mostram `TecnoHead Cozinha` no seletor do iPhone |
+| B19 | PASSOU (relato) | Operador confirmou som audível na Cozinha usando o destino virtual |
+| B20 | PASSOU | Capturas privadas mostram `TecnoHead Piscina` no seletor do iPhone |
+| B21 | PARCIAL (relato) | Operador confirmou efeito audível do volume na Piscina; repetir prova com ARC livre e início/parada documentados |
+| B22 | NÃO TESTADO | Dois streams independentes ainda não foram executados |
+| B23 | NÃO TESTADO | Seleção simultânea de Cozinha+Piscina ainda não foi executada |
 | B24 | NÃO TESTADO | Sem reprodução simultânea |
-| B25 | NÃO TESTADO | Volume Apple não testado |
-| B26 | BLOQUEADO | Piscina sem endpoint |
-| B27 | BLOQUEADO | Política implementada, cenário físico não executado |
+| B25 | PARCIAL (relato) | Slider iPhone alterou volume físico da Cozinha; sincronização inversa apresentou limite/oscilação em rodadas anteriores e foi aceita provisoriamente |
+| B26 | PARCIAL (relato) | Slider iPhone alterou volume físico da Piscina; volume bidirecional exato ainda não homologado |
+| B27 | PARCIAL | TV assume ARC ao ligar; conflito com stream AirPlay ativo ainda não foi observado de ponta a ponta |
 | B28 | NÃO TESTADO | Troca explícita ARC→música não executada |
 | B29 | NÃO TESTADO | TV/stream não executados |
 | B30 | NÃO TESTADO | Sem grupo e AirPlay simultâneos |
-| B31 | NÃO TESTADO | Casa não emparelhado |
-| B32 | NÃO TESTADO | Casa não emparelhado |
-| B33 | NÃO TESTADO | Bridge de áudio não homologado |
+| B31 | PARCIAL | `TecnoHead Cozinha` foi adotado no Casa como ShairportSync, cômodo Cozinha; cartão mostra “Controles não disponíveis” (capturas privadas 23:04) |
+| B32 | NÃO TESTADO | `TecnoHead Piscina` aparece no AirPlay; adoção no app Casa ainda não foi comprovada |
+| B33 | PARCIAL | `Cozinha Room`/`Piscina Room` adotados como receivers via HomeKit Bridge; não criam cartão HomePod nem substituem o acessório ShairportSync |
 | B34 | PARCIAL | Código MQTT Discovery de áudio e testes de contrato preparados; broker físico não retestado nesta rodada |
-| B35 | NÃO TESTADO | Sem stream físico |
-| B36 | NÃO TESTADO | Sem player LinkPlay |
-| B37 | NÃO TESTADO | Reinício com pareamento ainda não aplicável |
-| B38 | NÃO TESTADO | Ponte de stream não iniciada |
+| B35 | NÃO TESTADO | Pausa/parada/desconexão sem áudio fantasma ainda requer teste específico |
+| B36 | NÃO TESTADO | Falha de rede/player ainda requer teste controlado |
+| B37 | NÃO TESTADO | Persistência de pareamento após reinício ainda requer teste controlado |
+| B38 | PARCIAL | Rota local de stream com token implementada; auditoria da exposição LAN/WAN ainda pendente |
 | B39 | NÃO TESTADO | Não houve reprodução de 30 minutos |
-| B40 | PASSOU (software/instalação) | Migração coberta por teste; atualização HAOS para v1.3.2 preservou as zonas e o perfil existente |
+| B40 | PASSOU (software/instalação) | Migração coberta por teste; atualizações até v1.4.15 preservaram zonas e perfil existente |
 | B41 | PARCIAL | Regressão automatizada; teste IR físico permanece manual |
 | B42 | PARCIAL | Regressão automatizada; clima/luzes físicos permanecem manuais |
-| B43 | PARCIAL | v1.3.2 publicada, CI/imagem concluídos e atualização HAOS instalada; screenshots/documentação física completa ainda pendentes |
-| B44 | PARCIAL | Sem segredos no conjunto alterado; SBOM da ponte só será criado quando ela for empacotada |
-| B45 | PASSOU como bloqueio | Limitação comprovada no HAOS atual; LinkPlay não foi mascarado como AirPlay homologado |
+| B43 | PARCIAL | v1.4.15 publicada e instalada, CI/imagem concluídos; checklist físico e screenshots publicáveis ainda incompletos |
+| B44 | PARCIAL | Sem dados privados no repositório; auditoria completa da ponte/licenças ainda pendente |
+| B45 | NÃO SE APLICA | A ponte produziu áudio físico; o bloqueio observado agora é o cartão de controle do Casa, registrado em B31 |
 

@@ -1,4 +1,12 @@
-# Relatório de instalação e homologação — TecnoHead Multimídia v1.4.5
+# Relatório de instalação e homologação — TecnoHead Multimídia
+
+## Estado mais recente — v1.4.15 (18/10/2026)
+
+Última versão confirmada instalada no HAOS: `v1.4.15`. Cozinha e Piscina têm players LinkPlay canônicos e destinos virtuais AirPlay 2. O operador relatou áudio audível e ação do volume do iPhone no amplificador nas duas zonas; aceitou a limitação remanescente de sincronização bidirecional de volume como provisória. A TV da Piscina continua assumindo HDMI ARC ao ligar, pelo próprio hardware; a seleção explícita de música não é bloqueada pelo App.
+
+Capturas privadas do iPhone às 23:03–23:04 mostram `TecnoHead Cozinha` selecionado no seletor AirPlay e adotado no app Casa como acessório modelo `ShairportSync`, associado à Cozinha. O cartão do Casa mostra “Controles não disponíveis” mesmo após a seleção no AirPlay. Isto confirma a adoção, **não** o painel de reprodução HomePod; as capturas não são publicadas por conterem dados de uso pessoal. `TecnoHead Piscina` aparece como destino AirPlay, mas seu pareamento no Casa ainda não foi comprovado. O projeto upstream reconhece suporte incompleto à interface Casa/controle remoto nesta revisão fixada; o HomeKit Bridge do HA não consegue alterar o cartão do acessório ShairportSync. Ver [docs/APPLE_HOME.md](docs/APPLE_HOME.md) e [docs/AUDIO_TEST_PLAN.md](docs/AUDIO_TEST_PLAN.md).
+
+Ainda pendem a seleção Apple das duas zonas ao mesmo tempo, a sincronia física, compartilhar TV Piscina→Cozinha via grupo LinkPlay, a prova prolongada de estabilidade, o pareamento Piscina no Casa e a regressão física completa das cenas v1.2. **Não há homologação integral v1.3.** As seções abaixo são registros históricos das releases anteriores, não o status atual.
 
 ## Addendum v1.4.5 — responder mDNS
 

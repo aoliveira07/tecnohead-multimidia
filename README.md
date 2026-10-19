@@ -2,13 +2,13 @@
 
 App para Home Assistant OS que transforma áreas cadastradas no HA em ambientes multimídia com cenas Cinema, TV e Desligar. A interface é em português brasileiro, responsiva, aparece na sidebar por Ingress e usa um motor próprio por área — sem criar automações YAML intermediárias.
 
-## Estado da entrega 1.4.5
+## Estado da entrega 1.4.15
 
 O módulo v1.2 permanece no mesmo App, com Ingress, MQTT Discovery, cenas e IR pela entidade do Home Assistant. O áudio multiroom usa os players LinkPlay reais `media_player.cozinha_room` e `media_player.piscina_room`, descobertos por área. A v1.4 acrescenta a implementação do receptor AirPlay 2 virtual: duas instâncias Shairport Sync upstream fixadas, NQPTP compartilhado, mDNS do host e ponte PCM→stream local encaminhada ao LinkPlay por `media_player.play_media`.
 
-Esta release é uma implementação instalável e ainda precisa da prova manual no iPhone: aparecer no seletor AirPlay, ouvir áudio em cada zona, parar sem áudio fantasma e testar a política ARC. A presença de `Cozinha Room` e `Piscina Room` no app Casa continua sendo HomeKit Bridge do HA, não prova de AirPlay 2. Veja [HOMOLOGATION.md](HOMOLOGATION.md), [AUDIO_DISCOVERY_REPORT.md](docs/AUDIO_DISCOVERY_REPORT.md) e [AUDIO_TEST_PLAN.md](docs/AUDIO_TEST_PLAN.md) para o status real.
+O operador confirmou áudio AirPlay e efeito do volume nas zonas Cozinha e Piscina. Em capturas privadas, `TecnoHead Cozinha` aparece selecionado no iPhone e foi adicionado ao app Casa como acessório ShairportSync, mas o cartão Casa exibiu “Controles não disponíveis”. O pareamento da Piscina no Casa, a seleção simultânea, o compartilhamento da TV por LinkPlay e a regressão física integral ainda não estão homologados. Os receivers `Cozinha Room` e `Piscina Room` no Casa são acessórios separados do HomeKit Bridge do HA. Veja [HOMOLOGATION.md](HOMOLOGATION.md), [AUDIO_DISCOVERY_REPORT.md](docs/AUDIO_DISCOVERY_REPORT.md) e [AUDIO_TEST_PLAN.md](docs/AUDIO_TEST_PLAN.md) para resultados e pendências.
 
-Na v1.4.5, o App consulta o Avahi do host antes de publicar. Se o HAOS não oferecer Avahi no D-Bus, uma única instância interna compartilhada de D-Bus/Avahi é usada pelas duas zonas, sem iniciar dois respondentes e sem alterar o serviço global. A porta 18199 continua sendo usada pelo Ingress/stream; o estado mDNS e o diagnóstico ficam visíveis no painel.
+Desde a v1.4.5, o App consulta o Avahi do host antes de publicar. Se o HAOS não oferecer Avahi no D-Bus, uma única instância interna compartilhada de D-Bus/Avahi é usada pelas duas zonas, sem iniciar dois respondentes e sem alterar o serviço global. A porta 18199 continua sendo usada pelo Ingress/stream; o estado mDNS e o diagnóstico ficam visíveis no painel.
 
 ## Arquitetura de segurança
 
