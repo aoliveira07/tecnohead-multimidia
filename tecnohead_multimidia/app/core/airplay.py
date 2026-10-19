@@ -70,6 +70,20 @@ def airplay_volume_to_percent(value: str | bytes) -> int | None:
     return max(0, min(100, percent))
 
 
+def percent_to_airplay_volume_db(volume_percent: int | float) -> float:
+    """Map a LinkPlay linear volume to Shairport's AirPlay source volume.
+
+    Shairport's native ``SetAirplayVolume`` command is the reverse path of
+    the volume hook used above: it asks the active iPhone/iPad source to move
+    its AirPlay slider.  Zero is represented by the protocol's mute value.
+    """
+
+    percent = max(0.0, min(100.0, float(volume_percent)))
+    if percent <= 0.0:
+        return -144.0
+    return round(-30.0 + (percent / 100.0) * 30.0, 2)
+
+
 def _redact_process_line(line: str) -> str:
     """Keep diagnostics useful without copying client network addresses."""
 
@@ -165,6 +179,9 @@ class _Endpoint:
     metadata_pipe_path: Path | None = None
     volume_socket: socket.socket | None = None
     volume_socket_path: Path | None = None
+    control_dbus_process: asyncio.subprocess.Process | None = None
+    control_dbus_socket_path: Path | None = None
+    control_dbus_log_task: asyncio.Task[None] | None = None
     pcm_task: asyncio.Task[None] | None = None
     mp3_task: asyncio.Task[None] | None = None
     metadata_task: asyncio.Task[None] | None = None
@@ -184,6 +201,9 @@ class _Endpoint:
     last_airplay_volume_percent: int | None = None
     last_airplay_volume_at: float | None = None
     last_airplay_volume_source: str | None = None
+    last_physical_volume_percent: int | None = None
+    last_physical_volume_at: float | None = None
+    last_physical_volume_source: str | None = None
     process_log_tail: deque[str] = field(default_factory=lambda: deque(maxlen=24))
 
 
@@ -466,6 +486,36 @@ publish-aaaa-on-ipv4=no
 </busconfig>
 '''
 
+    @staticmethod
+    def _private_control_dbus_config(socket_path: Path) -> str:
+        """Create one isolated session bus for one Shairport endpoint.
+
+        Shairport Sync's native D-Bus and MPRIS interfaces use fixed
+        well-known names.  A single shared bus would therefore expose only
+        one of two room instances to remote-control calls.  Each endpoint
+        gets its own session bus while all endpoints continue to share the
+        separate Avahi/system bus used for mDNS publication.
+        """
+
+        return f'''<!DOCTYPE busconfig PUBLIC "-//freedesktop//DTD D-Bus Bus Configuration 1.0//EN"
+  "http://www.freedesktop.org/standards/dbus/1.0/busconfig.dtd">
+<busconfig>
+  <type>session</type>
+  <listen>unix:path={socket_path}</listen>
+  <policy context="default">
+    <allow user="root"/>
+    <allow own="org.gnome.ShairportSync"/>
+    <allow own_prefix="org.mpris.MediaPlayer2.ShairportSync"/>
+    <allow send_destination="*"/>
+    <allow receive_sender="*"/>
+    <allow receive_type="method_call"/>
+    <allow receive_type="method_return"/>
+    <allow receive_type="error"/>
+    <allow receive_type="signal"/>
+  </policy>
+</busconfig>
+'''
+
     async def _wait_for_path(self, path: Path, process: asyncio.subprocess.Process) -> None:
         for _ in range(30):
             if process.returncode is not None:
@@ -526,6 +576,66 @@ publish-aaaa-on-ipv4=no
         self._mdns_mode = "private_avahi"
         self._mdns_diagnostic = "responder D-Bus/Avahi compartilhado iniciado dentro do App"
 
+    def _control_dbus_socket_path(self, zone: AudioZoneProfile) -> Path:
+        return self.settings.data_dir / "airplay" / f"{self._safe_zone_name(zone.zone_id)}-control_bus"
+
+    async def _start_control_dbus(self, endpoint: _Endpoint) -> None:
+        """Start the endpoint's private D-Bus control bus.
+
+        The shared mDNS bus remains in ``DBUS_SYSTEM_BUS_ADDRESS``.  The
+        endpoint-specific session bus is used only by Shairport Sync's
+        native remote-control/MPRIS interfaces, so a command for Cozinha can
+        never be delivered to Piscina (or vice versa).
+        """
+
+        socket_path = self._control_dbus_socket_path(endpoint.zone)
+        socket_path.parent.mkdir(parents=True, exist_ok=True)
+        with contextlib.suppress(FileNotFoundError):
+            socket_path.unlink()
+        config_path = socket_path.with_suffix(".conf")
+        config_path.write_text(self._private_control_dbus_config(socket_path), encoding="utf-8")
+        try:
+            endpoint.control_dbus_process = await asyncio.create_subprocess_exec(
+                "dbus-daemon",
+                f"--config-file={config_path}",
+                "--nofork",
+                "--nopidfile",
+                stdout=asyncio.subprocess.PIPE,
+                stderr=asyncio.subprocess.STDOUT,
+            )
+            endpoint.control_dbus_socket_path = socket_path
+            endpoint.control_dbus_log_task = asyncio.create_task(
+                self._consume_endpoint_dbus_log(endpoint),
+                name=f"airplay-dbus-{endpoint.zone.zone_id}",
+            )
+            await self._wait_for_path(socket_path, endpoint.control_dbus_process)
+        except Exception:
+            await self._terminate_process(endpoint.control_dbus_process)
+            endpoint.control_dbus_process = None
+            endpoint.control_dbus_socket_path = None
+            if endpoint.control_dbus_log_task:
+                endpoint.control_dbus_log_task.cancel()
+                with contextlib.suppress(asyncio.CancelledError, Exception):
+                    await endpoint.control_dbus_log_task
+            endpoint.control_dbus_log_task = None
+            with contextlib.suppress(FileNotFoundError, OSError):
+                socket_path.unlink()
+            with contextlib.suppress(FileNotFoundError, OSError):
+                config_path.unlink()
+            raise
+
+    async def _consume_endpoint_dbus_log(self, endpoint: _Endpoint) -> None:
+        process = endpoint.control_dbus_process
+        if not process or not process.stdout:
+            return
+        try:
+            async for raw in process.stdout:
+                line = _redact_process_line(raw.decode("utf-8", errors="replace"))
+                if line:
+                    endpoint.process_log_tail.append(f"dbus: {line}")
+        except asyncio.CancelledError:
+            raise
+
     async def _ensure_mdns(self) -> None:
         if self._mdns_mode == "host_avahi":
             return
@@ -573,6 +683,7 @@ publish-aaaa-on-ipv4=no
             encoding="utf-8",
         )
         try:
+            await self._start_control_dbus(endpoint)
             # Keep a reader open before Shairport Sync starts. This prevents
             # the metadata FIFO from blocking its first pvol message while
             # still keeping one isolated pipe per AirPlay identity.
@@ -623,11 +734,15 @@ publish-aaaa-on-ipv4=no
                 "shairport-sync",
                 "-c",
                 str(config_path),
-                env={**os.environ, **self._mdns_env},
+                env={
+                    **os.environ,
+                    **self._mdns_env,
+                    "DBUS_SESSION_BUS_ADDRESS": f"unix:path={endpoint.control_dbus_socket_path}",
+                },
                 stdout=asyncio.subprocess.PIPE,
                 stderr=asyncio.subprocess.PIPE,
             )
-        except (OSError, ValueError) as exc:
+        except (OSError, ValueError, RuntimeError, TimeoutError) as exc:
             endpoint.state = "blocked"
             endpoint.last_error = str(exc)
             endpoint.diagnostic = f"não foi possível iniciar processo AirPlay: {exc}"
@@ -641,6 +756,16 @@ publish-aaaa-on-ipv4=no
             )
             await self._terminate_process(endpoint.ffmpeg)
             await self._terminate_process(endpoint.metadata_reader)
+            await self._terminate_process(endpoint.control_dbus_process)
+            endpoint.control_dbus_process = None
+            if endpoint.control_dbus_log_task:
+                endpoint.control_dbus_log_task.cancel()
+                with contextlib.suppress(asyncio.CancelledError, Exception):
+                    await endpoint.control_dbus_log_task
+                endpoint.control_dbus_log_task = None
+            if endpoint.control_dbus_socket_path:
+                with contextlib.suppress(FileNotFoundError, OSError):
+                    endpoint.control_dbus_socket_path.unlink()
             self._remove_metadata_pipe(endpoint.metadata_pipe_path)
             self._close_volume_socket(endpoint.volume_socket, endpoint.volume_socket_path)
             endpoint.volume_socket = None
@@ -745,6 +870,10 @@ publish-aaaa-on-ipv4=no
 general = {{
   name = {_quote_config(service_name)};
   service_type = "airplay2";
+  # Native D-Bus/MPRIS names are fixed by Shairport Sync. Each endpoint gets
+  # its own private session bus so reverse volume control remains zone-safe.
+  dbus_service_bus = "session";
+  mpris_service_bus = "session";
   mdns_backend = "avahi";
   output_backend = "stdout";
   port = {port};
@@ -921,6 +1050,116 @@ diagnostics = {{
                 result="degraded",
             )
 
+    @staticmethod
+    def _state_volume_percent(state: dict[str, Any] | None) -> int | None:
+        if not isinstance(state, dict):
+            return None
+        attributes = state.get("attributes")
+        if not isinstance(attributes, dict):
+            return None
+        try:
+            value = float(attributes.get("volume_level"))
+        except (TypeError, ValueError):
+            return None
+        if not 0.0 <= value <= 1.0:
+            return None
+        return max(0, min(100, round(value * 100)))
+
+    async def handle_state_event(self, event: dict[str, Any]) -> None:
+        """Mirror external physical volume changes back to the active source.
+
+        The hook/metadata path already handles iPhone -> LinkPlay.  This
+        listener handles LinkPlay/AudioCast/HA -> iPhone only while a real
+        AirPlay session is active.  State events generated by the forward
+        path are suppressed by the remembered AirPlay percentage, preventing
+        a feedback loop.
+        """
+
+        data = event.get("data", {}) if isinstance(event, dict) else {}
+        entity_id = data.get("entity_id")
+        if not entity_id:
+            return
+        new_percent = self._state_volume_percent(data.get("new_state"))
+        if new_percent is None:
+            return
+        old_percent = self._state_volume_percent(data.get("old_state"))
+        if old_percent is not None and old_percent == new_percent:
+            return
+        for endpoint in tuple(self._endpoints.values()):
+            if endpoint.zone.media_player_entity_id != entity_id:
+                continue
+            endpoint.last_physical_volume_percent = new_percent
+            endpoint.last_physical_volume_at = time.monotonic()
+            endpoint.last_physical_volume_source = "home_assistant_state_event"
+            # This is the expected event after an iPhone slider change was
+            # forwarded to HA. Do not echo it back to the same source.
+            if endpoint.last_airplay_volume_percent == new_percent:
+                return
+            if not endpoint.output_started or not endpoint.process or endpoint.process.returncode is not None:
+                return
+            await self._forward_physical_volume(endpoint, new_percent)
+            return
+
+    async def _send_airplay_volume_to_source(self, endpoint: _Endpoint, volume_percent: int) -> float:
+        socket_path = endpoint.control_dbus_socket_path
+        process = endpoint.control_dbus_process
+        if not socket_path or not process or process.returncode is not None:
+            raise RuntimeError("barramento D-Bus de controle da zona não está disponível")
+        volume_db = percent_to_airplay_volume_db(volume_percent)
+        try:
+            command = await asyncio.create_subprocess_exec(
+                "dbus-send",
+                "--session",
+                "--print-reply",
+                "--type=method_call",
+                "--dest=org.gnome.ShairportSync",
+                "/org/gnome/ShairportSync",
+                "org.gnome.ShairportSync.RemoteControl.SetAirplayVolume",
+                f"double:{volume_db:.2f}",
+                env={
+                    **os.environ,
+                    **self._mdns_env,
+                    "DBUS_SESSION_BUS_ADDRESS": f"unix:path={socket_path}",
+                },
+                stdout=asyncio.subprocess.PIPE,
+                stderr=asyncio.subprocess.STDOUT,
+            )
+            output, _ = await asyncio.wait_for(command.communicate(), timeout=4.0)
+        except (OSError, asyncio.TimeoutError) as exc:
+            raise RuntimeError(f"não foi possível chamar o controle D-Bus AirPlay: {_redact_process_line(str(exc))}") from exc
+        if command.returncode != 0:
+            detail = _redact_process_line((output or b"").decode("utf-8", errors="replace"))
+            raise RuntimeError(f"Shairport Sync rejeitou o volume AirPlay: {detail or command.returncode}")
+        return volume_db
+
+    async def _forward_physical_volume(self, endpoint: _Endpoint, volume_percent: int) -> None:
+        applied = max(0, min(int(volume_percent), endpoint.zone.max_volume_percent))
+        try:
+            volume_db = await self._send_airplay_volume_to_source(endpoint, applied)
+            endpoint.last_airplay_volume_percent = applied
+            endpoint.last_airplay_volume_at = time.monotonic()
+            endpoint.last_airplay_volume_source = "shairport_dbus_remote_control"
+            await self.event_recorder(
+                event="physical_volume_forwarded_to_airplay",
+                area_id=endpoint.zone.area_id,
+                entity_id=endpoint.zone.media_player_entity_id,
+                message="volume físico do LinkPlay encaminhado à sessão AirPlay ativa",
+                command_kind="org.gnome.ShairportSync.RemoteControl.SetAirplayVolume",
+                result=f"accepted_by_shairport:{applied}%/{volume_db:.2f}dB",
+                physical_confirmation="not_observable",
+            )
+        except (RuntimeError, OSError) as exc:
+            endpoint.last_error = _redact_process_line(str(exc))
+            await self.event_recorder(
+                event="physical_volume_forward_failed",
+                area_id=endpoint.zone.area_id,
+                entity_id=endpoint.zone.media_player_entity_id,
+                message="não foi possível atualizar o slider AirPlay a partir do volume físico",
+                level="warning",
+                command_kind="org.gnome.ShairportSync.RemoteControl.SetAirplayVolume",
+                result="degraded",
+            )
+
     async def _forward_airplay_volume(self, endpoint: _Endpoint, volume_percent: int) -> None:
         if endpoint.last_airplay_volume_percent == volume_percent:
             return
@@ -1081,6 +1320,7 @@ diagnostics = {{
             endpoint.volume_task,
             endpoint.process_log_task,
             endpoint.ffmpeg_log_task,
+            endpoint.control_dbus_log_task,
         ):
             if task and not task.done():
                 task.cancel()
@@ -1093,6 +1333,7 @@ diagnostics = {{
             endpoint.volume_task,
             endpoint.process_log_task,
             endpoint.ffmpeg_log_task,
+            endpoint.control_dbus_log_task,
         ):
             if task:
                 with contextlib.suppress(asyncio.CancelledError, Exception):
@@ -1100,10 +1341,18 @@ diagnostics = {{
         await self._terminate_process(endpoint.process)
         await self._terminate_process(endpoint.ffmpeg)
         await self._terminate_process(endpoint.metadata_reader)
+        await self._terminate_process(endpoint.control_dbus_process)
         await endpoint.broker.close()
         self._remove_metadata_pipe(endpoint.metadata_pipe_path)
         self._close_volume_socket(endpoint.volume_socket, endpoint.volume_socket_path)
         endpoint.volume_socket = None
+        if endpoint.control_dbus_socket_path:
+            with contextlib.suppress(FileNotFoundError, OSError):
+                endpoint.control_dbus_socket_path.unlink()
+            with contextlib.suppress(FileNotFoundError, OSError):
+                endpoint.control_dbus_socket_path.with_suffix(".conf").unlink()
+        endpoint.control_dbus_process = None
+        endpoint.control_dbus_socket_path = None
 
     @staticmethod
     async def _terminate_process(process: asyncio.subprocess.Process | None) -> None:
@@ -1192,6 +1441,10 @@ diagnostics = {{
                     "last_airplay_volume_at": datetime.fromtimestamp(endpoint.last_airplay_volume_at, UTC).isoformat() if endpoint.last_airplay_volume_at else None,
                     "last_airplay_volume_source": endpoint.last_airplay_volume_source,
                     "volume_hook_active": bool(endpoint.volume_socket),
+                    "reverse_volume_bridge": "active" if endpoint.control_dbus_socket_path else "inactive",
+                    "last_physical_volume_percent": endpoint.last_physical_volume_percent,
+                    "last_physical_volume_at": datetime.fromtimestamp(endpoint.last_physical_volume_at, UTC).isoformat() if endpoint.last_physical_volume_at else None,
+                    "last_physical_volume_source": endpoint.last_physical_volume_source,
                     "process_alive": bool(endpoint.process and endpoint.process.returncode is None),
                     "process_returncode": endpoint.process.returncode if endpoint.process else None,
                     "process_log_tail": list(endpoint.process_log_tail),

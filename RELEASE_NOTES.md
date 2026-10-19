@@ -1,5 +1,13 @@
 # Release notes
 
+## v1.4.12 — sincronização bidirecional do volume AirPlay
+
+A alteração do volume no AudioCast/LinkPlay agora é observada pelo stream de estados do Home Assistant e enviada ao iPhone/iPad da sessão AirPlay ativa pela interface nativa `SetAirplayVolume` do Shairport Sync. O comando usa o mesmo mapeamento linear do slider AirPlay (`0..100%` para `-30..0 dB`, com `-144 dB` para zero).
+
+Cada zona recebeu um barramento D-Bus de sessão privado para manter os comandos de Cozinha e Piscina independentes. O App não envia nada quando a sessão AirPlay terminou, não mexe na arbitragem HDMI ARC sem uma sessão AirPlay ativa e evita eco quando a mudança original veio do iPhone.
+
+O aceite físico desta versão exige: reproduzir em uma zona, alterar o slider do iPhone e confirmar o player; depois alterar o volume pelo AudioCast e confirmar que o slider do iPhone acompanha. Repetir na outra zona.
+
 ## v1.4.11 — sincronização física do volume AirPlay
 
 O caminho anterior dependia exclusivamente do leitor de metadados `ssnc/pvol`. A versão 1.4.11 usa também o gancho nativo `run_this_when_volume_is_set` do Shairport Sync: cada valor enviado pelo iPhone é entregue por um socket Unix privado ao App e convertido em `media_player.volume_set` para a entidade LinkPlay da mesma zona. O PCM continua em ganho pleno, sem dupla atenuação.

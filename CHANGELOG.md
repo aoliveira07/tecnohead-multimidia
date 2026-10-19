@@ -1,5 +1,11 @@
 # Changelog
 
+## 1.4.12 — sincronização bidirecional de volume AirPlay
+
+- Encaminha alterações externas do volume LinkPlay/AudioCast para a sessão AirPlay 2 ativa pelo `SetAirplayVolume` nativo do Shairport Sync.
+- Isola o D-Bus de controle por endpoint para que Cozinha e Piscina não compartilhem o mesmo nome de serviço.
+- Suprime ecos do próprio encaminhamento e só sincroniza enquanto a zona tem uma sessão AirPlay ativa.
+
 ## 1.4.11 — gancho nativo de volume AirPlay
 
 - Usa `run_this_when_volume_is_set` do Shairport Sync para encaminhar cada alteração do slider AirPlay por socket Unix privado ao App.

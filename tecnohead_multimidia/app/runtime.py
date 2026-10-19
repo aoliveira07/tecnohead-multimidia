@@ -387,6 +387,8 @@ class Runtime:
         entity_id = data.get("entity_id")
         if not entity_id:
             return
+        if self.airplay:
+            await self.airplay.handle_state_event(event)
         area_id = self.discovery.effective_area_for_entity(entity_id)
         if not area_id:
             return

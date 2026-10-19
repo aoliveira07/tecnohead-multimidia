@@ -32,7 +32,7 @@ def _load_supervisor_token() -> str | None:
 
 @dataclass(frozen=True)
 class Settings:
-    app_version: str = "1.4.11"
+    app_version: str = "1.4.12"
     app_host: str = "0.0.0.0"
     app_port: int = 18199
     data_dir: Path = Path("/data")
@@ -47,7 +47,7 @@ class Settings:
 
 def load_settings() -> Settings:
     return Settings(
-        app_version=os.getenv("APP_VERSION", "1.4.11"),
+        app_version=os.getenv("APP_VERSION", "1.4.12"),
         app_host=os.getenv("APP_HOST", "0.0.0.0"),
         app_port=int(os.getenv("INGRESS_PORT", os.getenv("APP_PORT", "18199"))),
         data_dir=Path(os.getenv("APP_DATA_DIR", "/data")),

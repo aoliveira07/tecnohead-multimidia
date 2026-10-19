@@ -4,6 +4,7 @@ import asyncio
 import base64
 import contextlib
 import socket
+from types import SimpleNamespace
 
 import pytest
 from test_audio import _audio_snapshot, _config
@@ -14,6 +15,7 @@ from app.core.airplay import (
     AudioStreamBroker,
     _Endpoint,
     airplay_volume_to_percent,
+    percent_to_airplay_volume_db,
 )
 from app.core.audio import AudioManager
 from app.core.discovery import DiscoveryService
@@ -47,6 +49,8 @@ def test_airplay_config_has_distinct_airplay2_identity_and_port(tmp_path):
     assert "port = 7000;" in config
     assert 'regtype = "_airplay._tcp";' in config
     assert 'nqptp_shared_memory_interface_name = "/tecnohead-kitchen"' in config
+    assert 'dbus_service_bus = "session"' in config
+    assert 'mpris_service_bus = "session"' in config
     assert 'ignore_volume_control = "yes";' in config
     assert "run_this_when_volume_is_set = \"/usr/local/bin/tecnohead-airplay-volume-hook" in config
     assert 'pipe_name = "' in config
@@ -59,6 +63,13 @@ def test_airplay_volume_maps_source_db_to_linear_player_percent():
     assert airplay_volume_to_percent("-30.00") == 0
     assert airplay_volume_to_percent("-144.00") == 0
     assert airplay_volume_to_percent("not-a-volume") is None
+
+
+def test_airplay_volume_maps_physical_player_percent_to_source_db():
+    assert percent_to_airplay_volume_db(0) == -144.0
+    assert percent_to_airplay_volume_db(50) == -15.0
+    assert percent_to_airplay_volume_db(100) == 0.0
+    assert percent_to_airplay_volume_db(150) == 0.0
 
 
 async def test_airplay_metadata_reader_decodes_pvol_payload(tmp_path):
@@ -159,6 +170,83 @@ async def test_airplay_volume_hook_is_forwarded_to_zone_player(tmp_path):
             await task
         client.close()
         manager._close_volume_socket(endpoint.volume_socket, socket_path)
+
+
+async def test_physical_volume_is_forwarded_to_active_airplay_source(tmp_path):
+    events = []
+
+    async def record(**kwargs):
+        events.append(kwargs)
+
+    manager = AirPlayEndpointManager(Settings(data_dir=tmp_path), None, None, record)  # type: ignore[arg-type]
+    zone = AudioZoneProfile(
+        zone_id="kitchen",
+        area_id="kitchen",
+        media_player_entity_id="media_player.kitchen",
+        max_volume_percent=100,
+        airplay={"enabled": True, "service_name": "TecnoHead Cozinha", "stable_id": "0123456789abcdef"},
+    )
+    endpoint = _Endpoint(zone=zone, port=7000)
+    endpoint.output_started = True
+    endpoint.process = SimpleNamespace(returncode=None)  # type: ignore[assignment]
+    manager._endpoints["kitchen"] = endpoint
+    sent: list[int] = []
+
+    async def send(_endpoint, volume_percent):
+        sent.append(volume_percent)
+        return percent_to_airplay_volume_db(volume_percent)
+
+    manager._send_airplay_volume_to_source = send  # type: ignore[method-assign]
+    await manager.handle_state_event(
+        {
+            "data": {
+                "entity_id": "media_player.kitchen",
+                "old_state": {"attributes": {"volume_level": 0.20}},
+                "new_state": {"attributes": {"volume_level": 0.42}},
+            }
+        }
+    )
+
+    assert sent == [42]
+    assert endpoint.last_airplay_volume_percent == 42
+    assert events[-1]["event"] == "physical_volume_forwarded_to_airplay"
+
+
+async def test_physical_volume_echo_from_airplay_is_suppressed(tmp_path):
+    async def record(**kwargs):
+        return None
+
+    manager = AirPlayEndpointManager(Settings(data_dir=tmp_path), None, None, record)  # type: ignore[arg-type]
+    zone = AudioZoneProfile(
+        zone_id="pool",
+        area_id="pool",
+        media_player_entity_id="media_player.pool",
+        max_volume_percent=100,
+        airplay={"enabled": True, "service_name": "TecnoHead Piscina", "stable_id": "fedcba9876543210"},
+    )
+    endpoint = _Endpoint(zone=zone, port=7001)
+    endpoint.output_started = True
+    endpoint.process = SimpleNamespace(returncode=None)  # type: ignore[assignment]
+    endpoint.last_airplay_volume_percent = 42
+    manager._endpoints["pool"] = endpoint
+    sent: list[int] = []
+
+    async def send(_endpoint, volume_percent):
+        sent.append(volume_percent)
+        return 0.0
+
+    manager._send_airplay_volume_to_source = send  # type: ignore[method-assign]
+    await manager.handle_state_event(
+        {
+            "data": {
+                "entity_id": "media_player.pool",
+                "old_state": {"attributes": {"volume_level": 0.20}},
+                "new_state": {"attributes": {"volume_level": 0.42}},
+            }
+        }
+    )
+
+    assert sent == []
 
 
 async def _wait_for_value(values: list[int]) -> None:

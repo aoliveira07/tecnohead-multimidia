@@ -2,7 +2,7 @@
 
 ## Estado desta versão
 
-A implementação está empacotada na release `v1.4.11`. A homologação física continua sendo registrada por zona: o operador precisa confirmar seleção, áudio audível, volume e parada. O App não marca áudio físico como concluído só porque um nome mDNS apareceu no iPhone. Se o processo Shairport Sync morrer na inicialização, a interface mostra o código e a cauda sanitizada do diagnóstico em vez de manter “Visível no AirPlay”.
+A implementação está empacotada na release `v1.4.12`. A homologação física continua sendo registrada por zona: o operador precisa confirmar seleção, áudio audível, volume e parada. O App não marca áudio físico como concluído só porque um nome mDNS apareceu no iPhone. Se o processo Shairport Sync morrer na inicialização, a interface mostra o código e a cauda sanitizada do diagnóstico em vez de manter “Visível no AirPlay”.
 
 ## Componentes fixados
 
@@ -27,6 +27,8 @@ O fluxo PCM não aplica a atenuação do slider do iPhone. Cada instância usa `
 
 O limite máximo configurado da zona continua valendo. Com limite de 100%, o valor do iPhone chega integralmente ao player; com limite menor, o App aplica o teto sem aumentar o ganho do PCM. O painel do App e o Home Assistant permanecem controles físicos equivalentes. O diagnóstico registra a última porcentagem recebida e o resultado da chamada, sem registrar payload de áudio ou dados privados.
 
+Na v1.4.12 o caminho inverso também foi implementado: alterações observadas no `volume_level` do `media_player` — inclusive pelo AudioCast — são encaminhadas à sessão AirPlay ativa pelo comando nativo `org.gnome.ShairportSync.RemoteControl.SetAirplayVolume`. O App só faz isso enquanto aquela zona tem uma sessão AirPlay ativa; não altera o volume de uma sessão encerrada e suprime o evento que ele mesmo acabou de aplicar para evitar loop. Como os nomes D-Bus do Shairport Sync são fixos, cada endpoint usa um barramento de sessão privado, enquanto Cozinha e Piscina continuam compartilhando somente o barramento Avahi/mDNS.
+
 O formato/codec aceito pelo firmware do player ainda é critério de prova física. Se `play_media` aceitar o comando mas não houver áudio, o diagnóstico será `AIRPLAY_BRIDGE_UNSUPPORTED`, sem declarar sucesso.
 
 ## Política da Piscina
@@ -37,7 +39,7 @@ O formato/codec aceito pelo firmware do player ainda é critério de prova físi
 
 O painel informa versão dos binários, estado do NQPTP, mDNS, porta (sem publicar IP privado), endpoint por zona, clientes, bytes e último erro. Ainda assim, `streaming` significa apenas que PCM foi recebido e a chamada HA foi aceita; `physical_audio` só pode ser atualizado após o operador ouvir as caixas.
 
-O teste deve ser executado nesta ordem: Cozinha individual, Piscina com o amplificador livre para arbitrar ARC, dois destinos simultâneos, volumes separados e depois app Casa. Em cada zona, mover o slider do iPhone deve alterar também o valor do player no AudioCast/LinkPlay; não se deve chamar `media_player.join` durante uma seleção dupla do iPhone.
+O teste deve ser executado nesta ordem: Cozinha individual, Piscina com o amplificador livre para arbitrar ARC, dois destinos simultâneos, volumes separados e depois app Casa. Em cada zona, mover o slider do iPhone deve alterar também o valor do player no AudioCast/LinkPlay; em seguida, alterar o volume no AudioCast e confirmar que o slider do iPhone acompanha. Não se deve chamar `media_player.join` durante uma seleção dupla do iPhone.
 
 Referências: [AIRPLAY2.md](https://github.com/mikebrady/shairport-sync/blob/master/AIRPLAY2.md), [múltiplas instâncias](https://github.com/mikebrady/shairport-sync/blob/master/ADVANCED%20TOPICS/RunningMultipleInstances.md) e [integração ao app Casa](https://github.com/mikebrady/shairport-sync/blob/master/ADDINGTOHOME.md).
 
