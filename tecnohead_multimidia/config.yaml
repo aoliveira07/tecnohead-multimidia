@@ -41,4 +41,9 @@ services:
 map:
   - type: data
 
+options:
+  apple_mediaremote_experimental: false
+schema:
+  apple_mediaremote_experimental: bool
+
 backup: hot

@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 import os
 from dataclasses import dataclass
 from pathlib import Path
@@ -30,6 +31,19 @@ def _load_supervisor_token() -> str | None:
     return None
 
 
+def _load_mediaremote_probe_option(data_dir: Path) -> bool:
+    """Read the HAOS-validated opt-in without exposing other app options."""
+
+    env_value = os.getenv("APPLE_MEDIAREMOTE_EXPERIMENTAL")
+    if env_value is not None:
+        return env_value.strip().lower() in {"1", "true", "yes"}
+    try:
+        options = json.loads((data_dir / "options.json").read_text(encoding="utf-8"))
+    except (OSError, UnicodeError, ValueError):
+        return False
+    return isinstance(options, dict) and options.get("apple_mediaremote_experimental") is True
+
+
 @dataclass(frozen=True)
 class Settings:
     app_version: str = "1.4.16"
@@ -47,11 +61,12 @@ class Settings:
 
 
 def load_settings() -> Settings:
+    data_dir = Path(os.getenv("APP_DATA_DIR", "/data"))
     return Settings(
         app_version=os.getenv("APP_VERSION", "1.4.16"),
         app_host=os.getenv("APP_HOST", "0.0.0.0"),
         app_port=int(os.getenv("INGRESS_PORT", os.getenv("APP_PORT", "18199"))),
-        data_dir=Path(os.getenv("APP_DATA_DIR", "/data")),
+        data_dir=data_dir,
         supervisor_url=os.getenv("SUPERVISOR_URL", "http://supervisor"),
         core_api_url=os.getenv("HA_CORE_API_URL", "http://supervisor/core/api").rstrip("/"),
         core_ws_url=os.getenv("HA_CORE_WS_URL", "ws://supervisor/core/websocket"),
@@ -59,5 +74,5 @@ def load_settings() -> Settings:
         mqtt_discovery_prefix=os.getenv("MQTT_DISCOVERY_PREFIX", "homeassistant").strip("/"),
         mqtt_topic_prefix=os.getenv("MQTT_TOPIC_PREFIX", "tecnohead").strip("/"),
         ha_request_timeout=float(os.getenv("HA_REQUEST_TIMEOUT", "12")),
-        apple_mediaremote_experimental=os.getenv("APPLE_MEDIAREMOTE_EXPERIMENTAL", "").lower() in {"1", "true", "yes"},
+        apple_mediaremote_experimental=_load_mediaremote_probe_option(data_dir),
     )
