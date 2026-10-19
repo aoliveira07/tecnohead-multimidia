@@ -31,7 +31,7 @@ Atualização: 19/10/2026. `PASSOU` exige o critério inteiro e evidência; test
 
 ## Provas automatizadas locais (não são D16–D19)
 
-`python -m pytest -q` em `tecnohead_multimidia`: **40 passed, 1 skipped**. Os testes novos verificam parser de `copl`, ausência de conteúdo privado no diagnóstico, isolamento da sonda pela flag e continuidade de `pvol` após metadado volumoso. Não houve conexão do teste com iPhone, hub, HAOS ou amplificador físico.
+`python -m pytest -q` em `tecnohead_multimidia`: **45 passed, 1 skipped**. Os testes novos verificam parser de `copl`, ausência de conteúdo privado no diagnóstico, opção HAOS desligada por padrão, isolamento da sonda pela flag e continuidade de `pvol` após metadado volumoso ou falha da sonda. Não houve conexão do teste com iPhone, hub, HAOS ou amplificador físico.
 
 ## Sequência segura quando o acesso estiver disponível
 

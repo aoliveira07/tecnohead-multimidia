@@ -1130,7 +1130,12 @@ diagnostics = {{
                     continue
                 type_code, item_code, payload = item
                 if type_code == "ssnc" and item_code == "copl" and self._mediaremote_probe_enabled:
-                    endpoint.mediaremote_probe.observe(payload)
+                    try:
+                        endpoint.mediaremote_probe.observe(payload)
+                    except Exception:
+                        # Sender metadata is optional. A malformed or unknown
+                        # plist must never interrupt the physical volume path.
+                        endpoint.mediaremote_probe.invalid_updates += 1
                     continue
                 if type_code != "ssnc" or item_code != "pvol":
                     continue

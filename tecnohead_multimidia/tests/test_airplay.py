@@ -258,6 +258,36 @@ async def test_mediaremote_probe_is_opt_in_and_does_not_change_volume_path(tmp_p
             assert "PRIVATE" not in repr(endpoint.mediaremote_probe.report())
 
 
+async def test_mediaremote_probe_failure_does_not_interrupt_volume(tmp_path, monkeypatch):
+    async def record(**kwargs):
+        return None
+
+    manager = AirPlayEndpointManager(
+        Settings(data_dir=tmp_path, apple_mediaremote_experimental=True), None, None, record
+    )  # type: ignore[arg-type]
+    forwarded = []
+    manager._queue_airplay_volume = lambda _endpoint, percent, *, source: forwarded.append((percent, source))  # type: ignore[method-assign]
+    stream = asyncio.StreamReader(limit=METADATA_STREAM_LIMIT)
+    for code, payload in ((b"636f706c", b"unexpected metadata"), (b"70766f6c", b"-15.00,-15.00,-30.00,0.00")):
+        stream.feed_data(
+            b"<item><type>73736e63</type><code>" + code + b"</code><length>"
+            + str(len(payload)).encode() + b"</length>\n<data encoding=\"base64\">\n"
+            + base64.b64encode(payload) + b"\n</data></item>\n"
+        )
+    stream.feed_eof()
+    endpoint = _Endpoint(zone=AudioZoneProfile(zone_id="kitchen"), port=7000)
+    endpoint.metadata_reader = SimpleNamespace(stdout=stream)  # type: ignore[assignment]
+
+    def fail_probe(_payload):
+        raise RuntimeError("private payload must not appear in diagnostics")
+
+    monkeypatch.setattr(endpoint.mediaremote_probe, "observe", fail_probe)
+    await manager._consume_metadata(endpoint)
+    assert endpoint.mediaremote_probe.invalid_updates == 1
+    assert forwarded == [(50, "metadata")]
+    assert endpoint.last_error is None
+
+
 async def test_airplay_pvol_is_forwarded_to_zone_player(fake_ha, tmp_path):
     _audio_snapshot(fake_ha)
     discovery = DiscoveryService(fake_ha)
