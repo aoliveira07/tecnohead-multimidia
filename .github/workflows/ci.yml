@@ -48,6 +48,9 @@ jobs:
           assert cfg['host_dbus'] is True
           assert cfg['realtime'] is True
           assert set(cfg['arch']) == {'amd64', 'aarch64'}
+          assert cfg['options']['apple_mediaremote_experimental'] is False
+          assert cfg['schema']['apple_mediaremote_experimental'] == 'bool'
+          assert cfg['version'] in cfg['breaking_versions']
           print('config.yaml OK')
           PY
 

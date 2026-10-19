@@ -1,6 +1,6 @@
 # MediaRemote no acessório AirPlay 2 do app Casa — investigação inicial
 
-Estado em 19/10/2026: **investigação de código e fontes upstream; não é homologação física**. O handoff específico “v1.3.2 — MediaRemote” e suas definições D01–D24 ainda não estão disponíveis neste checkout. Não atribuir PASSOU/FALHOU a esses IDs até receber o arquivo e executar os passos correspondentes.
+Estado em 19/10/2026: **investigação de código e fontes upstream; não é homologação física**. O handoff v1.3.2 e a matriz D01–D24 foram recebidos na conversa. A execução e os estados auditáveis estão em [APPLE_MEDIAREMOTE_RESEARCH.md](APPLE_MEDIAREMOTE_RESEARCH.md) e [MEDIAREMOTE_D01_D24.md](MEDIAREMOTE_D01_D24.md). O texto abaixo preserva a investigação inicial, sem convertê-la retroativamente em teste físico.
 
 ## Problema observado e escopo
 
@@ -27,7 +27,7 @@ Não alterar `model`, features, flags, identidade, pairing, HomeKit Bridge, Link
 
 ## Próximas evidências indispensáveis
 
-1. Receber o handoff v1.3.2 — MediaRemote para mapear exatamente D01–D24, critérios de passagem e qualquer discussão adicional indicada.
+1. Usar o handoff v1.3.2 recebido e manter D01–D24 atualizados com resultados reais, sem confundir inspeção estática com teste físico.
 2. Confirmar versão realmente instalada no HAOS e manter backup recuperável da configuração/identidade das duas zonas. O repositório tem release v1.4.16, mas isso **não comprova** instalação no equipamento.
 3. Com operador presente, reproduzir faixa no iPhone e registrar separadamente: seletor AirPlay, áudio físico, cartão Casa da Cozinha e Piscina, tipo/modelo exibido e comportamento com/sem reprodução. Não fotografar/publicar títulos, identificadores ou rede do cliente sem sanitização.
 4. Se houver autorização e acesso de diagnóstico, observar **apenas eventos sanitizados** de `Remote Control Only`, `ssnc/copl`, D-Bus `NowPlayingInformation` e capacidades anunciadas; não gravar plists, capa, chaves ou endereços em logs públicos.

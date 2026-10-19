@@ -3,6 +3,7 @@ from __future__ import annotations
 import asyncio
 import base64
 import contextlib
+import plistlib
 import socket
 import time
 from datetime import UTC, datetime
@@ -12,9 +13,11 @@ import pytest
 from test_audio import _audio_snapshot, _config
 
 from app.core.airplay import (
+    MAX_METADATA_ITEM_BYTES,
     METADATA_STREAM_LIMIT,
     AirPlayEndpointManager,
     AudioStreamBroker,
+    MediaRemoteProbe,
     _Endpoint,
     _monotonic_to_iso,
     airplay_volume_to_percent,
@@ -158,6 +161,131 @@ async def test_airplay_metadata_reader_accepts_large_item_before_pvol(tmp_path):
     header = await stream.readline()
     item = await manager._read_metadata_item(stream, header)
     assert item == ("ssnc", "copl", payload)
+
+
+async def test_airplay_metadata_reader_skips_oversized_item_without_losing_next_volume(tmp_path):
+    async def record(**kwargs):
+        return None
+
+    manager = AirPlayEndpointManager(Settings(data_dir=tmp_path), None, None, record)  # type: ignore[arg-type]
+    oversize = b"x" * (MAX_METADATA_ITEM_BYTES + 1)
+    volume = b"-15.00,-15.00,-30.00,0.00"
+    stream = asyncio.StreamReader(limit=METADATA_STREAM_LIMIT)
+    for code, payload in ((b"636f706c", oversize), (b"70766f6c", volume)):
+        stream.feed_data(
+            b"<item><type>73736e63</type><code>" + code + b"</code><length>"
+            + str(len(payload)).encode() + b"</length>\n<data encoding=\"base64\">\n"
+            + base64.b64encode(payload) + b"\n</data></item>\n"
+        )
+    stream.feed_eof()
+    assert await manager._read_metadata_item(stream, await stream.readline()) is None
+    assert await manager._read_metadata_item(stream, await stream.readline()) == ("ssnc", "pvol", volume)
+
+
+def test_mediaremote_probe_records_only_presence_and_supported_commands():
+    probe = MediaRemoteProbe()
+    artwork = b"a" * 194000
+    now_playing = {
+        "type": "updateMRNowPlayingInfo",
+        "params": {"params": {
+            "kMRMediaRemoteNowPlayingInfoTitle": "PRIVATE TRACK",
+            "kMRMediaRemoteNowPlayingInfoArtist": "PRIVATE ARTIST",
+            "kMRMediaRemoteNowPlayingInfoArtworkData": artwork,
+        }},
+    }
+    commands = {
+        "type": "updateMRSupportedCommands",
+        "params": {"mrSupportedCommandsFromSender": [
+            plistlib.dumps({"kCommandInfoCommandKey": 1, "kCommandInfoEnabledKey": True}),
+            plistlib.dumps({"kCommandInfoCommandKey": 4, "kCommandInfoEnabledKey": False}),
+        ]},
+    }
+    probe.observe(plistlib.dumps(now_playing))
+    probe.observe(plistlib.dumps(commands))
+    report = probe.report()
+    assert report["now_playing_updates"] == 1
+    assert report["supported_commands_updates"] == 1
+    assert report["observed_fields"] == ["artist", "artwork", "title"]
+    assert report["enabled_command_codes"] == [1]
+    assert report["apple_home_card"] == "not_observed"
+    assert "PRIVATE" not in repr(report)
+    assert "194000" not in repr(report)
+
+
+def test_mediaremote_probe_does_not_retain_or_log_invalid_or_oversized_payload():
+    probe = MediaRemoteProbe()
+    probe.observe(b"invalid")
+    probe.observe(b"private" * 200000)
+    assert probe.report()["invalid_updates"] == 1
+    assert probe.report()["oversized_updates"] == 1
+    assert "private" not in repr(probe.report())
+
+
+async def test_mediaremote_probe_is_opt_in_and_does_not_change_volume_path(tmp_path):
+    async def record(**kwargs):
+        return None
+
+    payload = plistlib.dumps({
+        "type": "updateMRNowPlayingInfo",
+        "params": {"params": {"kMRMediaRemoteNowPlayingInfoTitle": "PRIVATE TRACK"}},
+    })
+    volume = b"-15.00,-15.00,-30.00,0.00"
+
+    def make_endpoint():
+        stream = asyncio.StreamReader(limit=METADATA_STREAM_LIMIT)
+        for code, body in ((b"636f706c", payload), (b"70766f6c", volume)):
+            stream.feed_data(
+                b"<item><type>73736e63</type><code>" + code + b"</code><length>"
+                + str(len(body)).encode() + b"</length>\n<data encoding=\"base64\">\n"
+                + base64.b64encode(body) + b"\n</data></item>\n"
+            )
+        stream.feed_eof()
+        endpoint = _Endpoint(zone=AudioZoneProfile(zone_id="kitchen"), port=7000)
+        endpoint.metadata_reader = SimpleNamespace(stdout=stream)  # type: ignore[assignment]
+        return endpoint
+
+    for enabled in (False, True):
+        manager = AirPlayEndpointManager(
+            Settings(data_dir=tmp_path, apple_mediaremote_experimental=enabled), None, None, record
+        )  # type: ignore[arg-type]
+        forwarded = []
+        manager._queue_airplay_volume = lambda _endpoint, percent, *, source: forwarded.append((percent, source))  # type: ignore[method-assign]
+        endpoint = make_endpoint()
+        await manager._consume_metadata(endpoint)
+        assert forwarded == [(50, "metadata")]
+        assert endpoint.mediaremote_probe.now_playing_updates == int(enabled)
+        if enabled:
+            assert "PRIVATE" not in repr(endpoint.mediaremote_probe.report())
+
+
+async def test_mediaremote_probe_failure_does_not_interrupt_volume(tmp_path, monkeypatch):
+    async def record(**kwargs):
+        return None
+
+    manager = AirPlayEndpointManager(
+        Settings(data_dir=tmp_path, apple_mediaremote_experimental=True), None, None, record
+    )  # type: ignore[arg-type]
+    forwarded = []
+    manager._queue_airplay_volume = lambda _endpoint, percent, *, source: forwarded.append((percent, source))  # type: ignore[method-assign]
+    stream = asyncio.StreamReader(limit=METADATA_STREAM_LIMIT)
+    for code, payload in ((b"636f706c", b"unexpected metadata"), (b"70766f6c", b"-15.00,-15.00,-30.00,0.00")):
+        stream.feed_data(
+            b"<item><type>73736e63</type><code>" + code + b"</code><length>"
+            + str(len(payload)).encode() + b"</length>\n<data encoding=\"base64\">\n"
+            + base64.b64encode(payload) + b"\n</data></item>\n"
+        )
+    stream.feed_eof()
+    endpoint = _Endpoint(zone=AudioZoneProfile(zone_id="kitchen"), port=7000)
+    endpoint.metadata_reader = SimpleNamespace(stdout=stream)  # type: ignore[assignment]
+
+    def fail_probe(_payload):
+        raise RuntimeError("private payload must not appear in diagnostics")
+
+    monkeypatch.setattr(endpoint.mediaremote_probe, "observe", fail_probe)
+    await manager._consume_metadata(endpoint)
+    assert endpoint.mediaremote_probe.invalid_updates == 1
+    assert forwarded == [(50, "metadata")]
+    assert endpoint.last_error is None
 
 
 async def test_airplay_pvol_is_forwarded_to_zone_player(fake_ha, tmp_path):

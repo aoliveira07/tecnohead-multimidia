@@ -7,6 +7,7 @@ import contextlib
 import json
 import logging
 import os
+import plistlib
 import re
 import secrets
 import socket
@@ -31,6 +32,8 @@ PCM_SAMPLE_FORMAT = "s32le"
 STREAM_IDLE_SECONDS = 8.0
 MDNS_PROBE_TIMEOUT = 3.0
 METADATA_STREAM_LIMIT = 4 * 1024 * 1024
+MAX_METADATA_ITEM_BYTES = 2 * 1024 * 1024
+MAX_MEDIAREMOTE_PLIST_BYTES = 1024 * 1024
 VOLUME_HOOK_PATH = "/usr/local/bin/tecnohead-airplay-volume-hook"
 VOLUME_SYNC_TOLERANCE_PERCENT = 2
 VOLUME_SYNC_ECHO_WINDOW_SECONDS = 2.0
@@ -54,6 +57,88 @@ def _metadata_fourcc(value: bytes) -> str | None:
         return decoded.decode("ascii") if len(decoded) == 4 else None
     except (UnicodeDecodeError, ValueError):
         return None
+
+
+@dataclass
+class MediaRemoteProbe:
+    """Privacy-preserving observation of sender metadata, not Apple Home state.
+
+    The probe never retains a track title, artwork, pairing identifier, or
+    raw plist. It is an opt-in field diagnostic and cannot make Home render a
+    Now Playing card on its own.
+    """
+
+    now_playing_updates: int = 0
+    supported_commands_updates: int = 0
+    playback_state_updates: int = 0
+    invalid_updates: int = 0
+    oversized_updates: int = 0
+    observed_fields: set[str] = field(default_factory=set)
+    enabled_commands: set[int] = field(default_factory=set)
+    last_event_at: float | None = None
+
+    def observe(self, payload: bytes) -> None:
+        if len(payload) > MAX_MEDIAREMOTE_PLIST_BYTES:
+            self.oversized_updates += 1
+            return
+        try:
+            message = plistlib.loads(payload)
+        except (ValueError, TypeError, OverflowError, RecursionError, plistlib.InvalidFileException):
+            self.invalid_updates += 1
+            return
+        if not isinstance(message, dict):
+            self.invalid_updates += 1
+            return
+        kind = message.get("type")
+        params = message.get("params")
+        if kind == "updateMRNowPlayingInfo":
+            self.now_playing_updates += 1
+            info = params.get("params", params) if isinstance(params, dict) else None
+            if isinstance(info, dict):
+                for field_name, suffix in (
+                    ("title", "Title"),
+                    ("artist", "Artist"),
+                    ("album", "Album"),
+                    ("artwork", "ArtworkData"),
+                    ("duration", "Duration"),
+                    ("position", "ElapsedTime"),
+                ):
+                    value = info.get(f"kMRMediaRemoteNowPlayingInfo{suffix}")
+                    if value is not None and value != b"" and value != "":
+                        self.observed_fields.add(field_name)
+        elif kind == "updateMRSupportedCommands":
+            self.supported_commands_updates += 1
+            entries = params.get("mrSupportedCommandsFromSender") if isinstance(params, dict) else None
+            if isinstance(entries, list):
+                for item in entries[:128]:
+                    try:
+                        command = plistlib.loads(item) if isinstance(item, bytes) and len(item) < 16384 else item
+                    except (ValueError, TypeError, OverflowError, RecursionError, plistlib.InvalidFileException):
+                        continue
+                    if not isinstance(command, dict) or command.get("kCommandInfoEnabledKey") is not True:
+                        continue
+                    code = command.get("kCommandInfoCommandKey")
+                    if isinstance(code, int) and not isinstance(code, bool) and 0 <= code < 256:
+                        self.enabled_commands.add(code)
+        elif kind == "updateMRPlaybackState":
+            self.playback_state_updates += 1
+        else:
+            return
+        self.last_event_at = time.monotonic()
+
+    def report(self) -> dict[str, Any]:
+        return {
+            "source": "sender_to_receiver_only",
+            "now_playing_updates": self.now_playing_updates,
+            "supported_commands_updates": self.supported_commands_updates,
+            "playback_state_updates": self.playback_state_updates,
+            "invalid_updates": self.invalid_updates,
+            "oversized_updates": self.oversized_updates,
+            "observed_fields": sorted(self.observed_fields),
+            "enabled_command_codes": sorted(self.enabled_commands),
+            "last_event_at": _monotonic_to_iso(self.last_event_at),
+            "apple_home_card": "not_observed",
+        }
 
 
 def airplay_volume_to_percent(value: str | bytes) -> int | None:
@@ -192,6 +277,7 @@ class _Endpoint:
     ffmpeg: asyncio.subprocess.Process | None = None
     metadata_reader: asyncio.subprocess.Process | None = None
     metadata_pipe_path: Path | None = None
+    mediaremote_probe: MediaRemoteProbe = field(default_factory=MediaRemoteProbe)
     volume_socket: socket.socket | None = None
     volume_socket_path: Path | None = None
     control_dbus_process: asyncio.subprocess.Process | None = None
@@ -253,6 +339,7 @@ class AirPlayEndpointManager:
         event_recorder: EventRecorder,
     ) -> None:
         self.settings = settings
+        self._mediaremote_probe_enabled = settings.apple_mediaremote_experimental
         self.ha = ha
         self.audio = audio
         self.event_recorder = event_recorder
@@ -1009,13 +1096,21 @@ diagnostics = {{
         if not marker or not marker.lstrip().startswith(b"<data"):
             return None
         encoded_parts: list[bytes] = []
+        encoded_size = 0
+        oversized = length > MAX_METADATA_ITEM_BYTES
         while True:
             line = await stream.readline()
             if not line:
                 return None
             if line.lstrip().startswith(b"</data>"):
                 break
-            encoded_parts.append(line.strip())
+            encoded_size += len(line)
+            if encoded_size > (MAX_METADATA_ITEM_BYTES * 4 // 3) + 8:
+                oversized = True
+            if not oversized:
+                encoded_parts.append(line.strip())
+        if oversized:
+            return None
         payload = b""
         if encoded_parts:
             with contextlib.suppress(ValueError, binascii.Error):
@@ -1034,6 +1129,14 @@ diagnostics = {{
                 if not item:
                     continue
                 type_code, item_code, payload = item
+                if type_code == "ssnc" and item_code == "copl" and self._mediaremote_probe_enabled:
+                    try:
+                        endpoint.mediaremote_probe.observe(payload)
+                    except Exception:
+                        # Sender metadata is optional. A malformed or unknown
+                        # plist must never interrupt the physical volume path.
+                        endpoint.mediaremote_probe.invalid_updates += 1
+                    continue
                 if type_code != "ssnc" or item_code != "pvol":
                     continue
                 fields = payload.decode("ascii", errors="ignore").split(",")
@@ -1483,6 +1586,7 @@ diagnostics = {{
                 await self.audio.stop_airplay_output(self._config, endpoint.zone.zone_id)
         endpoint.linkplay_started = False
         endpoint.broker.reset()
+        endpoint.mediaremote_probe = MediaRemoteProbe()
         endpoint.state = "advertising"
         endpoint.diagnostic = "sessão AirPlay encerrada; aguardando nova seleção Apple"
         await self.event_recorder(
@@ -1662,6 +1766,9 @@ diagnostics = {{
                     "clients": endpoint.broker.client_count,
                     "bytes_sent": endpoint.broker.bytes_sent,
                     "volume_bridge": "active",
+                    "sender_mediaremote_probe": endpoint.mediaremote_probe.report()
+                    if self._mediaremote_probe_enabled
+                    else {"state": "disabled", "apple_home_card": "not_observed"},
                     "last_airplay_volume_percent": endpoint.last_airplay_volume_percent,
                     "last_airplay_volume_at": _monotonic_to_iso(endpoint.last_airplay_volume_at),
                     "last_airplay_volume_source": endpoint.last_airplay_volume_source,
