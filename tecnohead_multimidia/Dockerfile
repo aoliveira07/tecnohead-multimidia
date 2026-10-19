@@ -62,6 +62,12 @@ RUN git clone --filter=blob:none https://github.com/mikebrady/shairport-sync.git
     && git checkout --detach "${SHAIRPORT_SYNC_COMMIT}" \
     && test "$(git rev-parse HEAD)" = "${SHAIRPORT_SYNC_COMMIT}"
 
+COPY patches/shairport-rc-diagnostics.patch /tmp/shairport-rc-diagnostics.patch
+
+RUN cd /src/shairport-sync \
+    && git apply --check /tmp/shairport-rc-diagnostics.patch \
+    && git apply /tmp/shairport-rc-diagnostics.patch
+
 RUN cd /src/shairport-sync \
     && autoreconf -fi \
     && ./configure \
@@ -86,7 +92,7 @@ RUN cd /src/shairport-sync \
 
 FROM ghcr.io/home-assistant/base:latest
 
-ARG BUILD_VERSION=1.4.17-rc.3
+ARG BUILD_VERSION=1.4.17-rc.4
 ARG BUILD_ARCH=local
 ARG NQPTP_COMMIT=ab8fb67483411640fd7f1e193889482f2421c37c
 ARG SHAIRPORT_SYNC_COMMIT=cf6998daa1876c5a8f97128a960c8afc0e731841
@@ -121,6 +127,10 @@ RUN apk add --no-cache \
 
 COPY --from=nqptp-build /out/nqptp /usr/local/bin/nqptp
 COPY --from=shairport-build /out/shairport-sync /usr/local/bin/shairport-sync
+COPY --from=nqptp-build /src/nqptp/LICENSE /usr/share/licenses/nqptp/LICENSE
+COPY --from=shairport-build /src/shairport-sync/COPYING /usr/share/licenses/shairport-sync/COPYING
+COPY --from=shairport-build /src/shairport-sync/LICENSES /usr/share/licenses/shairport-sync/LICENSES
+COPY --from=shairport-build /src/shairport-sync/tinyhttp/LICENSE /usr/share/licenses/shairport-sync/tinyhttp-LICENSE
 
 COPY requirements.txt /requirements.txt
 RUN python3 -m pip install --no-cache-dir --break-system-packages -r /requirements.txt
