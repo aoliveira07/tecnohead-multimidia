@@ -130,6 +130,20 @@
           <div id="audio-airplay-details" class="inline-notice">Aguardando descoberta.</div>
           <p class="muted">O receptor Shairport Sync/NQPTP é AirPlay 2 real e encaminha PCM ao LinkPlay pela API do Home Assistant. Encontrar o nome no iPhone ainda não é homologação: confirme áudio audível e parada em cada zona.</p>
         </div>
+        <div class="audio-apple-box">
+          <div class="subsection-heading"><div><p class="eyebrow">APPLE CASA / HOMEKIT</p><h3>Controle físico e destino AirPlay são caminhos distintos</h3></div><span class="hint">adoção Apple é manual</span></div>
+          <div class="audio-apple-grid">
+            <div class="audio-notice">
+              <strong>Já adotado no app Casa</strong>
+              <p><code>Cozinha Room</code> e <code>Piscina Room</code> são os receivers reais publicados pelo HomeKit Bridge do Home Assistant. Eles controlam o equipamento LinkPlay; não são os destinos AirPlay virtuais.</p>
+            </div>
+            <div class="audio-notice">
+              <strong>Destinos AirPlay 2</strong>
+              <p>Para adotar <code>TecnoHead Cozinha</code> ou <code>TecnoHead Piscina</code>, abra no iPhone: <em>Casa → + → Adicionar Acessório → Mais opções</em>. Se não aparecerem, permita “Qualquer pessoa na mesma rede” em <em>Configurações da Casa → Alto-falantes e TVs</em>.</p>
+            </div>
+          </div>
+          <p class="muted">A seleção simultânea Cozinha + Piscina é feita no seletor AirPlay do iPhone; ela não deve ser combinada com “Agrupar LinkPlay”. O App não consegue ler o estado de pareamento do app Casa. O aceite é confirmado quando o destino aparece, reproduz áudio e responde ao volume/parar.</p>
+        </div>
         <form id="audio-form" class="form audio-form">
           <div class="subsection-heading"><div><p class="eyebrow">CADASTRO POR ÁREA</p><h3>Entidades canônicas das zonas</h3></div><span class="hint">listas estritas por área HA</span></div>
           <div id="audio-config-fields" class="audio-config-grid"></div>

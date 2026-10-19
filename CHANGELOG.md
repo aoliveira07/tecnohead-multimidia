@@ -1,5 +1,11 @@
 # Changelog
 
+## 1.4.15 — orientação Apple Casa no painel
+
+- adiciona ao painel de áudio a distinção entre os receivers `Cozinha Room`/`Piscina Room` do HomeKit Bridge e os destinos AirPlay 2 `TecnoHead Cozinha`/`TecnoHead Piscina`;
+- documenta o fluxo de adoção pelo app Casa e a regra de não misturar seleção dupla AirPlay com agrupamento LinkPlay;
+- mantém o controle físico, a prioridade HDMI ARC e o volume seguro sem alterar a configuração do Home Assistant.
+
 ## 1.4.14 — fallback de leitura do volume AirPlay
 
 - Lê a propriedade `AirplayVolume` do D-Bus privado do Shairport Sync durante uma sessão ativa.

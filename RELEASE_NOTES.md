@@ -1,5 +1,11 @@
 # Release notes
 
+## v1.4.15 — Apple Casa sem duplicidade
+
+Esta versão adiciona ao painel do TecnoHead uma orientação explícita para a adoção Apple. O app diferencia os receivers físicos publicados pelo HomeKit Bridge (`Cozinha Room` e `Piscina Room`) dos destinos AirPlay 2 virtuais (`TecnoHead Cozinha` e `TecnoHead Piscina`). Nenhum acessório, pareamento, filtro do HomeKit Bridge ou configuração HDMI ARC é alterado automaticamente.
+
+O procedimento de adoção e o teste de reprodução ficam documentados em `docs/APPLE_HOME.md`. A seleção simultânea continua sendo responsabilidade do seletor AirPlay do iPhone e não deve ser combinada com `media_player.join`.
+
 ## v1.4.14 — leitura redundante do volume AirPlay
 
 Quando o volume era alterado no slider do iPhone, algumas sessões atualizavam o áudio audível sem entregar ao App um evento utilizável pelo gancho ou pelo `ssnc/pvol`. A v1.4.14 mantém esses caminhos e acrescenta a leitura periódica da propriedade `AirplayVolume` no D-Bus isolado de cada receptor. A primeira leitura de uma sessão apenas estabelece referência; somente alterações posteriores são enviadas por `media_player.volume_set` ao amplificador da mesma zona.
