@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.4.17-rc.3 — leitura real do pipe de metadados
+
+**Pré-release para atualização manual.** Corrige o enquadramento do pipe de metadados conforme o código fixado do Shairport Sync: os bytes Base64 e `</data></item>` chegam sem uma quebra de linha entre eles. A leitura anterior descartava silenciosamente esses itens, embora testes sintéticos com quebra extra passassem. A nova leitura usa comprimento declarado, limita memória e descarta itens grandes em blocos. A sonda opt-in acrescenta contagens de itens e de volume, sem guardar faixa, capa ou conteúdo do plist. O caminho de áudio PCM, saída LinkPlay, volume por hook/D-Bus, ARC, cenas e identidade Apple não muda. **Esta RC não corrige nem declara corrigido o cartão do app Casa; requer novo teste físico.**
+
 ## 1.4.17-rc.2 — proteção do token do stream nos logs
 
 **Pré-release para atualização manual.** Desativa o log de acesso HTTP do Uvicorn nos dois pontos de entrada do App, pois o endereço do stream AirPlay contém um token de sessão que antes aparecia nos logs locais do HAOS. Os eventos operacionais internos permanecem ativos. A sonda MediaRemote segue opt-in e a interface nativa de reprodução do app Casa continua pendente de comprovação; esta versão não a declara corrigida. Não copiar logs antigos que contenham URLs de stream.

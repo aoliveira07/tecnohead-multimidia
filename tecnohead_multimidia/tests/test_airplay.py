@@ -135,7 +135,7 @@ async def test_airplay_metadata_reader_decodes_pvol_payload(tmp_path):
         + str(len(payload)).encode()
         + b"</length>\n<data encoding=\"base64\">\n"
         + encoded
-        + b"\n</data></item>\n"
+        + b"</data></item>\n"
     )
     stream.feed_eof()
     header = await stream.readline()
@@ -155,7 +155,7 @@ async def test_airplay_metadata_reader_accepts_large_item_before_pvol(tmp_path):
         + str(len(payload)).encode()
         + b"</length>\n<data encoding=\"base64\">\n"
         + encoded
-        + b"\n</data></item>\n"
+        + b"</data></item>\n"
     )
     stream.feed_eof()
     header = await stream.readline()
@@ -175,7 +175,7 @@ async def test_airplay_metadata_reader_skips_oversized_item_without_losing_next_
         stream.feed_data(
             b"<item><type>73736e63</type><code>" + code + b"</code><length>"
             + str(len(payload)).encode() + b"</length>\n<data encoding=\"base64\">\n"
-            + base64.b64encode(payload) + b"\n</data></item>\n"
+            + base64.b64encode(payload) + b"</data></item>\n"
         )
     stream.feed_eof()
     assert await manager._read_metadata_item(stream, await stream.readline()) is None
@@ -237,7 +237,7 @@ async def test_mediaremote_probe_is_opt_in_and_does_not_change_volume_path(tmp_p
             stream.feed_data(
                 b"<item><type>73736e63</type><code>" + code + b"</code><length>"
                 + str(len(body)).encode() + b"</length>\n<data encoding=\"base64\">\n"
-                + base64.b64encode(body) + b"\n</data></item>\n"
+                + base64.b64encode(body) + b"</data></item>\n"
             )
         stream.feed_eof()
         endpoint = _Endpoint(zone=AudioZoneProfile(zone_id="kitchen"), port=7000)
@@ -255,6 +255,9 @@ async def test_mediaremote_probe_is_opt_in_and_does_not_change_volume_path(tmp_p
         assert forwarded == [(50, "metadata")]
         assert endpoint.mediaremote_probe.now_playing_updates == int(enabled)
         if enabled:
+            assert endpoint.mediaremote_probe.pipe_items_seen == 2
+            assert endpoint.mediaremote_probe.pipe_volume_items_seen == 1
+            assert endpoint.mediaremote_probe.pipe_command_plist_items_seen == 1
             assert "PRIVATE" not in repr(endpoint.mediaremote_probe.report())
 
 
@@ -272,7 +275,7 @@ async def test_mediaremote_probe_failure_does_not_interrupt_volume(tmp_path, mon
         stream.feed_data(
             b"<item><type>73736e63</type><code>" + code + b"</code><length>"
             + str(len(payload)).encode() + b"</length>\n<data encoding=\"base64\">\n"
-            + base64.b64encode(payload) + b"\n</data></item>\n"
+            + base64.b64encode(payload) + b"</data></item>\n"
         )
     stream.feed_eof()
     endpoint = _Endpoint(zone=AudioZoneProfile(zone_id="kitchen"), port=7000)
