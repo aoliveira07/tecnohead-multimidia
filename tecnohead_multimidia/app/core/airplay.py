@@ -32,6 +32,8 @@ STREAM_IDLE_SECONDS = 8.0
 MDNS_PROBE_TIMEOUT = 3.0
 METADATA_STREAM_LIMIT = 4 * 1024 * 1024
 VOLUME_HOOK_PATH = "/usr/local/bin/tecnohead-airplay-volume-hook"
+VOLUME_SYNC_TOLERANCE_PERCENT = 2
+VOLUME_SYNC_ECHO_WINDOW_SECONDS = 2.0
 IPV4_RE = re.compile(r"(?<![0-9])(?:[0-9]{1,3}\.){3}[0-9]{1,3}(?![0-9])")
 
 EventRecorder = Callable[..., Awaitable[None]]
@@ -201,9 +203,13 @@ class _Endpoint:
     last_airplay_volume_percent: int | None = None
     last_airplay_volume_at: float | None = None
     last_airplay_volume_source: str | None = None
+    last_airplay_to_physical_percent: int | None = None
+    last_airplay_to_physical_at: float | None = None
     last_physical_volume_percent: int | None = None
     last_physical_volume_at: float | None = None
     last_physical_volume_source: str | None = None
+    last_physical_to_airplay_percent: int | None = None
+    last_physical_to_airplay_at: float | None = None
     process_log_tail: deque[str] = field(default_factory=lambda: deque(maxlen=24))
 
 
@@ -1065,6 +1071,19 @@ diagnostics = {{
             return None
         return max(0, min(100, round(value * 100)))
 
+    @staticmethod
+    def _is_recent_volume_echo(
+        expected_percent: int | None,
+        observed_percent: int,
+        observed_at: float | None,
+    ) -> bool:
+        if expected_percent is None or observed_at is None:
+            return False
+        return (
+            abs(expected_percent - observed_percent) <= VOLUME_SYNC_TOLERANCE_PERCENT
+            and time.monotonic() - observed_at <= VOLUME_SYNC_ECHO_WINDOW_SECONDS
+        )
+
     async def handle_state_event(self, event: dict[str, Any]) -> None:
         """Mirror external physical volume changes back to the active source.
 
@@ -1092,8 +1111,21 @@ diagnostics = {{
             endpoint.last_physical_volume_at = time.monotonic()
             endpoint.last_physical_volume_source = "home_assistant_state_event"
             # This is the expected event after an iPhone slider change was
-            # forwarded to HA. Do not echo it back to the same source.
-            if endpoint.last_airplay_volume_percent == new_percent:
+            # forwarded to HA. LinkPlay can quantize the value by a point or
+            # two, so exact equality is not sufficient to suppress the echo.
+            if self._is_recent_volume_echo(
+                endpoint.last_airplay_to_physical_percent,
+                new_percent,
+                endpoint.last_airplay_to_physical_at,
+            ):
+                return
+            # Also suppress state churn caused by the previous reverse update
+            # while Shairport is reporting that update back through AirPlay.
+            if self._is_recent_volume_echo(
+                endpoint.last_physical_to_airplay_percent,
+                new_percent,
+                endpoint.last_physical_to_airplay_at,
+            ):
                 return
             if not endpoint.output_started or not endpoint.process or endpoint.process.returncode is not None:
                 return
@@ -1134,6 +1166,14 @@ diagnostics = {{
 
     async def _forward_physical_volume(self, endpoint: _Endpoint, volume_percent: int) -> None:
         applied = max(0, min(int(volume_percent), endpoint.zone.max_volume_percent))
+        if self._is_recent_volume_echo(
+            endpoint.last_physical_to_airplay_percent,
+            applied,
+            endpoint.last_physical_to_airplay_at,
+        ):
+            return
+        endpoint.last_physical_to_airplay_percent = applied
+        endpoint.last_physical_to_airplay_at = time.monotonic()
         try:
             volume_db = await self._send_airplay_volume_to_source(endpoint, applied)
             endpoint.last_airplay_volume_percent = applied
@@ -1149,6 +1189,8 @@ diagnostics = {{
                 physical_confirmation="not_observable",
             )
         except (RuntimeError, OSError) as exc:
+            endpoint.last_physical_to_airplay_percent = None
+            endpoint.last_physical_to_airplay_at = None
             endpoint.last_error = _redact_process_line(str(exc))
             await self.event_recorder(
                 event="physical_volume_forward_failed",
@@ -1161,8 +1203,19 @@ diagnostics = {{
             )
 
     async def _forward_airplay_volume(self, endpoint: _Endpoint, volume_percent: int) -> None:
+        if self._is_recent_volume_echo(
+            endpoint.last_physical_to_airplay_percent,
+            volume_percent,
+            endpoint.last_physical_to_airplay_at,
+        ):
+            endpoint.last_airplay_volume_percent = volume_percent
+            endpoint.last_airplay_volume_at = time.monotonic()
+            endpoint.last_airplay_volume_source = "reverse_volume_echo_suppressed"
+            return
         if endpoint.last_airplay_volume_percent == volume_percent:
             return
+        endpoint.last_airplay_to_physical_percent = volume_percent
+        endpoint.last_airplay_to_physical_at = time.monotonic()
         endpoint.last_airplay_volume_percent = volume_percent
         endpoint.last_airplay_volume_at = time.monotonic()
         try:
@@ -1440,11 +1493,15 @@ diagnostics = {{
                     "last_airplay_volume_percent": endpoint.last_airplay_volume_percent,
                     "last_airplay_volume_at": datetime.fromtimestamp(endpoint.last_airplay_volume_at, UTC).isoformat() if endpoint.last_airplay_volume_at else None,
                     "last_airplay_volume_source": endpoint.last_airplay_volume_source,
+                    "last_airplay_to_physical_percent": endpoint.last_airplay_to_physical_percent,
+                    "last_airplay_to_physical_at": datetime.fromtimestamp(endpoint.last_airplay_to_physical_at, UTC).isoformat() if endpoint.last_airplay_to_physical_at else None,
                     "volume_hook_active": bool(endpoint.volume_socket),
                     "reverse_volume_bridge": "active" if endpoint.control_dbus_socket_path else "inactive",
                     "last_physical_volume_percent": endpoint.last_physical_volume_percent,
                     "last_physical_volume_at": datetime.fromtimestamp(endpoint.last_physical_volume_at, UTC).isoformat() if endpoint.last_physical_volume_at else None,
                     "last_physical_volume_source": endpoint.last_physical_volume_source,
+                    "last_physical_to_airplay_percent": endpoint.last_physical_to_airplay_percent,
+                    "last_physical_to_airplay_at": datetime.fromtimestamp(endpoint.last_physical_to_airplay_at, UTC).isoformat() if endpoint.last_physical_to_airplay_at else None,
                     "process_alive": bool(endpoint.process and endpoint.process.returncode is None),
                     "process_returncode": endpoint.process.returncode if endpoint.process else None,
                     "process_log_tail": list(endpoint.process_log_tail),

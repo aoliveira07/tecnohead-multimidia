@@ -1,5 +1,11 @@
 # Release notes
 
+## v1.4.13 — estabilização do retorno de volume AirPlay
+
+Corrige a oscilação observada no teste físico: o amplificador LinkPlay pode devolver o volume arredondado ou repetir o mesmo evento depois de uma chamada. O App agora reconhece esses retornos dentro de uma janela curta e com tolerância de dois pontos, sem iniciar uma nova correção no iPhone. A sincronização continua bidirecional e limitada à sessão AirPlay ativa da zona.
+
+O aceite desta versão deve repetir o teste em Cozinha e Piscina: alterar o slider do iPhone, conferir o AudioCast, alterar o AudioCast e conferir o slider do iPhone; em cada mudança o valor deve estabilizar sem subir e descer sozinho.
+
 ## v1.4.12 — sincronização bidirecional do volume AirPlay
 
 A alteração do volume no AudioCast/LinkPlay agora é observada pelo stream de estados do Home Assistant e enviada ao iPhone/iPad da sessão AirPlay ativa pela interface nativa `SetAirplayVolume` do Shairport Sync. O comando usa o mesmo mapeamento linear do slider AirPlay (`0..100%` para `-30..0 dB`, com `-144 dB` para zero).

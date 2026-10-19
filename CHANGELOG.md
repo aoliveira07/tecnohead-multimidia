@@ -1,5 +1,11 @@
 # Changelog
 
+## 1.4.13 — estabilização do retorno de volume AirPlay
+
+- Evita o laço de realimentação que fazia o slider AirPlay oscilar quando o LinkPlay arredondava o valor retornado pelo amplificador.
+- Aplica tolerância de dois pontos e janela curta de eco nos caminhos iPhone → LinkPlay e LinkPlay → iPhone.
+- Deduplica eventos físicos repetidos e expõe os últimos sentidos de sincronização no diagnóstico.
+
 ## 1.4.12 — sincronização bidirecional de volume AirPlay
 
 - Encaminha alterações externas do volume LinkPlay/AudioCast para a sessão AirPlay 2 ativa pelo `SetAirplayVolume` nativo do Shairport Sync.

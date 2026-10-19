@@ -2,7 +2,7 @@
 
 ## Estado desta versão
 
-A implementação está empacotada na release `v1.4.12`. A homologação física continua sendo registrada por zona: o operador precisa confirmar seleção, áudio audível, volume e parada. O App não marca áudio físico como concluído só porque um nome mDNS apareceu no iPhone. Se o processo Shairport Sync morrer na inicialização, a interface mostra o código e a cauda sanitizada do diagnóstico em vez de manter “Visível no AirPlay”.
+A implementação está empacotada na release `v1.4.13`. A homologação física continua sendo registrada por zona: o operador precisa confirmar seleção, áudio audível, volume e parada. O App não marca áudio físico como concluído só porque um nome mDNS apareceu no iPhone. Se o processo Shairport Sync morrer na inicialização, a interface mostra o código e a cauda sanitizada do diagnóstico em vez de manter “Visível no AirPlay”.
 
 ## Componentes fixados
 
@@ -27,7 +27,7 @@ O fluxo PCM não aplica a atenuação do slider do iPhone. Cada instância usa `
 
 O limite máximo configurado da zona continua valendo. Com limite de 100%, o valor do iPhone chega integralmente ao player; com limite menor, o App aplica o teto sem aumentar o ganho do PCM. O painel do App e o Home Assistant permanecem controles físicos equivalentes. O diagnóstico registra a última porcentagem recebida e o resultado da chamada, sem registrar payload de áudio ou dados privados.
 
-Na v1.4.12 o caminho inverso também foi implementado: alterações observadas no `volume_level` do `media_player` — inclusive pelo AudioCast — são encaminhadas à sessão AirPlay ativa pelo comando nativo `org.gnome.ShairportSync.RemoteControl.SetAirplayVolume`. O App só faz isso enquanto aquela zona tem uma sessão AirPlay ativa; não altera o volume de uma sessão encerrada e suprime o evento que ele mesmo acabou de aplicar para evitar loop. Como os nomes D-Bus do Shairport Sync são fixos, cada endpoint usa um barramento de sessão privado, enquanto Cozinha e Piscina continuam compartilhando somente o barramento Avahi/mDNS.
+Na v1.4.12 o caminho inverso também foi implementado: alterações observadas no `volume_level` do `media_player` — inclusive pelo AudioCast — são encaminhadas à sessão AirPlay ativa pelo comando nativo `org.gnome.ShairportSync.RemoteControl.SetAirplayVolume`. Na v1.4.13, o App só considera uma alteração nova quando ela supera a tolerância de arredondamento ou chega fora da janela curta de eco; isso impede que o valor corrigido pelo amplificador volte como uma nova ordem e cause oscilação. O App só faz isso enquanto aquela zona tem uma sessão AirPlay ativa; não altera o volume de uma sessão encerrada. Como os nomes D-Bus do Shairport Sync são fixos, cada endpoint usa um barramento de sessão privado, enquanto Cozinha e Piscina continuam compartilhando somente o barramento Avahi/mDNS.
 
 O formato/codec aceito pelo firmware do player ainda é critério de prova física. Se `play_media` aceitar o comando mas não houver áudio, o diagnóstico será `AIRPLAY_BRIDGE_UNSUPPORTED`, sem declarar sucesso.
 

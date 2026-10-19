@@ -32,7 +32,7 @@ def _load_supervisor_token() -> str | None:
 
 @dataclass(frozen=True)
 class Settings:
-    app_version: str = "1.4.12"
+    app_version: str = "1.4.13"
     app_host: str = "0.0.0.0"
     app_port: int = 18199
     data_dir: Path = Path("/data")

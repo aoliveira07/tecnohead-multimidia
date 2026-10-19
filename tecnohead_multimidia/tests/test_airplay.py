@@ -228,6 +228,8 @@ async def test_physical_volume_echo_from_airplay_is_suppressed(tmp_path):
     endpoint.output_started = True
     endpoint.process = SimpleNamespace(returncode=None)  # type: ignore[assignment]
     endpoint.last_airplay_volume_percent = 42
+    endpoint.last_airplay_to_physical_percent = 42
+    endpoint.last_airplay_to_physical_at = asyncio.get_running_loop().time()
     manager._endpoints["pool"] = endpoint
     sent: list[int] = []
 
@@ -247,6 +249,74 @@ async def test_physical_volume_echo_from_airplay_is_suppressed(tmp_path):
     )
 
     assert sent == []
+
+
+async def test_volume_rounding_echo_does_not_oscillate_between_airplay_and_linkplay(tmp_path):
+    events = []
+
+    async def record(**kwargs):
+        events.append(kwargs)
+
+    manager = AirPlayEndpointManager(Settings(data_dir=tmp_path), None, None, record)  # type: ignore[arg-type]
+    zone = AudioZoneProfile(
+        zone_id="kitchen",
+        area_id="kitchen",
+        media_player_entity_id="media_player.kitchen",
+        max_volume_percent=100,
+        airplay={"enabled": True, "service_name": "TecnoHead Cozinha", "stable_id": "0123456789abcdef"},
+    )
+    endpoint = _Endpoint(zone=zone, port=7000)
+    endpoint.output_started = True
+    endpoint.process = SimpleNamespace(returncode=None)  # type: ignore[assignment]
+    manager._endpoints["kitchen"] = endpoint
+    sent_to_airplay: list[int] = []
+    sent_to_linkplay: list[int] = []
+
+    async def send(_endpoint, volume_percent):
+        sent_to_airplay.append(volume_percent)
+        return percent_to_airplay_volume_db(volume_percent)
+
+    async def set_volume(_config, _zone_id, volume_percent):
+        sent_to_linkplay.append(volume_percent)
+        return {"applied_percent": volume_percent}
+
+    manager._send_airplay_volume_to_source = send  # type: ignore[method-assign]
+    manager.audio = SimpleNamespace(set_airplay_volume=set_volume)
+
+    # A real physical change requests 42% on the iPhone. Shairport may report
+    # the resulting AirPlay value as 41%; that callback must be ignored rather
+    # than sent back to HA and started as a new cycle.
+    await manager.handle_state_event(
+        {
+            "data": {
+                "entity_id": "media_player.kitchen",
+                "old_state": {"attributes": {"volume_level": 0.30}},
+                "new_state": {"attributes": {"volume_level": 0.42}},
+            }
+        }
+    )
+    await manager._forward_airplay_volume(endpoint, 41)
+
+    assert sent_to_airplay == [42]
+    assert sent_to_linkplay == []
+    assert events[-1]["event"] == "physical_volume_forwarded_to_airplay"
+
+    # Conversely, the iPhone command produces a LinkPlay state callback that
+    # can differ by one point. It must not be mirrored back to AirPlay.
+    endpoint.last_physical_to_airplay_percent = None
+    endpoint.last_physical_to_airplay_at = None
+    await manager._forward_airplay_volume(endpoint, 55)
+    await manager.handle_state_event(
+        {
+            "data": {
+                "entity_id": "media_player.kitchen",
+                "old_state": {"attributes": {"volume_level": 0.54}},
+                "new_state": {"attributes": {"volume_level": 0.55}},
+            }
+        }
+    )
+
+    assert sent_to_linkplay == [55]
 
 
 async def _wait_for_value(values: list[int]) -> None:

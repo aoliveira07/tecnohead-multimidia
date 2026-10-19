@@ -1,7 +1,7 @@
 name: "TecnoHead Multimídia"
 slug: "tecnohead_multimidia"
 description: "Motor de cenas multimídia multiambiente para Home Assistant"
-version: "1.4.12"
+version: "1.4.13"
 stage: experimental
 url: "https://github.com/aoliveira07/tecnohead-multimidia"
 startup: application
