@@ -1,5 +1,13 @@
 # Changelog
 
+## 1.4.17-rc.1 — diagnóstico MediaRemote (pré-release, instalação manual)
+
+**Requer atenção:** esta versão de ensaio não corrige, por si só, “Controles não disponíveis” no app Casa. A atualização reinicia o App e interrompe sessões AirPlay ativas. Faça backup e instale manualmente; a versão está em `breaking_versions` para impedir atualização automática. O recurso de observação fica desligado por padrão.
+
+- Adiciona uma sonda opt-in de eventos MediaRemote recebidos de cada emissor AirPlay, com contagens e nomes de campos, sem armazenar faixas, capas, áudio ou dados de pareamento.
+- Mantém intactos os destinos AirPlay, a saída LinkPlay, o sincronismo de volume, ARC/CEC e as cenas; erro de metadado não interrompe a ponte de volume.
+- Publica a imagem RC sem mover a tag `latest`. O retorno conservador é restaurar o backup local pré-MediaRemote ou instalar uma nova versão estável após validar a migração; não reparear acessórios Apple durante o ensaio.
+
 ## 1.4.16 — estabilização do volume com duas zonas AirPlay
 
 - Serializa os comandos de volume por zona e descarta posições ultrapassadas durante um arraste rápido do slider no iPhone, sem bloquear a outra zona.
