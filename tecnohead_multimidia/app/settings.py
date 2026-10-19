@@ -43,6 +43,7 @@ class Settings:
     mqtt_discovery_prefix: str = "homeassistant"
     mqtt_topic_prefix: str = "tecnohead"
     ha_request_timeout: float = 12.0
+    apple_mediaremote_experimental: bool = False
 
 
 def load_settings() -> Settings:
@@ -58,4 +59,5 @@ def load_settings() -> Settings:
         mqtt_discovery_prefix=os.getenv("MQTT_DISCOVERY_PREFIX", "homeassistant").strip("/"),
         mqtt_topic_prefix=os.getenv("MQTT_TOPIC_PREFIX", "tecnohead").strip("/"),
         ha_request_timeout=float(os.getenv("HA_REQUEST_TIMEOUT", "12")),
+        apple_mediaremote_experimental=os.getenv("APPLE_MEDIAREMOTE_EXPERIMENTAL", "").lower() in {"1", "true", "yes"},
     )
