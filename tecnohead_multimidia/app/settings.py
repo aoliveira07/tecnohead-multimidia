@@ -63,7 +63,7 @@ class Settings:
 def load_settings() -> Settings:
     data_dir = Path(os.getenv("APP_DATA_DIR", "/data"))
     return Settings(
-        app_version=os.getenv("APP_VERSION", "1.4.17-rc.2"),
+        app_version=os.getenv("APP_VERSION", "1.4.17-rc.3"),
         app_host=os.getenv("APP_HOST", "0.0.0.0"),
         app_port=int(os.getenv("INGRESS_PORT", os.getenv("APP_PORT", "18199"))),
         data_dir=data_dir,

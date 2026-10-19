@@ -49,6 +49,7 @@ _METADATA_HEADER_RE = re.compile(
     rb"<code>(?P<code>[0-9a-fA-F]{8})</code>"
     rb"<length>(?P<length>\d+)</length>"
 )
+_METADATA_ITEM_FOOTER = b"</data></item>\n"
 
 
 def _metadata_fourcc(value: bytes) -> str | None:
@@ -73,9 +74,21 @@ class MediaRemoteProbe:
     playback_state_updates: int = 0
     invalid_updates: int = 0
     oversized_updates: int = 0
+    pipe_items_seen: int = 0
+    pipe_volume_items_seen: int = 0
+    pipe_command_plist_items_seen: int = 0
     observed_fields: set[str] = field(default_factory=set)
     enabled_commands: set[int] = field(default_factory=set)
     last_event_at: float | None = None
+
+    def note_pipe_item(self, type_code: str, item_code: str) -> None:
+        """Count framing only; do not retain any payload or track metadata."""
+
+        self.pipe_items_seen += 1
+        if type_code == "ssnc" and item_code == "pvol":
+            self.pipe_volume_items_seen += 1
+        elif type_code == "ssnc" and item_code == "copl":
+            self.pipe_command_plist_items_seen += 1
 
     def observe(self, payload: bytes) -> None:
         if len(payload) > MAX_MEDIAREMOTE_PLIST_BYTES:
@@ -134,6 +147,9 @@ class MediaRemoteProbe:
             "playback_state_updates": self.playback_state_updates,
             "invalid_updates": self.invalid_updates,
             "oversized_updates": self.oversized_updates,
+            "pipe_items_seen": self.pipe_items_seen,
+            "pipe_volume_items_seen": self.pipe_volume_items_seen,
+            "pipe_command_plist_items_seen": self.pipe_command_plist_items_seen,
             "observed_fields": sorted(self.observed_fields),
             "enabled_command_codes": sorted(self.enabled_commands),
             "last_event_at": _monotonic_to_iso(self.last_event_at),
@@ -1095,27 +1111,29 @@ diagnostics = {{
         marker = await stream.readline()
         if not marker or not marker.lstrip().startswith(b"<data"):
             return None
-        encoded_parts: list[bytes] = []
-        encoded_size = 0
+        # Shairport's metadata/pipe.c writes the base64 bytes and closing
+        # tags as *one continuous line*, with no newline between them. A
+        # readline()-based parser silently discarded every real item while
+        # synthetic tests (which had inserted a newline) still passed.
+        remaining = ((length + 2) // 3) * 4
         oversized = length > MAX_METADATA_ITEM_BYTES
-        while True:
-            line = await stream.readline()
-            if not line:
-                return None
-            if line.lstrip().startswith(b"</data>"):
-                break
-            encoded_size += len(line)
-            if encoded_size > (MAX_METADATA_ITEM_BYTES * 4 // 3) + 8:
-                oversized = True
-            if not oversized:
-                encoded_parts.append(line.strip())
-        if oversized:
+        encoded = bytearray()
+        try:
+            while remaining:
+                chunk = await stream.readexactly(min(remaining, 64 * 1024))
+                if not oversized:
+                    encoded.extend(chunk)
+                remaining -= len(chunk)
+            footer = await stream.readexactly(len(_METADATA_ITEM_FOOTER))
+        except asyncio.IncompleteReadError:
             return None
-        payload = b""
-        if encoded_parts:
-            with contextlib.suppress(ValueError, binascii.Error):
-                payload = base64.b64decode(b"".join(encoded_parts), validate=False)
-        return type_code, item_code, payload[:length]
+        if footer != _METADATA_ITEM_FOOTER or oversized:
+            return None
+        try:
+            payload = base64.b64decode(encoded, validate=True)
+        except (ValueError, binascii.Error):
+            return None
+        return (type_code, item_code, payload) if len(payload) == length else None
 
     async def _consume_metadata(self, endpoint: _Endpoint) -> None:
         if not endpoint.metadata_reader or not endpoint.metadata_reader.stdout:
@@ -1129,6 +1147,8 @@ diagnostics = {{
                 if not item:
                     continue
                 type_code, item_code, payload = item
+                if self._mediaremote_probe_enabled:
+                    endpoint.mediaremote_probe.note_pipe_item(type_code, item_code)
                 if type_code == "ssnc" and item_code == "copl" and self._mediaremote_probe_enabled:
                     try:
                         endpoint.mediaremote_probe.observe(payload)
