@@ -127,6 +127,10 @@ RUN apk add --no-cache \
 
 COPY --from=nqptp-build /out/nqptp /usr/local/bin/nqptp
 COPY --from=shairport-build /out/shairport-sync /usr/local/bin/shairport-sync
+COPY --from=nqptp-build /src/nqptp/LICENSE /usr/share/licenses/nqptp/LICENSE
+COPY --from=shairport-build /src/shairport-sync/COPYING /usr/share/licenses/shairport-sync/COPYING
+COPY --from=shairport-build /src/shairport-sync/LICENSES /usr/share/licenses/shairport-sync/LICENSES
+COPY --from=shairport-build /src/shairport-sync/tinyhttp/LICENSE /usr/share/licenses/shairport-sync/tinyhttp-LICENSE
 
 COPY requirements.txt /requirements.txt
 RUN python3 -m pip install --no-cache-dir --break-system-packages -r /requirements.txt
