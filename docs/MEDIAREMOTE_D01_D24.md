@@ -15,19 +15,19 @@ Atualização: 19/10/2026. `PASSOU` exige o critério inteiro e evidência; test
 | D09 | NÃO TESTADO | Cozinha recebeu 3 `updateMRSupportedCommands` reais no pipe, com códigos habilitados. Falta conferir `CommandInformation` D-Bus e resposta efetiva da origem antes de declarar suporte funcional. |
 | D10 | NÃO TESTADO | Requer play/pause/próxima no iPhone emissor via canal AirPlay 2 da Cozinha e observar resposta. |
 | D11 | NÃO TESTADO | Mesmo procedimento para Piscina. |
-| D12 | NÃO TESTADO | A RC4 instalou marcadores sanitizados de `SETUP`, conexão de event port e ACK. Durante Apple Music na Cozinha, após abrir o mesmo acessório no Casa, os três contadores ficaram em `0/0/0`: nenhuma conexão RC foi **observada** nesse ensaio. Isso não demonstra que a conexão seja impossível nem que a Apple bloqueie o cartão; falta repetir na Piscina e distinguir hub/rede/classificação. |
+| D12 | NÃO TESTADO | A RC4 instalou marcadores sanitizados de `SETUP`, conexão de event port e ACK. Durante Apple Music e após abrir o mesmo acessório no Casa, os três contadores ficaram em `0/0/0` **nas duas zonas separadamente**: nenhuma conexão RC foi observada. Isso não demonstra que a conexão seja impossível nem que a Apple bloqueie o cartão; falta distinguir central Casa, rede e classificação. |
 | D13 | NÃO TESTADO | Requer associação observada entre conexão RC, áudio e zona, sem IDs/pairings publicados. |
 | D14 | NÃO TESTADO | Nenhum patch RC foi enviado. A #2182 documenta ACK **de build modificado de terceiros**; não é prova deste App nem da UI. POC só após D01–D13 e rollback físico. |
 | D15 | NÃO TESTADO | Há hipótese comunitária de gate `isAddedToHomeKit`/`isRemoteControllable`; falta observação passiva no iPhone/hub do cliente. |
 | D16 | FALHOU | Reteste físico na **RC4**: Apple Music em TecnoHead Cozinha, som audível e `updateMRNowPlayingInfo` recebido, mas o usuário informou **“Casa sem controles”** no mesmo acessório. Os três marcos RC ficaram em zero após abrir o cartão. A sonda não encaminha metadados ao hub nem corrige a UI. |
-| D17 | FALHOU | Reteste físico **RC3**: Apple Music em TecnoHead Piscina, som audível e 2 atualizações Now Playing recebidas, mas o usuário informou **“Casa sem controles”** no mesmo acessório. A captura v1.4.16 documenta o baseline visual; falta captura nova RC3. |
-| D18 | FALHOU | Nos retestes RC3 de Cozinha e Piscina, campos de faixa/arte chegaram às respectivas instâncias e o usuário ouviu som, mas relatou que os cartões no Casa seguem sem controles; título/arte/estado não ficaram utilizáveis naquela tela. |
-| D19 | FALHOU | Nos retestes RC3 de Cozinha e Piscina, o cartão Casa permaneceu sem controles, impedindo qualquer toque de play/pause ou volume por essa interface. Isto não questiona o volume pelo seletor AirPlay/painel, testado anteriormente. |
+| D17 | FALHOU | Reteste físico **RC4**: Apple Music em TecnoHead Piscina, som audível e 10 atualizações Now Playing recebidas, mas o usuário informou **“Casa sem controles”** no mesmo acessório. Os três marcos RC ficaram em zero. A captura v1.4.16 documenta o baseline visual; falta captura nova RC4. |
+| D18 | FALHOU | Nos retestes RC4 de Cozinha e Piscina, os eventos de faixa chegaram às respectivas instâncias e o usuário ouviu som, mas relatou que os cartões no Casa seguem sem controles; título/arte/estado não ficaram utilizáveis naquela tela. |
+| D19 | FALHOU | Nos retestes RC4 de Cozinha e Piscina, o cartão Casa permaneceu sem controles, impedindo qualquer toque de play/pause ou volume por essa interface. Isto não questiona o volume pelo seletor AirPlay/painel, testado anteriormente. |
 | D20 | NÃO TESTADO | Usuário relatou agrupamento/volumes funcionando antes. Regressão pós-alteração ainda não executada com iPhone. |
 | D21 | NÃO TESTADO | ARC/CEC e TV Piscina→Cozinha relatados antes; regressão pós-alteração ainda não executada. |
 | D22 | NÃO TESTADO | Faltam reconexão, troca, pausa e reinício App/HAOS reais. |
 | D23 | NÃO TESTADO | Há ensaio parcial de Apple Music nas duas zonas RC3, separadamente (som audível, metadados recebidos), mas ainda falta Spotify via AirPlay e suporte real de comandos por origem. |
-| D24 | BLOQUEADO | [RC4](https://github.com/aoliveira07/tecnohead-multimidia/releases/tag/v1.4.17-rc.4) publicada e instalada manualmente no App existente, com flag de diagnóstico habilitada; CI aprovou testes, configuração e build multi-arquitetura. Cozinha foi retestada fisicamente; Piscina RC4 está pendente. D16–D19 não passaram; não há homologação de controles nativos Casa nem API autorizada do Kanban. |
+| D24 | BLOQUEADO | [RC4](https://github.com/aoliveira07/tecnohead-multimidia/releases/tag/v1.4.17-rc.4) publicada e instalada manualmente no App existente, com flag de diagnóstico habilitada; CI aprovou testes, configuração e build multi-arquitetura. Cozinha e Piscina foram retestadas fisicamente, com som audível e Casa sem controles. D16–D19 não passaram; não há homologação de controles nativos Casa nem API autorizada do Kanban. |
 
 ## Provas automatizadas locais (não são D16–D19)
 
@@ -36,7 +36,7 @@ Atualização: 19/10/2026. `PASSOU` exige o critério inteiro e evidência; test
 ## Sequência segura quando o acesso estiver disponível
 
 1. D01/D02 estão documentados, e o backup de D03 existe; preservar o pareamento. Não remover/reparear acessórios como primeiro passo.
-2. RC4 já foi instalada manualmente no **mesmo App**, sem substituir `latest`; a opção de sonda permaneceu habilitada no HAOS de ensaio. Cozinha e Piscina passaram D06/D07 na RC3 com som audível; no reteste RC4 Cozinha, D16 seguiu falhando e não se observou `Remote Control Only` (`0/0/0`). Repetir na Piscina sem tocar no ARC/CEC. Os relatórios `sender_mediaremote_probe` e `remote_control_only_probe` não contêm faixa/capa e não atestam a tela Casa.
+2. RC4 já foi instalada manualmente no **mesmo App**, sem substituir `latest`; a opção de sonda permaneceu habilitada no HAOS de ensaio. Cozinha e Piscina passaram D06/D07 na RC3 com som audível; nos retestes RC4, D16/D17 seguiram falhando e não se observou `Remote Control Only` (`0/0/0`) em nenhuma zona. Verificar estado da central Casa e alcance de rede antes de atribuir isso à classificação Apple. Os relatórios `sender_mediaremote_probe` e `remote_control_only_probe` não contêm faixa/capa e não atestam a tela Casa.
 3. Caso os metadados/canais justifiquem POC, revisar patch limitado em Shairport para buffer e retransmissão RC em branch, flag off por padrão. `RTSP 200 OK` satisfaz no máximo D14.
 4. Comparar visualmente Casa com o baseline, executar D16–D23 e regressões de ARC/volume. Só então considerar release, atualização HAOS e D24.
 
