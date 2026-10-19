@@ -6,7 +6,7 @@ Atualização: 19/10/2026. `PASSOU` exige o critério inteiro e evidência; test
 | --- | --- | --- |
 | D01 | PASSOU | Inventário do repositório/tag/build e versão runtime feito pelo painel HAOS autenticado e Ingress; dois endpoints, um NQPTP, Avahi e D-Bus por zona identificados. Nenhum IP/ID privado publicado. |
 | D02 | BLOQUEADO | Captura privada anterior da Cozinha mostrou “Controles não disponíveis”; falta baseline equivalente da Piscina e correlação com sessão/versão em execução. |
-| D03 | BLOQUEADO | Branch de ensaio criado e tag Git `v1.4.16` preservada. HAOS tem backup automático bem-sucedido há 9 horas em duas localizações, porém falta backup específico/restore verificado de `/data`/pairings antes de deploy. |
+| D03 | BLOQUEADO | Branch e tag `v1.4.16` preservados; backup manual local criptografado **“TecnoHead Multimídia pré-MediaRemote 2026-10-19”** concluído (22,94 MB). Tela de detalhes lista App v1.4.16 e configurações HA restauráveis; a restauração **não foi executada** para não interromper a casa, logo ausência de perda após restore segue não comprovada. |
 | D04 | PASSOU | Runtime instalado confirmou Shairport `cf6998d` com AirPlay 2/`smi11`, D-Bus/MPRIS/metadados e NQPTP `1.2.9`/`smi11`; o código pinado é posterior à tag 5.6. Comandos reais ainda pertencem a D09–D11. |
 | D05 | NÃO TESTADO | Atualização não indicada: runtime já está em Shairport posterior a 5.6 e NQPTP 1.2.9, ambos `smi11`. Não alterar versões sem necessidade e backup. |
 | D06 | NÃO TESTADO | Requer Apple Music no iPhone, Cozinha selecionada e leitura sanitizada de Now Playing no App/DBus. |
@@ -27,7 +27,7 @@ Atualização: 19/10/2026. `PASSOU` exige o critério inteiro e evidência; test
 | D21 | NÃO TESTADO | ARC/CEC e TV Piscina→Cozinha relatados antes; regressão pós-alteração ainda não executada. |
 | D22 | NÃO TESTADO | Faltam reconexão, troca, pausa e reinício App/HAOS reais. |
 | D23 | NÃO TESTADO | Falta matriz física Apple Music/Spotify via AirPlay por zona, incluindo comandos indisponíveis da origem. |
-| D24 | BLOQUEADO | Branch/documentação/testes locais preparados. Sem release/deploy desta sonda experimental, sem prova D16–D19 e sem API autorizada do Kanban. Não marcar como homologado. |
+| D24 | BLOQUEADO | Branch/documentação/testes locais preparados em [PR rascunho #1](https://github.com/aoliveira07/tecnohead-multimidia/pull/1). Sem release/deploy desta sonda experimental, sem prova D16–D19 e sem API autorizada do Kanban. Não marcar como homologado. |
 
 ## Provas automatizadas locais (não são D16–D19)
 

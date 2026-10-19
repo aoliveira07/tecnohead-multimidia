@@ -29,7 +29,7 @@ O leitor do pipe agora ignora itens declarados acima de 2 MiB e continua a ler o
 
 ## Sequência de campo ainda necessária
 
-1. Antes de **deploy/POC**, criar backup específico e recuperável do App `/data`/pairings. O HAOS mostrou uma cópia automática bem-sucedida há 9 horas e armazenada em duas localizações, mas não foi testada sua restauração; a cópia específica ainda não foi feita. A versão runtime e `smi11` já foram confirmados pelo Ingress. Registrar cartão Casa antes do ensaio, Cozinha e Piscina, sem publicar mídia privada.
+1. Antes de **deploy/POC**, confirmar o backup manual criptografado **“TecnoHead Multimídia pré-MediaRemote 2026-10-19”**, criado no armazenamento **Este sistema**, 22,94 MB. A tela de detalhes listou configurações HA e o App TecnoHead v1.4.16 como itens restauráveis; nenhuma restauração foi feita, para não interromper o sistema. A versão runtime e `smi11` já foram confirmados pelo Ingress. Registrar cartão Casa antes do ensaio, Cozinha e Piscina, sem publicar mídia privada.
 2. Reproduzir Apple Music em uma zona por vez. Comparar D-Bus `NowPlayingInformation` e `CommandInformation`, `ssnc/copl`, comandos reais play/pause/skip, estado e áudio. Não deduzir suporte de `Available=false`.
 3. Instrumentar apenas logs sanitizados de `RTSP SETUP Remote Control Only`, origem/hub e ACK. Correlacionar cada conexão com sua zona/sessão; não capturar chaves, áudio, capa ou endereços identificáveis.
 4. Só se os dados do emissor existirem e houver conexão RC legítima, avaliar POC de encaminhamento no **mesmo** endpoint. O `ap2_event_port_post_command()` stock usa buffer fixo de 4096 bytes: corrigir limite/alocação e testar payload grande antes de qualquer retransmissão. Um `200 OK` do hub é apenas D14, não D16–D19.
