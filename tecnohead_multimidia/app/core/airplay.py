@@ -161,14 +161,14 @@ class MediaRemoteProbe:
 class RemoteControlOnlyProbe:
     """Counts legitimate RC transport milestones without retaining peer data."""
 
-    setup_accepted: int = 0
+    setup_response_prepared: int = 0
     event_connected: int = 0
     update_info_acked: int = 0
     last_event_at: float | None = None
 
     def observe_log_marker(self, line: str) -> bool:
         markers = {
-            "TECNOHEAD_RC_SETUP_OK": "setup_accepted",
+            "TECNOHEAD_RC_SETUP_OK": "setup_response_prepared",
             "TECNOHEAD_RC_EVENT_CONNECTED": "event_connected",
             "TECNOHEAD_RC_UPDATE_INFO_ACK": "update_info_acked",
         }
@@ -181,7 +181,7 @@ class RemoteControlOnlyProbe:
 
     def report(self) -> dict[str, Any]:
         return {
-            "setup_accepted": self.setup_accepted,
+            "setup_response_prepared": self.setup_response_prepared,
             "event_connected": self.event_connected,
             "update_info_acked": self.update_info_acked,
             "last_event_at": _monotonic_to_iso(self.last_event_at),

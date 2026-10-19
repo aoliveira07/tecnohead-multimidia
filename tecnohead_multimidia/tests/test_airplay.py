@@ -82,7 +82,7 @@ def test_rc_only_probe_counts_fixed_markers_without_retaining_peer_details():
     ):
         assert probe.observe_log_marker(f"Shairport: {marker}") is True
     assert probe.observe_log_marker("unrelated sender log") is False
-    assert probe.report()["setup_accepted"] == 1
+    assert probe.report()["setup_response_prepared"] == 1
     assert probe.report()["event_connected"] == 1
     assert probe.report()["update_info_acked"] == 1
     assert probe.report()["sender_session_correlation"] == "not_observed"
@@ -113,8 +113,8 @@ async def test_rc_only_process_log_is_zone_isolated_and_not_copied_to_general_ta
 
     assert kitchen.remote_control_only_probe.report()["update_info_acked"] == 1
     assert pool.remote_control_only_probe.report()["update_info_acked"] == 0
-    assert kitchen.remote_control_only_probe.report()["setup_accepted"] == 1
-    assert pool.remote_control_only_probe.report()["setup_accepted"] == 1
+    assert kitchen.remote_control_only_probe.report()["setup_response_prepared"] == 1
+    assert pool.remote_control_only_probe.report()["setup_response_prepared"] == 1
 
 
 def test_airplay_volume_maps_physical_player_percent_to_source_db():
