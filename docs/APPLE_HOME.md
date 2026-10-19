@@ -1,5 +1,7 @@
 # Apple AirPlay, app Casa e HomeKit Bridge
 
+> Atualização de investigação (19/10/2026): o Shairport Sync empacotado já está além da tag 5.6, que trouxe comandos AirPlay 2 e metadados ao D-Bus. Isso não comprova controles no cartão do app Casa. As distinções entre MediaRemote, Now Playing, conexão Remote Control Only e o possível bloqueio por classificação Apple estão em [MEDIAREMOTE_INVESTIGATION.md](MEDIAREMOTE_INVESTIGATION.md). Nenhum acessório HomeKit paralelo será criado para contornar o cartão.
+
 São três superfícies diferentes:
 
 1. O seletor AirPlay do iPhone descobre receptores mDNS/RAOP.
