@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.4.17-rc.2 — proteção do token do stream nos logs
+
+**Pré-release para atualização manual.** Desativa o log de acesso HTTP do Uvicorn nos dois pontos de entrada do App, pois o endereço do stream AirPlay contém um token de sessão que antes aparecia nos logs locais do HAOS. Os eventos operacionais internos permanecem ativos. A sonda MediaRemote segue opt-in e a interface nativa de reprodução do app Casa continua pendente de comprovação; esta versão não a declara corrigida. Não copiar logs antigos que contenham URLs de stream.
+
 ## 1.4.17-rc.1 — diagnóstico MediaRemote (pré-release, instalação manual)
 
 **Requer atenção:** esta versão de ensaio não corrige, por si só, “Controles não disponíveis” no app Casa. A atualização reinicia o App e interrompe sessões AirPlay ativas. Faça backup e instale manualmente; a versão está em `breaking_versions` para impedir atualização automática. O recurso de observação fica desligado por padrão.
