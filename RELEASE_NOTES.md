@@ -1,5 +1,11 @@
 # Release notes
 
+## v1.4.14 — leitura redundante do volume AirPlay
+
+Quando o volume era alterado no slider do iPhone, algumas sessões atualizavam o áudio audível sem entregar ao App um evento utilizável pelo gancho ou pelo `ssnc/pvol`. A v1.4.14 mantém esses caminhos e acrescenta a leitura periódica da propriedade `AirplayVolume` no D-Bus isolado de cada receptor. A primeira leitura de uma sessão apenas estabelece referência; somente alterações posteriores são enviadas por `media_player.volume_set` ao amplificador da mesma zona.
+
+O retorno AudioCast/LinkPlay → AirPlay e a janela anti-eco permanecem ativos. A validação física ainda é obrigatória, zona por zona.
+
 ## v1.4.13 — estabilização do retorno de volume AirPlay
 
 Corrige a oscilação observada no teste físico: o amplificador LinkPlay pode devolver o volume arredondado ou repetir o mesmo evento depois de uma chamada. O App agora reconhece esses retornos dentro de uma janela curta e com tolerância de dois pontos, sem iniciar uma nova correção no iPhone. A sincronização continua bidirecional e limitada à sessão AirPlay ativa da zona.

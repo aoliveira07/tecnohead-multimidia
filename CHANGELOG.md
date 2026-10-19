@@ -1,5 +1,11 @@
 # Changelog
 
+## 1.4.14 — fallback de leitura do volume AirPlay
+
+- Lê a propriedade `AirplayVolume` do D-Bus privado do Shairport Sync durante uma sessão ativa.
+- Encaminha mudanças do slider do iPhone ao `media_player` LinkPlay mesmo quando o gancho ou o evento `ssnc/pvol` não chega naquele instante.
+- Mantém o PCM em ganho pleno, o teto de volume por zona e a proteção anti-eco da v1.4.13.
+
 ## 1.4.13 — estabilização do retorno de volume AirPlay
 
 - Evita o laço de realimentação que fazia o slider AirPlay oscilar quando o LinkPlay arredondava o valor retornado pelo amplificador.

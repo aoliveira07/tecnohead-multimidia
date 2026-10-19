@@ -72,6 +72,43 @@ def test_airplay_volume_maps_physical_player_percent_to_source_db():
     assert percent_to_airplay_volume_db(150) == 0.0
 
 
+async def test_airplay_dbus_property_poll_forwards_slider_change(tmp_path):
+    async def record(**kwargs):
+        return None
+
+    manager = AirPlayEndpointManager(Settings(data_dir=tmp_path), None, None, record)  # type: ignore[arg-type]
+    zone = AudioZoneProfile(
+        zone_id="kitchen",
+        media_player_entity_id="media_player.kitchen",
+        max_volume_percent=100,
+        airplay={"enabled": True, "service_name": "TecnoHead Cozinha", "stable_id": "0123456789abcdef"},
+    )
+    endpoint = _Endpoint(zone=zone, port=7000)
+    endpoint.output_started = True
+    process = SimpleNamespace(returncode=None)
+    endpoint.process = process  # type: ignore[assignment]
+    readings = iter([52, 31])
+    forwarded: list[int] = []
+
+    async def read(_endpoint):
+        try:
+            return next(readings)
+        except StopIteration:
+            process.returncode = 0
+            return 31
+
+    async def forward(_endpoint, volume_percent):
+        forwarded.append(volume_percent)
+
+    manager._read_airplay_volume_from_source = read  # type: ignore[method-assign]
+    manager._forward_airplay_volume = forward  # type: ignore[method-assign]
+
+    await manager._watch_airplay_volume(endpoint)
+
+    assert forwarded == [31]
+    assert endpoint.last_dbus_airplay_volume_percent == 31
+
+
 async def test_airplay_metadata_reader_decodes_pvol_payload(tmp_path):
     async def record(**kwargs):
         return None

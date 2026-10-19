@@ -34,6 +34,7 @@ METADATA_STREAM_LIMIT = 4 * 1024 * 1024
 VOLUME_HOOK_PATH = "/usr/local/bin/tecnohead-airplay-volume-hook"
 VOLUME_SYNC_TOLERANCE_PERCENT = 2
 VOLUME_SYNC_ECHO_WINDOW_SECONDS = 2.0
+VOLUME_D_BUS_POLL_SECONDS = 0.25
 IPV4_RE = re.compile(r"(?<![0-9])(?:[0-9]{1,3}\.){3}[0-9]{1,3}(?![0-9])")
 
 EventRecorder = Callable[..., Awaitable[None]]
@@ -188,6 +189,7 @@ class _Endpoint:
     mp3_task: asyncio.Task[None] | None = None
     metadata_task: asyncio.Task[None] | None = None
     volume_task: asyncio.Task[None] | None = None
+    volume_poll_task: asyncio.Task[None] | None = None
     process_log_task: asyncio.Task[None] | None = None
     ffmpeg_log_task: asyncio.Task[None] | None = None
     idle_task: asyncio.Task[None] | None = None
@@ -210,6 +212,7 @@ class _Endpoint:
     last_physical_volume_source: str | None = None
     last_physical_to_airplay_percent: int | None = None
     last_physical_to_airplay_at: float | None = None
+    last_dbus_airplay_volume_percent: int | None = None
     process_log_tail: deque[str] = field(default_factory=lambda: deque(maxlen=24))
 
 
@@ -788,6 +791,10 @@ publish-aaaa-on-ipv4=no
             self._consume_volume_hook(endpoint),
             name=f"airplay-volume-hook-{zone.zone_id}",
         )
+        endpoint.volume_poll_task = asyncio.create_task(
+            self._watch_airplay_volume(endpoint),
+            name=f"airplay-volume-poll-{zone.zone_id}",
+        )
         endpoint.process_log_task = asyncio.create_task(self._consume_process_log(endpoint), name=f"airplay-log-{zone.zone_id}")
         endpoint.ffmpeg_log_task = asyncio.create_task(self._consume_ffmpeg_log(endpoint), name=f"airplay-ffmpeg-log-{zone.zone_id}")
         endpoint.idle_task = asyncio.create_task(self._watch_idle(endpoint), name=f"airplay-idle-{zone.zone_id}")
@@ -1202,6 +1209,85 @@ diagnostics = {{
                 result="degraded",
             )
 
+    async def _read_airplay_volume_from_source(self, endpoint: _Endpoint) -> int | None:
+        """Read Shairport's source-volume property for a reliable fallback.
+
+        The hook and metadata FIFO are the low-latency paths. Some AirPlay
+        clients, however, update the receiver's D-Bus property without
+        emitting a usable hook/FIFO item. Polling the endpoint's own isolated
+        D-Bus interface closes that gap without applying software gain or
+        talking to the physical amplifier directly.
+        """
+
+        socket_path = endpoint.control_dbus_socket_path
+        process = endpoint.control_dbus_process
+        if not socket_path or not process or process.returncode is not None:
+            return None
+        try:
+            command = await asyncio.create_subprocess_exec(
+                "dbus-send",
+                "--session",
+                "--print-reply",
+                "--type=method_call",
+                "--dest=org.gnome.ShairportSync",
+                "/org/gnome/ShairportSync",
+                "org.freedesktop.DBus.Properties.Get",
+                "string:org.gnome.ShairportSync.RemoteControl",
+                "string:AirplayVolume",
+                env={
+                    **os.environ,
+                    **self._mdns_env,
+                    "DBUS_SESSION_BUS_ADDRESS": f"unix:path={socket_path}",
+                },
+                stdout=asyncio.subprocess.PIPE,
+                stderr=asyncio.subprocess.STDOUT,
+            )
+            output, _ = await asyncio.wait_for(command.communicate(), timeout=2.0)
+        except (OSError, asyncio.TimeoutError) as exc:
+            raise RuntimeError(f"não foi possível ler o volume AirPlay: {_redact_process_line(str(exc))}") from exc
+        text = (output or b"").decode("utf-8", errors="replace")
+        if command.returncode != 0:
+            raise RuntimeError(f"Shairport Sync não retornou o volume AirPlay: {_redact_process_line(text)}")
+        match = re.search(r"\bdouble\s+(-?(?:\d+(?:\.\d*)?|\.\d+))", text)
+        if not match:
+            return None
+        return airplay_volume_to_percent(match.group(1))
+
+    async def _watch_airplay_volume(self, endpoint: _Endpoint) -> None:
+        """Fallback watcher for AirPlay slider changes.
+
+        It is deliberately active only while PCM is being delivered to the
+        zone. The first observed value of a session establishes a baseline;
+        subsequent changes are forwarded to the configured HA media_player.
+        This prevents a restart or a new session from changing the physical
+        volume merely because an old AirPlay value was retained by iOS.
+        """
+
+        observed: int | None = None
+        try:
+            while endpoint.process and endpoint.process.returncode is None:
+                if not endpoint.output_started:
+                    observed = None
+                    endpoint.last_dbus_airplay_volume_percent = None
+                    await asyncio.sleep(VOLUME_D_BUS_POLL_SECONDS)
+                    continue
+                try:
+                    current = await self._read_airplay_volume_from_source(endpoint)
+                except (RuntimeError, OSError) as exc:
+                    endpoint.last_error = _redact_process_line(str(exc))
+                    current = None
+                if current is not None:
+                    endpoint.last_dbus_airplay_volume_percent = current
+                    if observed is None:
+                        observed = current
+                    elif current != observed:
+                        observed = current
+                        endpoint.last_airplay_volume_source = "shairport_dbus_property"
+                        await self._forward_airplay_volume(endpoint, current)
+                await asyncio.sleep(VOLUME_D_BUS_POLL_SECONDS)
+        except asyncio.CancelledError:
+            raise
+
     async def _forward_airplay_volume(self, endpoint: _Endpoint, volume_percent: int) -> None:
         if self._is_recent_volume_echo(
             endpoint.last_physical_to_airplay_percent,
@@ -1371,6 +1457,7 @@ diagnostics = {{
             endpoint.mp3_task,
             endpoint.metadata_task,
             endpoint.volume_task,
+            endpoint.volume_poll_task,
             endpoint.process_log_task,
             endpoint.ffmpeg_log_task,
             endpoint.control_dbus_log_task,
@@ -1384,6 +1471,7 @@ diagnostics = {{
             endpoint.mp3_task,
             endpoint.metadata_task,
             endpoint.volume_task,
+            endpoint.volume_poll_task,
             endpoint.process_log_task,
             endpoint.ffmpeg_log_task,
             endpoint.control_dbus_log_task,
@@ -1502,6 +1590,7 @@ diagnostics = {{
                     "last_physical_volume_source": endpoint.last_physical_volume_source,
                     "last_physical_to_airplay_percent": endpoint.last_physical_to_airplay_percent,
                     "last_physical_to_airplay_at": datetime.fromtimestamp(endpoint.last_physical_to_airplay_at, UTC).isoformat() if endpoint.last_physical_to_airplay_at else None,
+                    "last_dbus_airplay_volume_percent": endpoint.last_dbus_airplay_volume_percent,
                     "process_alive": bool(endpoint.process and endpoint.process.returncode is None),
                     "process_returncode": endpoint.process.returncode if endpoint.process else None,
                     "process_log_tail": list(endpoint.process_log_tail),
