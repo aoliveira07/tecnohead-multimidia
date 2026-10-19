@@ -1,5 +1,11 @@
 # Release notes
 
+## v1.4.16 — volume AirPlay estável em Cozinha + Piscina
+
+O teste físico com as duas saídas selecionadas no iPhone confirmou áudio, mas mostrou uma oscilação ao arrastar o volume: valores antigos reportados pelo LinkPlay retornavam ao slider Apple antes de o valor final estabilizar. Esta versão guarda as posições recentes por zona, suprime retornos atrasados, serializa as chamadas ao HA e aplica apenas o último valor ainda válido durante um arraste. A leitura D-Bus continua como fallback quando o gancho nativo não entrega uma mudança.
+
+Os testes automatizados cobrem a sequência rápida, retorno atrasado, independência entre zonas e retomada de uma mudança externa do AudioCast após a estabilização. A correção **não está homologada fisicamente** até repetir o teste no iPhone nas duas zonas; não altera HDMI ARC, mapeamentos, pareamentos, IR nem volume máximo configurado.
+
 ## v1.4.15 — Apple Casa sem duplicidade
 
 Esta versão adiciona ao painel do TecnoHead uma orientação explícita para a adoção Apple. O app diferencia os receivers físicos publicados pelo HomeKit Bridge (`Cozinha Room` e `Piscina Room`) dos destinos AirPlay 2 virtuais (`TecnoHead Cozinha` e `TecnoHead Piscina`). Nenhum acessório, pareamento, filtro do HomeKit Bridge ou configuração HDMI ARC é alterado automaticamente.

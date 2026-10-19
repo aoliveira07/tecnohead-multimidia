@@ -35,6 +35,9 @@ VOLUME_HOOK_PATH = "/usr/local/bin/tecnohead-airplay-volume-hook"
 VOLUME_SYNC_TOLERANCE_PERCENT = 2
 VOLUME_SYNC_ECHO_WINDOW_SECONDS = 2.0
 VOLUME_D_BUS_POLL_SECONDS = 0.25
+VOLUME_SOURCE_FALLBACK_SECONDS = 3.0
+VOLUME_AIRPLAY_SETTLE_SECONDS = 3.0
+VOLUME_AIRPLAY_HISTORY_SECONDS = 8.0
 IPV4_RE = re.compile(r"(?<![0-9])(?:[0-9]{1,3}\.){3}[0-9]{1,3}(?![0-9])")
 
 EventRecorder = Callable[..., Awaitable[None]]
@@ -85,6 +88,15 @@ def percent_to_airplay_volume_db(volume_percent: int | float) -> float:
     if percent <= 0.0:
         return -144.0
     return round(-30.0 + (percent / 100.0) * 30.0, 2)
+
+
+def _monotonic_to_iso(value: float | None) -> str | None:
+    """Render recent monotonic event times as wall-clock diagnostics."""
+
+    if value is None:
+        return None
+    elapsed = max(0.0, time.monotonic() - value)
+    return datetime.fromtimestamp(time.time() - elapsed, UTC).isoformat()
 
 
 def _redact_process_line(line: str) -> str:
@@ -190,6 +202,7 @@ class _Endpoint:
     metadata_task: asyncio.Task[None] | None = None
     volume_task: asyncio.Task[None] | None = None
     volume_poll_task: asyncio.Task[None] | None = None
+    volume_forward_tasks: set[asyncio.Task[None]] = field(default_factory=set)
     process_log_task: asyncio.Task[None] | None = None
     ffmpeg_log_task: asyncio.Task[None] | None = None
     idle_task: asyncio.Task[None] | None = None
@@ -207,6 +220,13 @@ class _Endpoint:
     last_airplay_volume_source: str | None = None
     last_airplay_to_physical_percent: int | None = None
     last_airplay_to_physical_at: float | None = None
+    last_airplay_to_physical_completed_at: float | None = None
+    last_airplay_input_at: float | None = None
+    last_volume_hook_at: float | None = None
+    last_volume_metadata_at: float | None = None
+    airplay_volume_generation: int = 0
+    airplay_volume_lock: asyncio.Lock = field(default_factory=asyncio.Lock)
+    airplay_volume_commands: deque[tuple[int, float]] = field(default_factory=lambda: deque(maxlen=64))
     last_physical_volume_percent: int | None = None
     last_physical_volume_at: float | None = None
     last_physical_volume_source: str | None = None
@@ -1022,7 +1042,7 @@ diagnostics = {{
                 volume_percent = airplay_volume_to_percent(fields[0])
                 if volume_percent is None:
                     continue
-                await self._forward_airplay_volume(endpoint, volume_percent)
+                self._queue_airplay_volume(endpoint, volume_percent, source="metadata")
         except asyncio.CancelledError:
             raise
         except Exception as exc:
@@ -1048,8 +1068,7 @@ diagnostics = {{
                 volume_percent = airplay_volume_to_percent(payload)
                 if volume_percent is None:
                     continue
-                endpoint.last_airplay_volume_source = "shairport_volume_hook"
-                await self._forward_airplay_volume(endpoint, volume_percent)
+                self._queue_airplay_volume(endpoint, volume_percent, source="hook")
         except asyncio.CancelledError:
             raise
         except (OSError, RuntimeError) as exc:
@@ -1077,6 +1096,25 @@ diagnostics = {{
         if not 0.0 <= value <= 1.0:
             return None
         return max(0, min(100, round(value * 100)))
+
+    def _queue_airplay_volume(self, endpoint: _Endpoint, volume_percent: int, *, source: str) -> None:
+        """Keep Shairport readers draining while an HA volume call is slow."""
+
+        task = asyncio.create_task(
+            self._forward_airplay_volume(endpoint, volume_percent, source=source),
+            name=f"airplay-volume-{endpoint.zone.zone_id}",
+        )
+        endpoint.volume_forward_tasks.add(task)
+
+        def finished(done: asyncio.Task[None]) -> None:
+            endpoint.volume_forward_tasks.discard(done)
+            if not done.cancelled():
+                error = done.exception()
+                if error:
+                    endpoint.last_error = _redact_process_line(str(error))
+                    LOGGER.warning("airplay volume forwarding failed: %s", endpoint.last_error)
+
+        task.add_done_callback(finished)
 
     @staticmethod
     def _is_recent_volume_echo(
@@ -1114,9 +1152,33 @@ diagnostics = {{
         for endpoint in tuple(self._endpoints.values()):
             if endpoint.zone.media_player_entity_id != entity_id:
                 continue
+            now = time.monotonic()
             endpoint.last_physical_volume_percent = new_percent
-            endpoint.last_physical_volume_at = time.monotonic()
+            endpoint.last_physical_volume_at = now
             endpoint.last_physical_volume_source = "home_assistant_state_event"
+            # HA/LinkPlay state events can lag behind a fast iPhone slider
+            # gesture. Keep all recently issued values, not just the latest:
+            # an older callback must never pull the Apple slider backwards.
+            while endpoint.airplay_volume_commands and now - endpoint.airplay_volume_commands[0][1] > VOLUME_AIRPLAY_HISTORY_SECONDS:
+                endpoint.airplay_volume_commands.popleft()
+            if any(
+                abs(commanded - new_percent) <= VOLUME_SYNC_TOLERANCE_PERCENT
+                for commanded, _ in endpoint.airplay_volume_commands
+            ):
+                return
+            # A device may report intermediate/ramped values not matching an
+            # exact command. During the short gesture-settle window, iPhone
+            # volume owns the direction; external AudioCast changes are
+            # mirrored again once that window has elapsed.
+            settling_since = max(
+                (timestamp for timestamp in (
+                    endpoint.last_airplay_input_at,
+                    endpoint.last_airplay_to_physical_completed_at,
+                ) if timestamp is not None),
+                default=None,
+            )
+            if settling_since is not None and now - settling_since <= VOLUME_AIRPLAY_SETTLE_SECONDS:
+                return
             # This is the expected event after an iPhone slider change was
             # forwarded to HA. LinkPlay can quantize the value by a point or
             # two, so exact equality is not sufficient to suppress the echo.
@@ -1282,13 +1344,25 @@ diagnostics = {{
                         observed = current
                     elif current != observed:
                         observed = current
-                        endpoint.last_airplay_volume_source = "shairport_dbus_property"
-                        await self._forward_airplay_volume(endpoint, current)
+                        self._queue_airplay_volume(endpoint, current, source="poll")
                 await asyncio.sleep(VOLUME_D_BUS_POLL_SECONDS)
         except asyncio.CancelledError:
             raise
 
-    async def _forward_airplay_volume(self, endpoint: _Endpoint, volume_percent: int) -> None:
+    async def _forward_airplay_volume(self, endpoint: _Endpoint, volume_percent: int, *, source: str = "direct") -> None:
+        now = time.monotonic()
+        if source == "metadata" and endpoint.last_volume_hook_at is not None:
+            if now - endpoint.last_volume_hook_at <= VOLUME_SOURCE_FALLBACK_SECONDS:
+                return
+        if source == "poll":
+            if endpoint.last_volume_hook_at is not None and now - endpoint.last_volume_hook_at <= VOLUME_SOURCE_FALLBACK_SECONDS:
+                return
+            if endpoint.last_volume_metadata_at is not None and now - endpoint.last_volume_metadata_at <= VOLUME_SOURCE_FALLBACK_SECONDS:
+                return
+        if source == "hook":
+            endpoint.last_volume_hook_at = now
+        elif source == "metadata":
+            endpoint.last_volume_metadata_at = now
         if self._is_recent_volume_echo(
             endpoint.last_physical_to_airplay_percent,
             volume_percent,
@@ -1300,37 +1374,56 @@ diagnostics = {{
             return
         if endpoint.last_airplay_volume_percent == volume_percent:
             return
-        endpoint.last_airplay_to_physical_percent = volume_percent
-        endpoint.last_airplay_to_physical_at = time.monotonic()
+        endpoint.last_airplay_input_at = now
         endpoint.last_airplay_volume_percent = volume_percent
-        endpoint.last_airplay_volume_at = time.monotonic()
-        try:
-            result = await self.audio.set_airplay_volume(
-                self._config,
-                endpoint.zone.zone_id,
-                volume_percent,
-            )
-            applied = int(result.get("applied_percent", volume_percent))
-            await self.event_recorder(
-                event="airplay_volume_forwarded",
-                area_id=endpoint.zone.area_id,
-                entity_id=endpoint.zone.media_player_entity_id,
-                message="volume AirPlay encaminhado ao media_player LinkPlay pela API do Home Assistant",
-                command_kind="media_player.volume_set",
-                result=f"accepted_by_home_assistant:{applied}%",
-                physical_confirmation="not_observable",
-            )
-        except (HomeAssistantError, RuntimeError, ValueError, AudioActionError) as exc:
-            endpoint.last_error = _redact_process_line(str(exc))
-            await self.event_recorder(
-                event="airplay_volume_forward_failed",
-                area_id=endpoint.zone.area_id,
-                entity_id=endpoint.zone.media_player_entity_id,
-                message="o Home Assistant não aceitou o volume físico solicitado pelo AirPlay",
-                level="warning",
-                command_kind="media_player.volume_set",
-                result="degraded",
-            )
+        endpoint.last_airplay_volume_at = now
+        endpoint.airplay_volume_commands.append((volume_percent, now))
+        if source != "direct":
+            endpoint.last_airplay_volume_source = {
+                "hook": "shairport_volume_hook",
+                "metadata": "shairport_metadata",
+                "poll": "shairport_dbus_property",
+            }[source]
+        endpoint.airplay_volume_generation += 1
+        generation = endpoint.airplay_volume_generation
+        # Serialize commands to the physical player. While one HA call is in
+        # flight, skip superseded slider positions and apply only the newest.
+        async with endpoint.airplay_volume_lock:
+            if generation != endpoint.airplay_volume_generation:
+                return
+            issued_at = time.monotonic()
+            endpoint.last_airplay_to_physical_percent = volume_percent
+            endpoint.last_airplay_to_physical_at = issued_at
+            try:
+                result = await self.audio.set_airplay_volume(
+                    self._config,
+                    endpoint.zone.zone_id,
+                    volume_percent,
+                )
+                endpoint.last_airplay_to_physical_completed_at = time.monotonic()
+                applied = int(result.get("applied_percent", volume_percent))
+                await self.event_recorder(
+                    event="airplay_volume_forwarded",
+                    area_id=endpoint.zone.area_id,
+                    entity_id=endpoint.zone.media_player_entity_id,
+                    message="volume AirPlay encaminhado ao media_player LinkPlay pela API do Home Assistant",
+                    command_kind="media_player.volume_set",
+                    result=f"accepted_by_home_assistant:{applied}%",
+                    physical_confirmation="not_observable",
+                )
+            except (HomeAssistantError, RuntimeError, ValueError, AudioActionError) as exc:
+                endpoint.last_error = _redact_process_line(str(exc))
+                if generation == endpoint.airplay_volume_generation:
+                    endpoint.last_airplay_volume_percent = None
+                await self.event_recorder(
+                    event="airplay_volume_forward_failed",
+                    area_id=endpoint.zone.area_id,
+                    entity_id=endpoint.zone.media_player_entity_id,
+                    message="o Home Assistant não aceitou o volume físico solicitado pelo AirPlay",
+                    level="warning",
+                    command_kind="media_player.volume_set",
+                    result="degraded",
+                )
 
     async def _activate_linkplay(self, endpoint: _Endpoint) -> None:
         url = self._stream_url(endpoint)
@@ -1450,7 +1543,7 @@ diagnostics = {{
         endpoint = self._endpoints.pop(zone_id, None)
         if not endpoint:
             return
-        for task in (
+        tasks = (
             endpoint.activation_task,
             endpoint.idle_task,
             endpoint.pcm_task,
@@ -1461,21 +1554,12 @@ diagnostics = {{
             endpoint.process_log_task,
             endpoint.ffmpeg_log_task,
             endpoint.control_dbus_log_task,
-        ):
+            *tuple(endpoint.volume_forward_tasks),
+        )
+        for task in tasks:
             if task and not task.done():
                 task.cancel()
-        for task in (
-            endpoint.activation_task,
-            endpoint.idle_task,
-            endpoint.pcm_task,
-            endpoint.mp3_task,
-            endpoint.metadata_task,
-            endpoint.volume_task,
-            endpoint.volume_poll_task,
-            endpoint.process_log_task,
-            endpoint.ffmpeg_log_task,
-            endpoint.control_dbus_log_task,
-        ):
+        for task in tasks:
             if task:
                 with contextlib.suppress(asyncio.CancelledError, Exception):
                     await task
@@ -1579,17 +1663,23 @@ diagnostics = {{
                     "bytes_sent": endpoint.broker.bytes_sent,
                     "volume_bridge": "active",
                     "last_airplay_volume_percent": endpoint.last_airplay_volume_percent,
-                    "last_airplay_volume_at": datetime.fromtimestamp(endpoint.last_airplay_volume_at, UTC).isoformat() if endpoint.last_airplay_volume_at else None,
+                    "last_airplay_volume_at": _monotonic_to_iso(endpoint.last_airplay_volume_at),
                     "last_airplay_volume_source": endpoint.last_airplay_volume_source,
                     "last_airplay_to_physical_percent": endpoint.last_airplay_to_physical_percent,
-                    "last_airplay_to_physical_at": datetime.fromtimestamp(endpoint.last_airplay_to_physical_at, UTC).isoformat() if endpoint.last_airplay_to_physical_at else None,
+                    "last_airplay_to_physical_at": _monotonic_to_iso(endpoint.last_airplay_to_physical_at),
+                    "last_airplay_to_physical_completed_at": _monotonic_to_iso(endpoint.last_airplay_to_physical_completed_at),
+                    "volume_forward_pending": len(endpoint.volume_forward_tasks),
+                    "volume_gesture_settling": any(
+                        timestamp is not None and time.monotonic() - timestamp <= VOLUME_AIRPLAY_SETTLE_SECONDS
+                        for timestamp in (endpoint.last_airplay_input_at, endpoint.last_airplay_to_physical_completed_at)
+                    ),
                     "volume_hook_active": bool(endpoint.volume_socket),
                     "reverse_volume_bridge": "active" if endpoint.control_dbus_socket_path else "inactive",
                     "last_physical_volume_percent": endpoint.last_physical_volume_percent,
-                    "last_physical_volume_at": datetime.fromtimestamp(endpoint.last_physical_volume_at, UTC).isoformat() if endpoint.last_physical_volume_at else None,
+                    "last_physical_volume_at": _monotonic_to_iso(endpoint.last_physical_volume_at),
                     "last_physical_volume_source": endpoint.last_physical_volume_source,
                     "last_physical_to_airplay_percent": endpoint.last_physical_to_airplay_percent,
-                    "last_physical_to_airplay_at": datetime.fromtimestamp(endpoint.last_physical_to_airplay_at, UTC).isoformat() if endpoint.last_physical_to_airplay_at else None,
+                    "last_physical_to_airplay_at": _monotonic_to_iso(endpoint.last_physical_to_airplay_at),
                     "last_dbus_airplay_volume_percent": endpoint.last_dbus_airplay_volume_percent,
                     "process_alive": bool(endpoint.process and endpoint.process.returncode is None),
                     "process_returncode": endpoint.process.returncode if endpoint.process else None,

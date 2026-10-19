@@ -1,5 +1,13 @@
 # Relatório de instalação e homologação — TecnoHead Multimídia
 
+## Addendum v1.4.16 — teste simultâneo e correção pendente de reteste (19/10/2026)
+
+O operador selecionou `TecnoHead Cozinha` e `TecnoHead Piscina` juntos no iPhone e confirmou reprodução nas duas saídas. Ao aumentar o volume pelo AirPlay, observou atraso, pequena falha audível e o slider subir, baixar e voltar a subir. O resultado do B23 é **parcial**, não homologado para volume/sincronia.
+
+Análise do código: o caminho bidirecional lembrava apenas o último valor enviado pelo iPhone. Durante um arraste rápido, respostas mais antigas do `media_player` podiam ser classificadas como mudanças externas do AudioCast e devolvidas ao iPhone. Gancho, metadados e polling D-Bus também podiam concorrer enquanto uma chamada de volume ao HA estava em curso. A v1.4.16 serializa os comandos por zona, descarta valores ultrapassados, reconhece os valores recentes retornados e suspende a direção AudioCast→iPhone durante a curta estabilização do gesto. Isto foi coberto por testes simulados, mas **não prova** que a falha audível foi eliminada no hardware. Retestar após atualização do HAOS; se ainda houver interrupção de áudio com volume estável, investigar buffer/stream separadamente.
+
+Esta alteração não modifica ARC/CEC, agrupamento LinkPlay, IR ou cenas. O relatório abaixo preserva o histórico anterior.
+
 ## Estado mais recente — v1.4.15 (18/10/2026)
 
 Última versão confirmada instalada no HAOS: `v1.4.15`. Cozinha e Piscina têm players LinkPlay canônicos e destinos virtuais AirPlay 2. O operador relatou áudio audível e ação do volume do iPhone no amplificador nas duas zonas; aceitou a limitação remanescente de sincronização bidirecional de volume como provisória. A TV da Piscina continua assumindo HDMI ARC ao ligar, pelo próprio hardware; a seleção explícita de música não é bloqueada pelo App.

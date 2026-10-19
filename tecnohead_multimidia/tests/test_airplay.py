@@ -4,6 +4,8 @@ import asyncio
 import base64
 import contextlib
 import socket
+import time
+from datetime import UTC, datetime
 from types import SimpleNamespace
 
 import pytest
@@ -14,6 +16,7 @@ from app.core.airplay import (
     AirPlayEndpointManager,
     AudioStreamBroker,
     _Endpoint,
+    _monotonic_to_iso,
     airplay_volume_to_percent,
     percent_to_airplay_volume_db,
 )
@@ -72,6 +75,12 @@ def test_airplay_volume_maps_physical_player_percent_to_source_db():
     assert percent_to_airplay_volume_db(150) == 0.0
 
 
+def test_volume_diagnostic_uses_wall_clock_not_monotonic_epoch():
+    rendered = _monotonic_to_iso(time.monotonic())
+    assert rendered is not None
+    assert abs((datetime.now(UTC) - datetime.fromisoformat(rendered)).total_seconds()) < 2
+
+
 async def test_airplay_dbus_property_poll_forwards_slider_change(tmp_path):
     async def record(**kwargs):
         return None
@@ -97,13 +106,14 @@ async def test_airplay_dbus_property_poll_forwards_slider_change(tmp_path):
             process.returncode = 0
             return 31
 
-    async def forward(_endpoint, volume_percent):
+    async def forward(_endpoint, volume_percent, **_kwargs):
         forwarded.append(volume_percent)
 
     manager._read_airplay_volume_from_source = read  # type: ignore[method-assign]
     manager._forward_airplay_volume = forward  # type: ignore[method-assign]
 
     await manager._watch_airplay_volume(endpoint)
+    await asyncio.gather(*endpoint.volume_forward_tasks)
 
     assert forwarded == [31]
     assert endpoint.last_dbus_airplay_volume_percent == 31
@@ -188,10 +198,10 @@ async def test_airplay_volume_hook_is_forwarded_to_zone_player(tmp_path):
     endpoint = _Endpoint(zone=zone, port=7000)
     socket_path = tmp_path / "volume.sock"
     endpoint.volume_socket = manager._prepare_volume_socket(socket_path)
-    forwarded: list[int] = []
+    forwarded: list[tuple[int, str]] = []
 
-    async def forward(_endpoint, volume_percent):
-        forwarded.append(volume_percent)
+    async def forward(_endpoint, volume_percent, *, source):
+        forwarded.append((volume_percent, source))
 
     manager._forward_airplay_volume = forward  # type: ignore[method-assign]
     client = socket.socket(socket.AF_UNIX, socket.SOCK_DGRAM)
@@ -199,8 +209,7 @@ async def test_airplay_volume_hook_is_forwarded_to_zone_player(tmp_path):
     try:
         client.sendto(b"-15.00", str(socket_path))
         await asyncio.wait_for(_wait_for_value(forwarded), timeout=1)
-        assert forwarded == [50]
-        assert endpoint.last_airplay_volume_source == "shairport_volume_hook"
+        assert forwarded == [(50, "hook")]
     finally:
         task.cancel()
         with contextlib.suppress(asyncio.CancelledError):
@@ -354,6 +363,116 @@ async def test_volume_rounding_echo_does_not_oscillate_between_airplay_and_linkp
     )
 
     assert sent_to_linkplay == [55]
+
+
+async def test_rapid_airplay_slider_ignores_delayed_linkplay_states_and_keeps_zones_independent(tmp_path):
+    async def record(**_kwargs):
+        return None
+
+    manager = AirPlayEndpointManager(Settings(data_dir=tmp_path), None, None, record)  # type: ignore[arg-type]
+    kitchen = _Endpoint(
+        zone=AudioZoneProfile(
+            zone_id="kitchen", area_id="kitchen", media_player_entity_id="media_player.kitchen", max_volume_percent=100
+        ),
+        port=7000,
+    )
+    pool = _Endpoint(
+        zone=AudioZoneProfile(
+            zone_id="pool", area_id="pool", media_player_entity_id="media_player.pool", max_volume_percent=100
+        ),
+        port=7001,
+    )
+    for endpoint in (kitchen, pool):
+        endpoint.output_started = True
+        endpoint.process = SimpleNamespace(returncode=None)  # type: ignore[assignment]
+        manager._endpoints[endpoint.zone.zone_id] = endpoint
+
+    first_started = asyncio.Event()
+    release_first = asyncio.Event()
+    sent_to_linkplay: list[tuple[str, int]] = []
+    sent_to_airplay: list[tuple[str, int]] = []
+
+    async def set_volume(_config, zone_id, volume_percent):
+        sent_to_linkplay.append((zone_id, volume_percent))
+        if zone_id == "kitchen" and volume_percent == 30:
+            first_started.set()
+            await release_first.wait()
+        return {"applied_percent": volume_percent}
+
+    async def send(endpoint, volume_percent):
+        sent_to_airplay.append((endpoint.zone.zone_id, volume_percent))
+        return percent_to_airplay_volume_db(volume_percent)
+
+    manager.audio = SimpleNamespace(set_airplay_volume=set_volume)
+    manager._send_airplay_volume_to_source = send  # type: ignore[method-assign]
+
+    first = asyncio.create_task(manager._forward_airplay_volume(kitchen, 30, source="hook"))
+    await asyncio.wait_for(first_started.wait(), timeout=1)
+    await manager._forward_airplay_volume(pool, 22, source="hook")
+    assert sent_to_linkplay == [("kitchen", 30), ("pool", 22)]
+    middle = asyncio.create_task(manager._forward_airplay_volume(kitchen, 45, source="hook"))
+    latest = asyncio.create_task(manager._forward_airplay_volume(kitchen, 60, source="hook"))
+    await asyncio.sleep(0)
+    release_first.set()
+    await asyncio.gather(first, middle, latest)
+    assert sent_to_linkplay == [("kitchen", 30), ("pool", 22), ("kitchen", 60)]
+
+    # Even if HA callbacks are delayed beyond the gesture window, every
+    # requested intermediate value is still recognized as part of the drag.
+    # A slow HA call may complete after the last finger movement. Its delayed
+    # state response must still not drive the iPhone slider backwards.
+    kitchen.last_airplay_input_at = time.monotonic() - 4
+    await manager.handle_state_event(
+        {"data": {"entity_id": "media_player.kitchen", "old_state": {"attributes": {"volume_level": 0.60}}, "new_state": {"attributes": {"volume_level": 0.71}}}}
+    )
+    assert sent_to_airplay == []
+    kitchen.last_airplay_to_physical_completed_at = time.monotonic() - 4
+    for previous, current in ((20, 30), (30, 45), (45, 60)):
+        await manager.handle_state_event(
+            {"data": {"entity_id": "media_player.kitchen", "old_state": {"attributes": {"volume_level": previous / 100}}, "new_state": {"attributes": {"volume_level": current / 100}}}}
+        )
+    assert sent_to_airplay == []
+
+    # A Kitchen gesture must not mute or delay an external Pool change.
+    pool.last_airplay_input_at = time.monotonic() - 4
+    pool.last_airplay_to_physical_completed_at = time.monotonic() - 4
+    await manager.handle_state_event(
+        {"data": {"entity_id": "media_player.pool", "old_state": {"attributes": {"volume_level": 0.25}}, "new_state": {"attributes": {"volume_level": 0.65}}}}
+    )
+    assert sent_to_airplay == [("pool", 65)]
+
+    # Once the Kitchen gesture settles, a real AudioCast change still goes
+    # back to the iPhone instead of disabling bidirectional control entirely.
+    kitchen.last_airplay_input_at = time.monotonic() - 4
+    kitchen.last_airplay_to_physical_completed_at = time.monotonic() - 4
+    await manager.handle_state_event(
+        {"data": {"entity_id": "media_player.kitchen", "old_state": {"attributes": {"volume_level": 0.60}}, "new_state": {"attributes": {"volume_level": 0.71}}}}
+    )
+    assert sent_to_airplay == [("pool", 65), ("kitchen", 71)]
+
+
+async def test_dbus_poll_does_not_replay_stale_volume_while_hook_is_active(tmp_path):
+    async def record(**_kwargs):
+        return None
+
+    manager = AirPlayEndpointManager(Settings(data_dir=tmp_path), None, None, record)  # type: ignore[arg-type]
+    endpoint = _Endpoint(
+        zone=AudioZoneProfile(zone_id="kitchen", media_player_entity_id="media_player.kitchen", max_volume_percent=100),
+        port=7000,
+    )
+    forwarded: list[int] = []
+
+    async def set_volume(_config, _zone_id, volume_percent):
+        forwarded.append(volume_percent)
+        return {"applied_percent": volume_percent}
+
+    manager.audio = SimpleNamespace(set_airplay_volume=set_volume)
+    await manager._forward_airplay_volume(endpoint, 50, source="hook")
+    await manager._forward_airplay_volume(endpoint, 30, source="poll")
+    assert forwarded == [50]
+    endpoint.last_volume_hook_at = time.monotonic() - 4
+    await manager._forward_airplay_volume(endpoint, 30, source="poll")
+    assert forwarded == [50, 30]
 
 
 async def _wait_for_value(values: list[int]) -> None:

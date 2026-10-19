@@ -1,5 +1,12 @@
 # Changelog
 
+## 1.4.16 — estabilização do volume com duas zonas AirPlay
+
+- Serializa os comandos de volume por zona e descarta posições ultrapassadas durante um arraste rápido do slider no iPhone, sem bloquear a outra zona.
+- Reconhece respostas atrasadas do LinkPlay para todas as posições recentes e evita devolvê-las ao iPhone como se fossem alterações do AudioCast; mudanças externas voltam a ser espelhadas após estabilização.
+- Mantém gancho, metadados e leitura D-Bus como caminhos de entrada, mas impede que fallbacks atrasados concorram imediatamente com o gancho nativo.
+- Corrige os horários do diagnóstico de volume e acrescenta indicadores de comandos pendentes/estabilização. Teste físico nas duas zonas continua obrigatório.
+
 ## 1.4.15 — orientação Apple Casa no painel
 
 - adiciona ao painel de áudio a distinção entre os receivers `Cozinha Room`/`Piscina Room` do HomeKit Bridge e os destinos AirPlay 2 `TecnoHead Cozinha`/`TecnoHead Piscina`;

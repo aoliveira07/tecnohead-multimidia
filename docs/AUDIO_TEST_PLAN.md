@@ -1,6 +1,6 @@
 # Plano de testes de áudio v1.3
 
-Cada teste físico precisa registrar data, modelo/firmware, entidade HA, versão do App, passos, resultado, evidência real e commit corretivo. Esta matriz substitui o retrato inicial v1.3.2; últimos relatos físicos e capturas privadas recebidos em 18/10/2026, com App v1.4.15. `PASSOU (relato)` identifica observação do operador, não medição independente. As capturas do iPhone não entram no repositório por conterem dados de uso pessoal. Modelo/firmware detalhado da Piscina continuam não informados pelo HA.
+Cada teste físico precisa registrar data, modelo/firmware, entidade HA, versão do App, passos, resultado, evidência real e commit corretivo. Esta matriz substitui o retrato inicial v1.3.2; relatos físicos e capturas privadas recebidos em 18–19/10/2026, com App v1.4.15 durante o teste. A correção v1.4.16 requer reteste após instalação. `PASSOU (relato)` identifica observação do operador, não medição independente. As capturas do iPhone não entram no repositório por conterem dados de uso pessoal. Modelo/firmware detalhado da Piscina continuam não informados pelo HA.
 
 ## Gates
 
@@ -8,7 +8,7 @@ Cada teste físico precisa registrar data, modelo/firmware, entidade HA, versão
 - G1: **PARCIAL** — volume físico das duas zonas foi confirmado pelo operador; compartilhamento TV Piscina→Cozinha e retorno do grupo não testados.
 - G2: **PASSOU (relato)** — Cozinha descoberta no iPhone e áudio audível relatado pelo operador; estabilidade prolongada pendente.
 - G3: **PARCIAL** — Piscina anunciada e volume AirPlay com efeito físico relatado; retorno ARC durante stream ainda requer teste controlado.
-- G4: **NÃO TESTADO** — os dois nomes aparecem juntos, mas não há prova de seleção/reprodução simultânea nem de sincronia.
+- G4: **PARCIAL** — Cozinha+Piscina reproduziram juntas segundo o operador; volume oscilou no iPhone e não há medição de sincronia. Correção v1.4.16 aguarda reteste.
 - G5: **PARCIAL** — `TecnoHead Cozinha` adotado no app Casa como ShairportSync; cartão sem controles; Piscina ainda não comprovada no Casa.
 - G6: **PARCIAL** — release v1.4.15 instalada e testes automatizados anteriores; regressão física v1.2 e checklist completo pendentes.
 
@@ -38,10 +38,10 @@ Cada teste físico precisa registrar data, modelo/firmware, entidade HA, versão
 | B20 | PASSOU | Capturas privadas mostram `TecnoHead Piscina` no seletor do iPhone |
 | B21 | PARCIAL (relato) | Operador confirmou efeito audível do volume na Piscina; repetir prova com ARC livre e início/parada documentados |
 | B22 | NÃO TESTADO | Dois streams independentes ainda não foram executados |
-| B23 | NÃO TESTADO | Seleção simultânea de Cozinha+Piscina ainda não foi executada |
-| B24 | NÃO TESTADO | Sem reprodução simultânea |
-| B25 | PARCIAL (relato) | Slider iPhone alterou volume físico da Cozinha; sincronização inversa apresentou limite/oscilação em rodadas anteriores e foi aceita provisoriamente |
-| B26 | PARCIAL (relato) | Slider iPhone alterou volume físico da Piscina; volume bidirecional exato ainda não homologado |
+| B23 | PARCIAL (relato) | As duas saídas tocaram juntas; volume oscilou ao ajustar pelo iPhone na v1.4.15; retestar v1.4.16 |
+| B24 | NÃO TESTADO | Houve reprodução simultânea, mas a diferença entre as saídas e eventual eco não foram medidos |
+| B25 | FALHOU — reteste | Slider iPhone altera volume físico da Cozinha, mas durante seleção dupla houve oscilação; correção v1.4.16 ainda sem prova física |
+| B26 | FALHOU — reteste | Slider iPhone altera volume físico da Piscina, mas durante seleção dupla houve oscilação; correção v1.4.16 ainda sem prova física |
 | B27 | PARCIAL | TV assume ARC ao ligar; conflito com stream AirPlay ativo ainda não foi observado de ponta a ponta |
 | B28 | NÃO TESTADO | Troca explícita ARC→música não executada |
 | B29 | NÃO TESTADO | TV/stream não executados |
@@ -58,7 +58,7 @@ Cada teste físico precisa registrar data, modelo/firmware, entidade HA, versão
 | B40 | PASSOU (software/instalação) | Migração coberta por teste; atualizações até v1.4.15 preservaram zonas e perfil existente |
 | B41 | PARCIAL | Regressão automatizada; teste IR físico permanece manual |
 | B42 | PARCIAL | Regressão automatizada; clima/luzes físicos permanecem manuais |
-| B43 | PARCIAL | v1.4.15 publicada e instalada, CI/imagem concluídos; checklist físico e screenshots publicáveis ainda incompletos |
+| B43 | PARCIAL | v1.4.15 publicada e instalada antes do teste; v1.4.16 depende de CI, publicação, atualização HAOS e reteste físico |
 | B44 | PARCIAL | Sem dados privados no repositório; auditoria completa da ponte/licenças ainda pendente |
 | B45 | NÃO SE APLICA | A ponte produziu áudio físico; o bloqueio observado agora é o cartão de controle do Casa, registrado em B31 |
 

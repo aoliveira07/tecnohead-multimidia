@@ -2,7 +2,7 @@
 
 ## Estado desta versão
 
-A implementação está empacotada na release `v1.4.14`. A homologação física continua sendo registrada por zona: o operador precisa confirmar seleção, áudio audível, volume e parada. O App não marca áudio físico como concluído só porque um nome mDNS apareceu no iPhone. Se o processo Shairport Sync morrer na inicialização, a interface mostra o código e a cauda sanitizada do diagnóstico em vez de manter “Visível no AirPlay”.
+A implementação está empacotada no App v1.4.16. A homologação física continua sendo registrada por zona: o operador precisa confirmar seleção, áudio audível, volume e parada. Na v1.4.15, as duas saídas tocaram juntas, mas o ajuste de volume oscilou; a v1.4.16 corrige o ciclo no código e exige reteste. O App não marca áudio físico como concluído só porque um nome mDNS apareceu no iPhone. Se o processo Shairport Sync morrer na inicialização, a interface mostra o código e a cauda sanitizada do diagnóstico em vez de manter “Visível no AirPlay”.
 
 ## Componentes fixados
 
@@ -30,6 +30,8 @@ O limite máximo configurado da zona continua valendo. Com limite de 100%, o val
 Na v1.4.12 o caminho inverso também foi implementado: alterações observadas no `volume_level` do `media_player` — inclusive pelo AudioCast — são encaminhadas à sessão AirPlay ativa pelo comando nativo `org.gnome.ShairportSync.RemoteControl.SetAirplayVolume`. Na v1.4.13, o App só considera uma alteração nova quando ela supera a tolerância de arredondamento ou chega fora da janela curta de eco; isso impede que o valor corrigido pelo amplificador volte como uma nova ordem e cause oscilação. O App só faz isso enquanto aquela zona tem uma sessão AirPlay ativa; não altera o volume de uma sessão encerrada. Como os nomes D-Bus do Shairport Sync são fixos, cada endpoint usa um barramento de sessão privado, enquanto Cozinha e Piscina continuam compartilhando somente o barramento Avahi/mDNS.
 
 Na v1.4.14, além do gancho e do `ssnc/pvol`, o App consulta periodicamente a propriedade `AirplayVolume` do mesmo D-Bus privado enquanto há PCM ativo. A primeira leitura da sessão é apenas uma referência; mudanças posteriores são encaminhadas ao `media_player.volume_set` da zona. Essa leitura redundante cobre sessões em que o slider audível muda, mas o gancho/metadado não entrega o evento ao processo Python, sem reintroduzir ganho digital ou comunicação direta com o amplificador.
+
+Na v1.4.16, os leitores não aguardam a conclusão de cada chamada de volume ao HA para receber o próximo valor. Um lock por endpoint serializa comandos físicos e descarta posições já ultrapassadas. O App guarda as posições recentes do gesto e ignora retornos atrasados do LinkPlay, inclusive valores intermediários, antes de espelhar uma mudança realmente externa para o iPhone. A direção AudioCast→AirPlay cede prioridade ao gesto por 3 segundos após o último valor do iPhone **ou a conclusão da última chamada ao HA**, o que for mais recente; depois, uma alteração externa continua sendo espelhada. Metadados e consulta D-Bus atuam como fallback, sem competir de imediato com o gancho. Isto reduz chamadas e realimentação; não promete latência zero nem corrige, por si só, eventual falha do stream MP3/HTTP.
 
 O formato/codec aceito pelo firmware do player ainda é critério de prova física. Se `play_media` aceitar o comando mas não houver áudio, o diagnóstico será `AIRPLAY_BRIDGE_UNSUPPORTED`, sem declarar sucesso.
 
