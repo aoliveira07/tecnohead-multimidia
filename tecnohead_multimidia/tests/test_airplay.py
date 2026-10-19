@@ -18,6 +18,7 @@ from app.core.airplay import (
     AirPlayEndpointManager,
     AudioStreamBroker,
     MediaRemoteProbe,
+    RemoteControlOnlyProbe,
     _Endpoint,
     _monotonic_to_iso,
     airplay_volume_to_percent,
@@ -61,6 +62,7 @@ def test_airplay_config_has_distinct_airplay2_identity_and_port(tmp_path):
     assert "run_this_when_volume_is_set = \"/usr/local/bin/tecnohead-airplay-volume-hook" in config
     assert 'pipe_name = "' in config
     assert 'metadata = {' in config
+    assert 'log_verbosity = 1;' in config
 
 
 def test_airplay_volume_maps_source_db_to_linear_player_percent():
@@ -69,6 +71,50 @@ def test_airplay_volume_maps_source_db_to_linear_player_percent():
     assert airplay_volume_to_percent("-30.00") == 0
     assert airplay_volume_to_percent("-144.00") == 0
     assert airplay_volume_to_percent("not-a-volume") is None
+
+
+def test_rc_only_probe_counts_fixed_markers_without_retaining_peer_details():
+    probe = RemoteControlOnlyProbe()
+    for marker in (
+        "TECNOHEAD_RC_SETUP_OK",
+        "TECNOHEAD_RC_EVENT_CONNECTED",
+        "TECNOHEAD_RC_UPDATE_INFO_ACK",
+    ):
+        assert probe.observe_log_marker(f"Shairport: {marker}") is True
+    assert probe.observe_log_marker("unrelated sender log") is False
+    assert probe.report()["setup_accepted"] == 1
+    assert probe.report()["event_connected"] == 1
+    assert probe.report()["update_info_acked"] == 1
+    assert probe.report()["sender_session_correlation"] == "not_observed"
+    assert "Shairport:" not in repr(probe.report())
+
+
+async def test_rc_only_process_log_is_zone_isolated_and_not_copied_to_general_tail(tmp_path):
+    async def record(**kwargs):
+        return None
+
+    manager = AirPlayEndpointManager(
+        Settings(data_dir=tmp_path, apple_mediaremote_experimental=True), None, None, record
+    )  # type: ignore[arg-type]
+    kitchen = _Endpoint(zone=AudioZoneProfile(zone_id="kitchen"), port=7000)
+    pool = _Endpoint(zone=AudioZoneProfile(zone_id="pool"), port=7001)
+
+    for endpoint, lines in (
+        (kitchen, ["TECNOHEAD_RC_SETUP_OK", "TECNOHEAD_RC_EVENT_CONNECTED", "TECNOHEAD_RC_UPDATE_INFO_ACK"]),
+        (pool, ["TECNOHEAD_RC_SETUP_OK"]),
+    ):
+        stream = asyncio.StreamReader()
+        for line in lines:
+            stream.feed_data(f"Shairport: {line}\n".encode())
+        stream.feed_eof()
+        endpoint.process = SimpleNamespace(stderr=stream)  # type: ignore[assignment]
+        await manager._consume_process_log(endpoint)
+        assert list(endpoint.process_log_tail) == []
+
+    assert kitchen.remote_control_only_probe.report()["update_info_acked"] == 1
+    assert pool.remote_control_only_probe.report()["update_info_acked"] == 0
+    assert kitchen.remote_control_only_probe.report()["setup_accepted"] == 1
+    assert pool.remote_control_only_probe.report()["setup_accepted"] == 1
 
 
 def test_airplay_volume_maps_physical_player_percent_to_source_db():

@@ -157,6 +157,40 @@ class MediaRemoteProbe:
         }
 
 
+@dataclass
+class RemoteControlOnlyProbe:
+    """Counts legitimate RC transport milestones without retaining peer data."""
+
+    setup_accepted: int = 0
+    event_connected: int = 0
+    update_info_acked: int = 0
+    last_event_at: float | None = None
+
+    def observe_log_marker(self, line: str) -> bool:
+        markers = {
+            "TECNOHEAD_RC_SETUP_OK": "setup_accepted",
+            "TECNOHEAD_RC_EVENT_CONNECTED": "event_connected",
+            "TECNOHEAD_RC_UPDATE_INFO_ACK": "update_info_acked",
+        }
+        for marker, field_name in markers.items():
+            if line.endswith(marker):
+                setattr(self, field_name, getattr(self, field_name) + 1)
+                self.last_event_at = time.monotonic()
+                return True
+        return False
+
+    def report(self) -> dict[str, Any]:
+        return {
+            "setup_accepted": self.setup_accepted,
+            "event_connected": self.event_connected,
+            "update_info_acked": self.update_info_acked,
+            "last_event_at": _monotonic_to_iso(self.last_event_at),
+            "scope": "same_receiver_process_only",
+            "sender_session_correlation": "not_observed",
+            "apple_home_card": "not_observed",
+        }
+
+
 def airplay_volume_to_percent(value: str | bytes) -> int | None:
     """Convert Shairport's AirPlay dB value to the linear iOS slider.
 
@@ -294,6 +328,7 @@ class _Endpoint:
     metadata_reader: asyncio.subprocess.Process | None = None
     metadata_pipe_path: Path | None = None
     mediaremote_probe: MediaRemoteProbe = field(default_factory=MediaRemoteProbe)
+    remote_control_only_probe: RemoteControlOnlyProbe = field(default_factory=RemoteControlOnlyProbe)
     volume_socket: socket.socket | None = None
     volume_socket_path: Path | None = None
     control_dbus_process: asyncio.subprocess.Process | None = None
@@ -1624,6 +1659,11 @@ diagnostics = {{
         try:
             async for raw in endpoint.process.stderr:
                 line = _redact_process_line(raw.decode("utf-8", errors="replace"))
+                if endpoint.remote_control_only_probe.observe_log_marker(line):
+                    # A patched Shairport build emits only these fixed, data-
+                    # free markers at verbosity 1. They are counted by zone
+                    # and never copied to the general log/diagnostic tail.
+                    continue
                 if line:
                     endpoint.process_log_tail.append(line)
                     endpoint.diagnostic = line
@@ -1787,6 +1827,9 @@ diagnostics = {{
                     "bytes_sent": endpoint.broker.bytes_sent,
                     "volume_bridge": "active",
                     "sender_mediaremote_probe": endpoint.mediaremote_probe.report()
+                    if self._mediaremote_probe_enabled
+                    else {"state": "disabled", "apple_home_card": "not_observed"},
+                    "remote_control_only_probe": endpoint.remote_control_only_probe.report()
                     if self._mediaremote_probe_enabled
                     else {"state": "disabled", "apple_home_card": "not_observed"},
                     "last_airplay_volume_percent": endpoint.last_airplay_volume_percent,

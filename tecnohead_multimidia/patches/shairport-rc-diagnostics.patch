@@ -1,0 +1,24 @@
+diff --git a/rtsp.c b/rtsp.c
+--- a/rtsp.c
++++ b/rtsp.c
+@@ -2594,2 +2594,3 @@ void handle_setup_2(rtsp_conn_info *conn, rtsp_message *req, rtsp_message *resp) {
+           resp->respcode = 200;
++          debug(1, "TECNOHEAD_RC_SETUP_OK");
+         } else {
+diff --git a/ap2_event_receiver.c b/ap2_event_receiver.c
+--- a/ap2_event_receiver.c
++++ b/ap2_event_receiver.c
+@@ -198,6 +198,10 @@ void *ap2_event_receiver(void *arg) {
+           conn->connection_number, conn->event_socket, conn->event_channel_fd);
++    if (conn->airplay_stream_category == remote_control_stream)
++      debug(1, "TECNOHEAD_RC_EVENT_CONNECTED");
+     pthread_cleanup_push(ap2_event_receiver_cleanup_handler, arg);
+-
+-    ap2_event_send_update_info(conn);
+-
++
++    ssize_t update_info_result = ap2_event_send_update_info(conn);
++    if (conn->airplay_stream_category == remote_control_stream && update_info_result > 0)
++      debug(1, "TECNOHEAD_RC_UPDATE_INFO_ACK");
++
+     while (1) {
