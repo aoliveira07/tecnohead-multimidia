@@ -36,6 +36,7 @@ FOOTER = b"</data></item>\n"
 RC_MARKERS = (
     "TECNOHEAD_RC_SETUP_OK",
     "TECNOHEAD_RC_EVENT_CONNECTED",
+    "TECNOHEAD_RC_EVENT_CLEANUP",
     "TECNOHEAD_RC_UPDATE_INFO_ACK",
     "TECNOHEAD_RC_MEDIAREMOTE_ACK_NOW_PLAYING",
     "TECNOHEAD_RC_MEDIAREMOTE_ACK_COMMANDS",
@@ -51,6 +52,7 @@ RC_MARKERS = (
     "TECNOHEAD_RC_RECORD_STORED_NOW_PLAYING",
     "TECNOHEAD_RC_RECORD_STORED_COMMANDS",
     "TECNOHEAD_RC_RECORD_OWNER_LOST",
+    "TECNOHEAD_RC_SNAPSHOT_CLEARED",
     "TECNOHEAD_RC_SNAPSHOT_READY_NOW_PLAYING",
     "TECNOHEAD_RC_SNAPSHOT_READY_COMMANDS",
     "TECNOHEAD_RC_SNAPSHOT_DECODE_FAILED_NOW_PLAYING",
@@ -59,6 +61,7 @@ RC_MARKERS = (
     "TECNOHEAD_RC_MEDIAREMOTE_SEND_FAILED_COMMANDS",
 )
 RC_GATE_MARKER = re.compile(r"TECNOHEAD_RC_GATE_MASK_(\d+)$")
+RC_HEARTBEAT_MARKER = re.compile(r"TECNOHEAD_RC_LOOP_ALIVE_MASK_(\d+)$")
 
 
 def report(event: str, **fields: object) -> None:
@@ -318,13 +321,18 @@ async def consume_shairport_log(stream: asyncio.StreamReader, counters: Counters
                 report("rc_marker", marker=marker, count=counters.rc[marker])
                 break
         else:
-            gate = RC_GATE_MARKER.search(line)
-            if gate is not None:
-                mask = int(gate.group(1))
-                if 0 <= mask <= 31:
-                    marker = f"TECNOHEAD_RC_GATE_MASK_{mask}"
-                    counters.rc[marker] += 1
-                    report("rc_marker", marker=marker, count=counters.rc[marker])
+            for pattern, prefix in (
+                (RC_GATE_MARKER, "TECNOHEAD_RC_GATE_MASK_"),
+                (RC_HEARTBEAT_MARKER, "TECNOHEAD_RC_LOOP_ALIVE_MASK_"),
+            ):
+                match = pattern.search(line)
+                if match is not None:
+                    mask = int(match.group(1))
+                    if 0 <= mask <= 31:
+                        marker = f"{prefix}{mask}"
+                        counters.rc[marker] += 1
+                        report("rc_marker", marker=marker, count=counters.rc[marker])
+                    break
 
 
 async def discard_stream(stream: asyncio.StreamReader | None) -> None:

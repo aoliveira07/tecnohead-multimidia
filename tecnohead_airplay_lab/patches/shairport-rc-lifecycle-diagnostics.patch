@@ -1,0 +1,39 @@
+diff --git a/ap2_event_receiver.c b/ap2_event_receiver.c
+--- a/ap2_event_receiver.c
++++ b/ap2_event_receiver.c
+@@ -186,6 +186,8 @@ void ap2_event_receiver_cleanup_handler(void *arg) {
+   rtsp_conn_info *conn = (rtsp_conn_info *)arg;
+   // debug(1, "Connection %d: AP2 Event Receiver Cleanup start.", conn->connection_number);
++  if (conn->airplay_stream_category == remote_control_stream)
++    debug(1, "TECNOHEAD_RC_EVENT_CLEANUP");
+ #ifdef CONFIG_METADATA
+   // this is here to ensure it's only performed once during a teardown of a ptp stream
+   send_ssnc_metadata('disc', conn->client_ip_string, strlen(conn->client_ip_string), 1);
+ #endif
+@@ -235,3 +237,4 @@ void *ap2_event_receiver(void *arg) {
+     uint64_t mr_seen[2] = {0, 0};
+     unsigned int previous_rc_gate = ~0U;
++    unsigned int rc_heartbeat_polls = 0;
+     while (1) {
+@@ -245,5 +248,9 @@ void *ap2_event_receiver(void *arg) {
+         if (rc_gate != previous_rc_gate) {
+           debug(1, "TECNOHEAD_RC_GATE_MASK_%u", rc_gate);
+           previous_rc_gate = rc_gate;
+         }
++        if (++rc_heartbeat_polls >= 50U) {
++          debug(1, "TECNOHEAD_RC_LOOP_ALIVE_MASK_%u", rc_gate);
++          rc_heartbeat_polls = 0;
++        }
+         if (rc_gate == 31U) {
+diff --git a/rtsp.c b/rtsp.c
+--- a/rtsp.c
++++ b/rtsp.c
+@@ -166,6 +166,8 @@ static void ap2_mr_clear_owner(int connection_number) {
+ static void ap2_mr_clear_owner(int connection_number) {
+   pthread_mutex_lock(&ap2_mr_lock);
+   if (connection_number == 0 || ap2_mr_owner == connection_number) {
++    if (ap2_mr_items[0].data != NULL || ap2_mr_items[1].data != NULL)
++      debug(1, "TECNOHEAD_RC_SNAPSHOT_CLEARED");
+     for (int i = 0; i < 2; i++) {
+       free(ap2_mr_items[i].data);
+       ap2_mr_items[i].data = NULL;

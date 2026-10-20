@@ -102,6 +102,33 @@ resultado físico da instrumentação. Por segurança, o Lab voltou a B0 e o log
 confirmou `lab_ready` com relay desligado. Reativar M1 apenas quando o usuário
 estiver pronto para readotar o Lab e executar uma faixa curta.
 
+No ensaio seguinte, o usuário removeu e readicionou **somente o Lab** e tocou
+Apple Music por aproximadamente um minuto em M1. O AirPlay conectou, mas o
+próprio cartão do Lab no Casa continuou **“Controles não disponíveis”**. A
+instrumentação contou duas conexões RC (`SETUP`, event port e ACK de
+`updateInfo`), uma transição da máscara de gate para `31` (todos os cinco
+predicados verdadeiros naquele instante), dois Now Playing e quatro
+SupportedCommands no receptor. O plist de Now Playing continha título,
+artista, álbum, capa, duração e posição; não foi salvo conteúdo de mídia.
+Quatro registros iniciais falharam no teste de propriedade da sessão
+(`RECORD_NOT_OWNER`), mas os registros seguintes de Now Playing e Commands
+foram **armazenados**. Não houve marcador `SNAPSHOT_READY`, tentativa de
+envio ou ACK MediaRemote no RC. Portanto, este ensaio localiza uma lacuna entre
+snapshot armazenado e loop de encaminhamento; **não comprova que a Apple
+recebeu e rejeitou os dados**. A hipótese imediata é verificar a sobreposição
+temporal entre conexão RC elegível e sessão de áudio, inclusive vida útil das
+conexões, sem alterar identidade/anúncio. Após o teste, M1 voltou a B0 e
+`lab_ready` confirmou o rollback. A produção continuou parada.
+
+Para isolar essa corrida, a versão de ensaio v0.1.3 acrescenta ao **Lab apenas**
+três marcadores sem payload: limpeza da conexão RC, pulso de vida do loop a
+cada cinco segundos com máscara de elegibilidade e limpeza de snapshot. A
+sonda continua off em B0. Os testes automatizados verificam que o parser só
+publica esses marcadores fixos e máscaras de 0 a 31, sem texto de faixa ou
+peer. Este patch diagnóstico não corrige o cartão Casa por si só; requer
+compilação, atualização isolada e novo teste físico antes de qualquer
+conclusão sobre o protocolo.
+
 ## Planejador offline para Windows
 
 O programa [`tools/airplay_trial_lab.py`](../tools/airplay_trial_lab.py) roda no Windows com Python 3.12 e Tkinter (biblioteca padrão). Iniciar no diretório do repositório com `python tools/airplay_trial_lab.py`. Para uso sem janela: `python tools/airplay_trial_lab.py --compare` ou `python tools/airplay_trial_lab.py --scenario M3 --zone pool`.
