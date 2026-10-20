@@ -1,12 +1,13 @@
 name: "TecnoHead Multimídia"
 slug: "tecnohead_multimidia"
 description: "Motor de cenas multimídia multiambiente para Home Assistant"
-version: "1.4.17-rc.4"
+version: "1.4.17-rc.5"
 breaking_versions:
   - "1.4.17-rc.1"
   - "1.4.17-rc.2"
   - "1.4.17-rc.3"
   - "1.4.17-rc.4"
+  - "1.4.17-rc.5"
 stage: experimental
 url: "https://github.com/aoliveira07/tecnohead-multimidia"
 startup: application
@@ -48,7 +49,9 @@ map:
 
 options:
   apple_mediaremote_experimental: false
+  apple_legacy_metadata_zone: "off"
 schema:
   apple_mediaremote_experimental: bool
+  apple_legacy_metadata_zone: str
 
 backup: hot

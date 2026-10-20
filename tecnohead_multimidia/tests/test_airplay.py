@@ -63,6 +63,28 @@ def test_airplay_config_has_distinct_airplay2_identity_and_port(tmp_path):
     assert 'pipe_name = "' in config
     assert 'metadata = {' in config
     assert 'log_verbosity = 1;' in config
+    assert 'get_plist_metadata = "no";' not in config
+    assert 'include_cover_art = "no";' in config
+
+
+def test_legacy_metadata_trial_changes_only_selected_zone(tmp_path):
+    async def record(**kwargs):
+        return None
+
+    manager = AirPlayEndpointManager(
+        Settings(data_dir=tmp_path, apple_legacy_metadata_zone="kitchen"), None, None, record
+    )  # type: ignore[arg-type]
+    kitchen = AudioZoneProfile(zone_id="kitchen", airplay={"enabled": True, "stable_id": "0123456789abcdef"})
+    pool = AudioZoneProfile(zone_id="pool", airplay={"enabled": True, "stable_id": "fedcba9876543210"})
+    kitchen_config = manager._config_text(kitchen, 7000)
+    pool_config = manager._config_text(pool, 7001)
+    assert 'service_type = "airplay2";' in kitchen_config
+    assert 'get_plist_metadata = "no";' in kitchen_config
+    assert 'include_cover_art = "yes";' in kitchen_config
+    assert 'cover_art_cache_directory = "";' in kitchen_config
+    assert 'get_plist_metadata = "no";' not in pool_config
+    assert 'include_cover_art = "no";' in pool_config
+    assert 'cover_art_cache_directory' not in pool_config
 
 
 def test_airplay_volume_maps_source_db_to_linear_player_percent():

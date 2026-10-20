@@ -1,5 +1,13 @@
 # Changelog
 
+## 1.4.17-rc.5 — ensaio isolado de metadados clássicos AirPlay
+
+**Pré-release para atualização manual; não é correção homologada do app Casa.** Adiciona a opção `apple_legacy_metadata_zone`, inicialmente `off`, que permite escolher **uma** zona (`kitchen` ou `pool`) para solicitar os metadados clássicos do Shairport Sync durante AirPlay 2, incluindo arte. O caminho é um modo de compatibilidade **deprecated** no upstream, usado apenas para investigar a diferença de capacidades observada frente ao WiiM; não anuncia identidade ou funções do WiiM. Com a opção desligada, as configurações das duas zonas ficam como na RC4. Com `kitchen`, a Piscina mantém a configuração anterior; áudio PCM, volume, LinkPlay, ARC/CEC, cenas e pareamento não são alterados pelo código. A atualização reinicia o App e interrompe sessões AirPlay em curso. Voltar a `off` e reiniciar reverte o ensaio. Não remove/repareia acessórios Apple automaticamente.
+
+## 1.4.17-rc.4 — observação Remote Control Only
+
+**Pré-release para atualização manual.** Acrescenta marcadores sanitizados para `SETUP` Remote Control Only, conexão do canal de eventos e ACK do `updateInfo` stock. Não encaminha Now Playing ao hub nem afirma que o cartão Casa foi corrigido.
+
 ## 1.4.17-rc.3 — leitura real do pipe de metadados
 
 **Pré-release para atualização manual.** Corrige o enquadramento do pipe de metadados conforme o código fixado do Shairport Sync: os bytes Base64 e `</data></item>` chegam sem uma quebra de linha entre eles. A leitura anterior descartava silenciosamente esses itens, embora testes sintéticos com quebra extra passassem. A nova leitura usa comprimento declarado, limita memória e descarta itens grandes em blocos. A sonda opt-in acrescenta contagens de itens e de volume, sem guardar faixa, capa ou conteúdo do plist. O caminho de áudio PCM, saída LinkPlay, volume por hook/D-Bus, ARC, cenas e identidade Apple não muda. **Esta RC não corrige nem declara corrigido o cartão do app Casa; requer novo teste físico.**
