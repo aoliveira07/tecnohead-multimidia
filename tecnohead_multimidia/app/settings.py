@@ -57,6 +57,18 @@ def _load_legacy_metadata_zone(data_dir: Path) -> str:
     return zone if zone in ("kitchen", "pool") else "off"
 
 
+def _load_feature_comparison_zone(data_dir: Path) -> str:
+    """Opt in only the kitchen; never advertise trial bits on the ARC zone."""
+
+    try:
+        options = json.loads((data_dir / "options.json").read_text(encoding="utf-8"))
+    except (OSError, UnicodeError, ValueError):
+        return "off"
+    if not isinstance(options, dict):
+        return "off"
+    return "kitchen" if options.get("apple_feature_comparison_zone") == "kitchen" else "off"
+
+
 @dataclass(frozen=True)
 class Settings:
     app_version: str = "1.4.16"
@@ -72,6 +84,7 @@ class Settings:
     ha_request_timeout: float = 12.0
     apple_mediaremote_experimental: bool = False
     apple_legacy_metadata_zone: str = "off"
+    apple_feature_comparison_zone: str = "off"
 
 
 def load_settings() -> Settings:
@@ -90,4 +103,5 @@ def load_settings() -> Settings:
         ha_request_timeout=float(os.getenv("HA_REQUEST_TIMEOUT", "12")),
         apple_mediaremote_experimental=_load_mediaremote_probe_option(data_dir),
         apple_legacy_metadata_zone=_load_legacy_metadata_zone(data_dir),
+        apple_feature_comparison_zone=_load_feature_comparison_zone(data_dir),
     )

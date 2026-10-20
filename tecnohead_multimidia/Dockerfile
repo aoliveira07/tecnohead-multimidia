@@ -63,10 +63,13 @@ RUN git clone --filter=blob:none https://github.com/mikebrady/shairport-sync.git
     && test "$(git rev-parse HEAD)" = "${SHAIRPORT_SYNC_COMMIT}"
 
 COPY patches/shairport-rc-diagnostics.patch /tmp/shairport-rc-diagnostics.patch
+COPY patches/shairport-feature-comparison.patch /tmp/shairport-feature-comparison.patch
 
 RUN cd /src/shairport-sync \
     && git apply --check /tmp/shairport-rc-diagnostics.patch \
-    && git apply /tmp/shairport-rc-diagnostics.patch
+    && git apply /tmp/shairport-rc-diagnostics.patch \
+    && git apply --check /tmp/shairport-feature-comparison.patch \
+    && git apply /tmp/shairport-feature-comparison.patch
 
 RUN cd /src/shairport-sync \
     && autoreconf -fi \

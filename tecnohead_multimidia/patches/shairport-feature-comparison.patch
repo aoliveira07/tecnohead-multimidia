@@ -1,0 +1,24 @@
+diff --git a/shairport.c b/shairport.c
+--- a/shairport.c
++++ b/shairport.c
+@@ -1989,3 +1989,19 @@
+ #endif
+-
++
++  // Controlled, one-zone diagnostic only. The application must explicitly
++  // select classic metadata and cover art before using this advertisement.
++  // Never change model, identity, pairing, or the other zone here.
++  const char *feature_comparison = NULL;
++  if (config_lookup_string(config.cfg, "diagnostics.apple_feature_comparison", &feature_comparison)) {
++    if (strcasecmp(feature_comparison, "wiim_shared") != 0)
++      die("Invalid diagnostics.apple_feature_comparison value.");
++    if ((config.metadata_enabled == 0) || (config.get_plist_metadata != 0) ||
++        (config.get_coverart == 0))
++      die("AirPlay feature comparison requires classic metadata and cover art.");
++    // Shared feature mask observed on two independent, physically working
++    // third-party receivers. This does not imply Shairport supports every bit.
++    config.airplay_features = UINT64_C(0x0001C340445F8A00);
++    warn("Experimental AirPlay feature comparison enabled for this instance.");
++  }
++
+   // now generate the fex field
