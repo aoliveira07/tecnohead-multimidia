@@ -169,8 +169,30 @@ do Lab 13/13, Ruff e aplicação integral da pilha de patches passaram. A CI
 O Supervisor atualizou **somente o Lab** de 0.1.3 para 0.1.4, com backup da
 versão anterior, e confirmou “Em funcionamento”. A configuração foi então
 alterada de B0 para M1; o log confirmou `lab_ready` em M1, com relay ativo.
-O teste físico v0.1.4 foi solicitado, mas seu resultado ainda não foi
-registrado nesta nota. O App principal permanece fora do escopo da atualização.
+O App principal permaneceu fora do escopo da atualização.
+
+Resultado físico **v0.1.4/M1**: após readopção somente do Lab, o usuário
+confirmou que o AirPlay conectou, mas o próprio cartão Casa continuou
+“Controles não disponíveis”. O log sanitizado registrou duas conexões RC,
+duas respostas de `updateInfo` e `GATE_MASK_31` em uma delas. Ambas passaram
+por `TECNOHEAD_RC_RTSP_TEARDOWN_CLOSE` e limpeza da thread/event port **antes**
+dos primeiros registros de áudio e Now Playing da faixa. Em seguida, o Lab
+recebeu cinco `updateMRNowPlayingInfo` e cinco
+`updateMRSupportedCommands` (campos de título, artista, álbum, capa,
+duração e posição); quatro snapshots de faixa e dois de comandos foram
+armazenados pelo relay. Não houve `SNAPSHOT_READY`, tentativa de envio
+MediaRemote nem ACK desses snapshots, porque nenhuma conexão RC permaneceu
+ativa nessa fase. O marcador de TEARDOWN comprova que o handler RTSP recebeu
+esse método para o canal RC; os logs não identificam qual controlador o
+enviou nem por que a sessão foi encerrada.
+
+Conclusão limitada: M1 não testou a aceitação de Now Playing pelo hub/Casa.
+O resultado visual é negativo, mas não demonstra um bloqueio de classificação
+da Apple. A próxima hipótese objetiva é a duração/negociação da conexão RC
+em comparação com um receptor comercial autorizado; não forçar a conexão
+após TEARDOWN nem tratar `updateInfo` ACK como ACK de faixa. Após coletar os
+contadores finais (`pcm_bytes_discarded=44341952`), M1 foi devolvido a B0;
+o Supervisor confirmou Lab 0.1.4 em funcionamento e `lab_ready B0`.
 
 ## Planejador offline para Windows
 
