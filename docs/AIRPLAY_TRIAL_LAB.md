@@ -24,6 +24,20 @@ Depois da instalação, mudar o perfil na aba Configuração do Lab e reiniciar
 no iPhone. Ao terminar, parar o Lab; ele usa `boot: manual`. Para restaurar o
 App original, habilitar seu próprio início automático e pressionar Iniciar.
 
+Estado observado em 20/10/2026: o commit `36bf0ee` foi publicado somente na
+branch `codex/airplay-lab`, sem merge ou release estável. O repositório dessa
+branch foi adicionado separadamente à loja HAOS; o Supervisor instalou o App
+`TecnoHead AirPlay Lab` v0.1.0 e mostrou **Em funcionamento**, `boot` desligado.
+A aba Configuração confirmou perfil B0 e o log saneado mostrou `lab_ready`,
+porta 7100 e saída `discarded`. Antes do ensaio com o iPhone, os contadores
+permaneciam sem PCM, Now Playing ou RC. Isso **não comprova** descoberta pelo
+iPhone, adoção Casa ou controles nativos; esses resultados dependem do teste
+físico. O App TecnoHead Multimídia original permaneceu **Parado**, com início
+automático desligado; suas configurações não foram removidas.
+O Kanban oficial Smart House continua sem conexão de escrita identificada nesta
+sessão; este registro versionado é provisório e não substitui a atualização do
+Kanban quando houver acesso autorizado.
+
 ## Planejador offline para Windows
 
 O programa [`tools/airplay_trial_lab.py`](../tools/airplay_trial_lab.py) roda no Windows com Python 3.12 e Tkinter (biblioteca padrão). Iniciar no diretório do repositório com `python tools/airplay_trial_lab.py`. Para uso sem janela: `python tools/airplay_trial_lab.py --compare` ou `python tools/airplay_trial_lab.py --scenario M3 --zone pool`.
