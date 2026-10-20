@@ -153,6 +153,33 @@ No teste físico posterior, o usuário autorizou por janela curta `apple_mediare
 
 Na RC1, a inspeção local dos logs do HAOS revelou que o log de acesso HTTP do Uvicorn exibia a URL do stream com token de sessão. O valor não foi copiado ou publicado. A RC2 desliga esse log nos dois entrypoints, mantendo eventos operacionais; após abrir o painel RC2, não apareceram novas linhas de acesso desde o início do processo. Logs anteriores podem permanecer no histórico local e **não devem ser exportados sem sanitização**. Ainda falta provar esse ponto com uma nova sessão real de áudio.
 
+### Evidência nova do AirPlay Lab v0.1.4 — metadados enviados, cartão vazio
+
+Em 20/10/2026, no receptor descartável independente (não nas zonas reais),
+o usuário iniciou Apple Music **antes** de readotar o Lab no Casa. Já havia
+snapshots de `updateMRSupportedCommands` e `updateMRNowPlayingInfo` com campos
+de título, capa e posição quando a conexão Remote Control Only foi aberta.
+O Lab enviou ambos como `POST /command` no event port RC; os dois tiveram
+resposta RTSP **2xx**, seguida de `TEARDOWN` do peer. O iPhone permaneceu
+conectado por AirPlay, mas o próprio cartão continuou “Controles não
+disponíveis”. O [código Shairport pinado](https://github.com/mikebrady/shairport-sync/blob/cf6998d/ap2_event_receiver.c)
+verifica o status RTSP antes de retornar valor positivo, portanto esses
+marcadores não significam apenas escrita local. O relay foi desligado de novo
+(`lab_ready B0`). Nenhum dado de mídia ou identificador de rede foi publicado.
+
+**Interpretação limitada:** o teste confirma transporte e resposta do peer,
+não aceitação semântica pela Apple Home. A instrumentação atual não identifica
+se o peer RC era o HomePod/hub ou outro controlador. A
+[discussão #2262](https://github.com/mikebrady/shairport-sync/discussions/2262)
+alerta que o canal de sessão PTP e o RC-only não têm o mesmo protocolo para
+todos os comandos; não inferir do 2xx que o framing desses updates produz
+controle nativo. A [issue #2182](https://github.com/mikebrady/shairport-sync/issues/2182)
+relata um experimento comunitário parecido e sugere gate de classificação,
+mas a observação positiva de WiiM e Denon no Casa deste usuário impede
+generalizar o bloqueio a todo receptor de terceiros. Ainda falta comparar
+uma implementação comercial legítima e determinar quais capacidades ela
+realmente oferece, sem copiar modelo, certificado ou identidade.
+
 ## Sequência de campo ainda necessária
 
 1. O backup manual criptografado **“TecnoHead Multimídia pré-MediaRemote 2026-10-19”** foi criado no armazenamento **Este sistema**, 22,94 MB, com App v1.4.16 e configurações HA como itens restauráveis. Backups da atualização RC1/RC2 também foram solicitados. Nenhuma restauração foi feita, para não interromper o sistema. Preservar o pareamento Apple; não repará-lo como primeira tentativa.

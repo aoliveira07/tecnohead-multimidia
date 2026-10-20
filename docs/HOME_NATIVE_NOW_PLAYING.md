@@ -25,3 +25,11 @@ A RC9 foi publicada e instalada no HAOS após backup local RC8; o App e ambos os
 Após essa instalação, houve ensaio consentido da RC9 **somente na Piscina**: áudio AirPlay recebido e som confirmado, porém o mesmo cartão do Casa ainda mostrou “Controles não disponíveis”. O relay foi revertido a `off` e o App voltou online com ambas as zonas anunciadas. Não foi observado ACK de metadados ao RC durante a janela; portanto o ensaio não comprova entrega de capa à central nem resolve a classificação do acessório. Sem botões no Casa, não houve teste de play/pause/volume nativos. O foco seguinte é distinguir anúncio/ícone, bit 10 de acesso Casa, conexão RC, entrega e UI; [o laboratório offline](AIRPLAY_TRIAL_LAB.md) registra esses checkpoints sem alterar o HAOS.
 
 Consulte [APPLE_MEDIAREMOTE_RESEARCH.md](APPLE_MEDIAREMOTE_RESEARCH.md) para evidências/hipóteses e [MEDIAREMOTE_D01_D24.md](MEDIAREMOTE_D01_D24.md) para o checklist de homologação.
+
+No ensaio isolado v0.1.4/M1, o Lab já recebia música quando foi readicionado
+ao Casa. O mesmo processo Shairport encaminhou snapshots reais de
+SupportedCommands e Now Playing ao event port Remote Control Only e recebeu
+resposta RTSP 2xx para ambos, mas o cartão continuou “Controles não
+disponíveis”. O 2xx confirma transporte naquele canal, **não** identificação
+do peer como HomePod, interpretação semântica, nem habilitação da UI. O Lab
+voltou a B0; a instalação funcional das zonas reais não recebeu essa mudança.

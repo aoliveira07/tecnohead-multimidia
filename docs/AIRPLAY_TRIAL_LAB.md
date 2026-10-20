@@ -199,6 +199,39 @@ faixa. Após coletar os
 contadores finais (`pcm_bytes_discarded=44341952`), M1 foi devolvido a B0;
 o Supervisor confirmou Lab 0.1.4 em funcionamento e `lab_ready B0`.
 
+### Ensaio de sobreposição v0.1.4/M1 — áudio antes da adoção
+
+O usuário removeu **somente o Lab** do Casa e iniciou Apple Music no Lab antes
+de readicioná-lo. O AirPlay permaneceu conectado durante a adoção; o usuário
+abriu o mesmo cartão e confirmou **“Controles não disponíveis”**. Antes da
+readopção, o Lab já tinha recebido PCM e armazenado snapshots de
+Now Playing e SupportedCommands, com campos de título/arte/posição. Seis
+conexões RC anteriores terminaram por RTSP TEARDOWN sem snapshots disponíveis.
+Na sétima conexão RC, já com mídia ativa, ocorreram `SETUP`, event port,
+`updateInfo` ACK e `GATE_MASK_31`. O Lab enviou **primeiro** SupportedCommands
+e **depois** Now Playing pelo event port dessa conexão. Para cada envio,
+`ap2_event_port_send_message()` leu uma resposta RTSP **2xx** cifrada;
+registrou-se um `TECNOHEAD_RC_MEDIAREMOTE_ACK_COMMANDS` e um
+`TECNOHEAD_RC_MEDIAREMOTE_ACK_NOW_PLAYING`. O peer em seguida enviou
+`TEARDOWN`. Nenhum nome de faixa, capa, payload, endereço ou chave foi
+registrado/publicado. O marcador `sender_playback_updates` ficou em zero
+nesta sessão.
+
+Este é o primeiro ensaio local que **comprova envio e resposta RTSP 2xx** para
+os dois snapshots no canal RC. Não comprova que o peer era o HomePod/hub,
+que interpretou semanticamente os plists, nem que o Casa aceitou a capacidade
+do acessório. O resultado visual negativo impede D16–D19; não estabelece
+sozinho `BLOQUEADO_POR_PLATAFORMA`. D16/D17 das zonas reais não foram
+retestados aqui; sem botões no Lab, D19 também não teve ação física.
+A pergunta seguinte é se o emissor da
+resposta RC é a central da Casa e se esse canal/framing é o esperado para
+Now Playing, comparando com fonte primária e um receptor comercial sem
+falsificar identidade. O Lab foi reiniciado com a opção B0 salva; `lab_ready
+B0` confirmou relay desligado. A interface de configuração mostrou B0
+transitoriamente antes de terminar de carregar M1, por isso o primeiro
+reinício voltou em M1; a verificação pelo log impediu deixar esse estado
+experimental ativo.
+
 ## Planejador offline para Windows
 
 O programa [`tools/airplay_trial_lab.py`](../tools/airplay_trial_lab.py) roda no Windows com Python 3.12 e Tkinter (biblioteca padrão). Iniciar no diretório do repositório com `python tools/airplay_trial_lab.py`. Para uso sem janela: `python tools/airplay_trial_lab.py --compare` ou `python tools/airplay_trial_lab.py --scenario M3 --zone pool`.
