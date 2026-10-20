@@ -70,7 +70,7 @@ def _load_feature_comparison_zone(data_dir: Path) -> str:
 
 
 def _load_mediaremote_forward_zone(data_dir: Path) -> str:
-    """Fail closed: RC relay is an opt-in, kitchen-only experiment."""
+    """Fail closed: opt in exactly one known zone for the RC relay."""
 
     try:
         options = json.loads((data_dir / "options.json").read_text(encoding="utf-8"))
@@ -78,7 +78,8 @@ def _load_mediaremote_forward_zone(data_dir: Path) -> str:
         return "off"
     if not isinstance(options, dict):
         return "off"
-    return "kitchen" if options.get("apple_mediaremote_forward_zone") == "kitchen" else "off"
+    selected = options.get("apple_mediaremote_forward_zone")
+    return selected if selected in ("kitchen", "pool") else "off"
 
 
 @dataclass(frozen=True)
@@ -103,7 +104,7 @@ class Settings:
 def load_settings() -> Settings:
     data_dir = Path(os.getenv("APP_DATA_DIR", "/data"))
     return Settings(
-        app_version=os.getenv("APP_VERSION", "1.4.17-rc.8"),
+        app_version=os.getenv("APP_VERSION", "1.4.17-rc.9"),
         app_host=os.getenv("APP_HOST", "0.0.0.0"),
         app_port=int(os.getenv("INGRESS_PORT", os.getenv("APP_PORT", "18199"))),
         data_dir=data_dir,
