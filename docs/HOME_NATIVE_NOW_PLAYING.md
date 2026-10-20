@@ -33,3 +33,14 @@ resposta RTSP 2xx para ambos, mas o cartão continuou “Controles não
 disponíveis”. O 2xx confirma transporte naquele canal, **não** identificação
 do peer como HomePod, interpretação semântica, nem habilitação da UI. O Lab
 voltou a B0; a instalação funcional das zonas reais não recebeu essa mudança.
+
+No ensaio seguinte, Lab v0.1.5/M1 com modelo **TecnoHead AirPlay Lab** e bits
+clássicos 15–17 adicionais (sem MFi), o iPhone conectou e enviou metadados
+com capa. O ícone permaneceu genérico. Após readopção somente do Lab com a
+faixa já em reprodução, o gate RC ficou elegível e o peer respondeu RTSP 2xx
+aos snapshots de comandos e Now Playing; mesmo assim, o próprio cartão Casa
+continuou “Controles não disponíveis”. Assim, essa combinação legítima de
+anúncio + transporte RC não resolve a interface. Não prova que o peer era a
+central, que interpretou o payload ou que uma exigência fechada específica
+da Apple seja a causa. O Lab voltou a `B0/stock` e foi parado; o App principal
+permaneceu parado, sem mudança nas zonas reais. Não há novo Receiver/Bridge.

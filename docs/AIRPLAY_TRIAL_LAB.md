@@ -289,4 +289,34 @@ uma identidade: confirmar `B0/stock`; testar `M1/tecnohead_model` e depois
 necessária pelo estado volátil do Shairport. Se o primeiro já mudar o ícone,
 isolar `M1/classic_bits` antes de atribuir causa. Parar se AirPlay falhar;
 voltar a `B0/stock` e confirmar `lab_ready` no log. Não promover a produção ou
-uma release estável sem teste físico positivo. **Resultado de campo pendente.**
+uma release estável sem teste físico positivo. O resultado de campo da variante
+combinada está registrado abaixo.
+
+Resultado de campo v0.1.5 (20/10/2026): o Supervisor atualizou **somente o
+Lab** para 0.1.5, com backup da versão anterior, e confirmou `lab_ready` no
+perfil `M1` com anúncio `tecnohead_model_classic_bits`. O App principal
+permaneceu parado. O iPhone conectou ao Lab e enviou Now Playing e comandos
+suportados; o log saneado marcou presença de título, artista, álbum, capa,
+duração e posição. O ícone no seletor continuou o alto-falante genérico,
+diferente de WiiM/Denon. O cartão do próprio Lab no Casa mostrou “Controles
+não disponíveis”. Antes da readopção, o canal RC tinha gate `15`, sem o bit
+de acesso Casa, e **não** houve envio MediaRemote; esta observação isolada
+testa o anúncio, não o relay.
+
+Com a música ainda direcionada ao Lab, o usuário removeu **somente** esse
+acessório do Casa; o AirPlay permaneceu conectado. Ao readicioná-lo, o gate
+RC chegou a `31`, snapshots de SupportedCommands e Now Playing estavam
+disponíveis, e o peer retornou RTSP **2xx** para ambos os envios. Ainda assim,
+após abrir novamente o mesmo cartão, o usuário confirmou que os controles
+continuaram indisponíveis. O teste combinado **não** habilitou o ícone nem a
+UI. Os ACKs comprovam transporte/resposta, não identidade do peer, aceitação
+semântica do payload ou bloqueio geral da Apple. Os bits MFi 26/51 não foram
+anunciados; nenhum modelo/certificado comercial foi simulado. Esta conclusão
+se restringe ao Lab e a esta combinação. Não houve teste físico das zonas
+reais nesta rodada.
+
+Ao encerrar o ensaio, o Supervisor confirmou `lab_stopped` do processo M1,
+seguido de `lab_ready` no perfil `B0` com anúncio `stock` e relay desligado.
+O Lab foi então **parado** na aba Info. Nenhuma release estável ou alteração
+do App principal foi publicada nesta etapa; o acessório Lab pode aparecer
+temporariamente indisponível no Casa enquanto o App de ensaio estiver parado.

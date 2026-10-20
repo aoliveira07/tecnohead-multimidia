@@ -180,6 +180,21 @@ generalizar o bloqueio a todo receptor de terceiros. Ainda falta comparar
 uma implementação comercial legítima e determinar quais capacidades ela
 realmente oferece, sem copiar modelo, certificado ou identidade.
 
+### AirPlay Lab v0.1.5 — modelo próprio + bits clássicos + relay RC
+
+O ensaio isolado `M1/tecnohead_model_classic_bits` manteve o AirPlay conectado
+e recebeu Now Playing com capa e comandos suportados. O anúncio com modelo
+**próprio** e bits 15–17 não alterou o ícone genérico do Lab nem o cartão
+“Controles não disponíveis”. Após readopção somente do Lab, com a faixa já
+direcionada a ele, o gate RC passou a `31` e houve uma resposta RTSP **2xx**
+para SupportedCommands e uma para Now Playing. O usuário reabriu o cartão e
+confirmou que ele permaneceu sem controles. Assim, não se pode atribuir esta
+falha apenas à falta dos metadados no receptor ou à ausência de transporte
+RC neste ensaio; tampouco se pode afirmar que o peer interpretou os plists
+ou que uma exigência Apple específica foi demonstrada. Ver a sequência
+sanitizada em [AIRPLAY_TRIAL_LAB.md](AIRPLAY_TRIAL_LAB.md). Nenhuma alteração
+de anúncio foi aplicada às zonas de produção.
+
 ## Sequência de campo ainda necessária
 
 1. O backup manual criptografado **“TecnoHead Multimídia pré-MediaRemote 2026-10-19”** foi criado no armazenamento **Este sistema**, 22,94 MB, com App v1.4.16 e configurações HA como itens restauráveis. Backups da atualização RC1/RC2 também foram solicitados. Nenhuma restauração foi feita, para não interromper o sistema. Preservar o pareamento Apple; não repará-lo como primeira tentativa.

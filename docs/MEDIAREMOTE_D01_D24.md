@@ -65,6 +65,22 @@ Campo v0.1.4/M1 a D12–D19/D24: após readopção somente do Lab e Apple Music,
 
 Novo ensaio de sobreposição v0.1.4/M1 a D12–D19: somente o Lab foi removido do Casa; Apple Music começou **antes** da readopção e permaneceu conectado durante ela. Havia snapshots reais de Now Playing e SupportedCommands armazenados antes da sétima conexão RC. Nessa conexão, `GATE_MASK_31` permitiu um envio de comandos suportados e um de Now Playing; ambos receberam resposta RTSP **2xx** no event port (confirmada pelo fluxo de `ap2_event_port_send_message()` do [Shairport fixado](https://github.com/mikebrady/shairport-sync/blob/cf6998d/ap2_event_receiver.c)). O peer enviou TEARDOWN em seguida. Mesmo assim, o usuário confirmou **Casa sem controles** no próprio Lab. D14 tem **subcritério de transporte comprovado** (envio e 2xx), mas a semântica/correção do canal e a identidade do peer RC ainda não foram demonstradas; não marcar D14 como homologado apenas pelo 2xx. D13/D15 seguem sem causa fechada. D16/D17 das zonas reais **não foram retestados nesta rodada**; no Lab, D18 não passou visualmente e D19 não pôde ser exercitado por ausência de botões. Não há prova suficiente de bloqueio da Apple para as zonas reais. O Lab voltou a B0, confirmado por `lab_ready B0`; nenhuma identidade, `features` ou App de produção foi alterado.
 
+Ensaio v0.1.5/M1 com anúncio `tecnohead_model_classic_bits` a D12–D19:
+somente o Lab foi atualizado e configurado; o App de produção permaneceu
+parado. O iPhone conectou ao Lab e enviou título/arte/posição e comandos,
+mas o seletor manteve o ícone genérico. O próprio cartão Casa continuou sem
+controles. Antes da readopção, gate RC `15` e nenhum envio MediaRemote.
+Após remover e readicionar **somente** o Lab enquanto o AirPlay permanecia
+conectado, gate `31`, snapshots disponíveis e respostas RTSP **2xx** para
+SupportedCommands e Now Playing. O usuário reabriu o cartão e confirmou
+**“Controle não disponível, continua”**. Portanto, o subcritério de
+transporte de D14 foi reproduzido também com este anúncio; D15 segue sem
+causa de classificação comprovada e D16–D19 **não passaram no Lab**. Isto
+não é teste físico novo de Cozinha/Piscina nem prova de bloqueio universal
+da Apple. Ao final, `lab_ready B0/stock` e estado **Parado** foram
+confirmados; nenhuma promoção estável foi feita. Detalhes em
+[AIRPLAY_TRIAL_LAB.md](AIRPLAY_TRIAL_LAB.md).
+
 ## Provas automatizadas locais (não são D16–D19)
 
 `python -m pytest -q` em `tecnohead_multimidia`: **50 passed, 1 skipped** na RC5; Ruff, auditoria, CI e build multi-arquitetura passaram. Os testes novos reproduzem o enquadramento real do pipe (`Base64</data></item>` sem quebra), além de `copl`, privacidade, flag desligada por padrão, continuidade de `pvol` após item volumoso ou falha da sonda, isolamento por zona dos marcadores RC e seleção de metadados clássicos em uma única zona. Os testes automatizados não substituem iPhone, hub, HAOS ou amplificador físico.
