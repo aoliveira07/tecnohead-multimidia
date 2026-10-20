@@ -15,10 +15,25 @@ The `profile` option is applied on app restart:
 | M2 | Yes | No |
 | M3 | Yes | Yes, only after legitimate RC connection |
 
-The lab uses stock Shairport feature negotiation for these profiles; it does
-**not** offer arbitrary `features` masks, MFi authentication, model spoofing,
-or a HomePod/WiiM/Denon persona. A speaker icon is a separate observation from
-a working Home card. The RC relay is experimental: ACKs do not prove UI success.
+The lab does **not** offer arbitrary `features` masks, MFi authentication,
+commercial/Apple model spoofing, or a HomePod/WiiM/Denon persona. The separate
+`advertisement` option provides four restricted, lab-only variants:
+
+| Advertisement | Own TecnoHead model | Classic metadata bits 15–17 added |
+| --- | --- | --- |
+| `stock` | No | No |
+| `tecnohead_model` | Yes | No |
+| `classic_bits` | No | Yes |
+| `tecnohead_model_classic_bits` | Yes | Yes |
+
+The `classic_bits` variants retain bit 50 (binary-plist Now Playing) and only
+advertise formats the receiver parses. AirPlay may still choose a single format;
+these variants do **not** guarantee two metadata streams. They never set bit 26
+or 51, which published protocol research associates with MFi. A speaker icon
+is a separate observation from a working Home card. The RC relay is
+experimental: RTSP 2xx responses do not prove Home UI success. Use `M1` with
+one advertisement at a time for the combined classification/relay experiment.
+Return to `B0` + `stock` after testing.
 
 Only counters and field *presence* are logged. Never print track names,
 artwork, payloads, audio, IPs or pairing details. Review the logs after each

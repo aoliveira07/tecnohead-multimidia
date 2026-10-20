@@ -1,0 +1,37 @@
+diff --git a/shairport.c b/shairport.c
+--- a/shairport.c
++++ b/shairport.c
+@@ -1991,2 +1991,32 @@
+-  // now generate the fex field
++  // Lab-only classification probe. Every advertised capability below is
++  // implemented by this receiver; never assert MFi (bits 26/51), change a
++  // pairing identity or impersonate a commercial/Apple model.
++  const char *lab_advertisement = NULL;
++  if (config_lookup_string(config.cfg, "diagnostics.apple_lab_advertisement", &lab_advertisement)) {
++    int own_model = 0;
++    int classic_bits = 0;
++    if (strcasecmp(lab_advertisement, "stock") == 0) {
++      // The stock Shairport advertisement is the control condition.
++    } else if (strcasecmp(lab_advertisement, "tecnohead_model") == 0) {
++      own_model = 1;
++    } else if (strcasecmp(lab_advertisement, "classic_bits") == 0) {
++      classic_bits = 1;
++    } else if (strcasecmp(lab_advertisement, "tecnohead_model_classic_bits") == 0) {
++      own_model = 1;
++      classic_bits = 1;
++    } else {
++      die("Invalid diagnostics.apple_lab_advertisement value.");
++    }
++    if (own_model) {
++      char *model = strdup("TecnoHead AirPlay Lab");
++      if (model == NULL)
++        die("Could not allocate Lab model name.");
++      free(config.model);
++      config.model = model;
++    }
++    if (classic_bits && config.metadata_enabled)
++      config.airplay_features |= (UINT64_C(1) << 15) | (UINT64_C(1) << 16) | (UINT64_C(1) << 17);
++  }
++
++  // now generate the fex field
+   uint8_t fexbytes[8];

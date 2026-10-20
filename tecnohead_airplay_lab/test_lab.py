@@ -24,6 +24,26 @@ def test_profile_options(tmp_path: Path, profile: str) -> None:
     assert lab.load_profile(options) == profile
 
 
+@pytest.mark.parametrize("advertisement", lab.ADVERTISEMENTS)
+def test_advertisement_options(tmp_path: Path, advertisement: str) -> None:
+    options = tmp_path / "options.json"
+    options.write_text(json.dumps({"profile": "M1", "advertisement": advertisement}), encoding="utf-8")
+    assert lab.load_advertisement(options) == advertisement
+
+
+def test_missing_advertisement_defaults_to_stock(tmp_path: Path) -> None:
+    options = tmp_path / "options.json"
+    options.write_text('{"profile":"B0"}', encoding="utf-8")
+    assert lab.load_advertisement(options) == "stock"
+
+
+def test_unknown_advertisement_fails_closed(tmp_path: Path) -> None:
+    options = tmp_path / "options.json"
+    options.write_text('{"profile":"B0","advertisement":"vendor-mask"}', encoding="utf-8")
+    with pytest.raises(ValueError):
+        lab.load_advertisement(options)
+
+
 def test_unknown_profile_fails_closed(tmp_path: Path) -> None:
     options = tmp_path / "options.json"
     options.write_text('{"profile":"vendor-mask"}', encoding="utf-8")
@@ -42,8 +62,11 @@ def test_stable_id_is_separate_and_persistent(tmp_path: Path) -> None:
 
 
 @pytest.mark.parametrize("profile", list(lab.PROFILES))
-def test_config_does_not_claim_vendor_capabilities(profile: str) -> None:
-    config = lab.shairport_config(profile, "02AABBCCDDEE", "192.0.2.5", Path("/tmp/metadata"))
+@pytest.mark.parametrize("advertisement", lab.ADVERTISEMENTS)
+def test_config_does_not_claim_vendor_capabilities(profile: str, advertisement: str) -> None:
+    config = lab.shairport_config(
+        profile, "02AABBCCDDEE", "192.0.2.5", Path("/tmp/metadata"), advertisement
+    )
     assert 'name = "TecnoHead AirPlay Lab";' in config
     assert "port = 7100;" in config
     assert 'output_backend = "stdout";' in config
@@ -51,7 +74,13 @@ def test_config_does_not_claim_vendor_capabilities(profile: str) -> None:
     assert 'include_cover_art = "yes";' in config if profile in {"M2", "M3"} else 'include_cover_art = "no";' in config
     assert ('get_plist_metadata = "no";' in config) == (profile == "M2")
     assert "apple_feature_comparison" not in config
+    assert f'apple_lab_advertisement = "{advertisement}";' in config
     assert "WiiM" not in config and "HomePod" not in config and "MFi" not in config
+
+
+def test_invalid_config_advertisement_fails_closed() -> None:
+    with pytest.raises(ValueError):
+        lab.shairport_config("M1", "02AABBCCDDEE", "192.0.2.5", Path("/tmp/metadata"), "vendor")
 
 
 def test_mediaremote_counters_retain_no_media() -> None:

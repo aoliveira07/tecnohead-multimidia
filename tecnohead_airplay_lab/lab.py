@@ -25,6 +25,12 @@ PROFILES = {
     "M2": (True, False),
     "M3": (True, True),
 }
+ADVERTISEMENTS = (
+    "stock",
+    "tecnohead_model",
+    "classic_bits",
+    "tecnohead_model_classic_bits",
+)
 MAX_ITEM = 2 * 1024 * 1024
 MAX_DECLARED_ITEM = 64 * 1024 * 1024
 HEADER = re.compile(
@@ -84,6 +90,14 @@ def load_profile(path: Path = DATA / "options.json") -> str:
     return profile
 
 
+def load_advertisement(path: Path = DATA / "options.json") -> str:
+    options = json.loads(path.read_text(encoding="utf-8"))
+    advertisement = options.get("advertisement", "stock")
+    if advertisement not in ADVERTISEMENTS:
+        raise ValueError("invalid laboratory advertisement")
+    return advertisement
+
+
 def stable_lab_id(path: Path = DATA / "lab_device_id") -> str:
     """A separate, locally administered 48-bit ID; never a commercial MAC."""
 
@@ -110,13 +124,17 @@ def lan_address() -> str:
     return address
 
 
-def shairport_config(profile: str, identity: str, address: str, pipe: Path) -> str:
+def shairport_config(
+    profile: str, identity: str, address: str, pipe: Path, advertisement: str = "stock"
+) -> str:
+    if profile not in PROFILES or advertisement not in ADVERTISEMENTS:
+        raise ValueError("invalid laboratory configuration")
     classic, _ = PROFILES[profile]
     if not re.fullmatch(r"02[0-9A-F]{10}", identity):
         raise ValueError("invalid identity")
     if not re.fullmatch(r"[0-9.]+", address):
         raise ValueError("invalid address")
-    # No commercial model, unknown feature bit, MFi claim, or pairing bypass.
+    # The advertised model is TecnoHead's own; no commercial identity or MFi claim.
     return f'''general = {{
   name = "TecnoHead AirPlay Lab";
   service_type = "airplay2";
@@ -148,6 +166,7 @@ metadata = {{
 sessioncontrol = {{ active_state_timeout = 8.0; }};
 diagnostics = {{
   log_verbosity = 1;
+  apple_lab_advertisement = "{advertisement}";
   {('get_plist_metadata = "no";' if profile == "M2" else '')}
 }};
 '''
@@ -376,6 +395,7 @@ async def run() -> None:
     DATA.mkdir(parents=True, exist_ok=True)
     RUNTIME.mkdir(parents=True, exist_ok=True)
     profile = load_profile()
+    advertisement = load_advertisement()
     identity = stable_lab_id()
     address = lan_address()
     classic, relay = PROFILES[profile]
@@ -388,7 +408,7 @@ async def run() -> None:
     (RUNTIME / "bus.conf").write_text(bus_config(bus_socket), encoding="utf-8")
     (RUNTIME / "avahi.conf").write_text(AVAHI_CONFIG, encoding="utf-8")
     (RUNTIME / "shairport.conf").write_text(
-        shairport_config(profile, identity, address, pipe), encoding="utf-8"
+        shairport_config(profile, identity, address, pipe, advertisement), encoding="utf-8"
     )
     env = {
         **os.environ,
@@ -403,7 +423,10 @@ async def run() -> None:
     processes: list[asyncio.subprocess.Process] = []
     tasks: list[asyncio.Task[None]] = []
     counters = Counters()
-    report("lab_starting", profile=profile, classic_metadata=classic, rc_relay=relay, audio_output="discarded")
+    report(
+        "lab_starting", profile=profile, advertisement=advertisement,
+        classic_metadata=classic, rc_relay=relay, audio_output="discarded",
+    )
     try:
         bus = await asyncio.create_subprocess_exec(
             "dbus-daemon", f"--config-file={RUNTIME / 'bus.conf'}", "--nofork", "--nopidfile",
@@ -448,7 +471,10 @@ async def run() -> None:
         await asyncio.sleep(0.6)
         if receiver.returncode is not None:
             raise RuntimeError("Shairport exited during startup")
-        report("lab_ready", profile=profile, name="TecnoHead AirPlay Lab", port=7100)
+        report(
+            "lab_ready", profile=profile, advertisement=advertisement,
+            name="TecnoHead AirPlay Lab", port=7100,
+        )
         while not stop.is_set():
             try:
                 await asyncio.wait_for(stop.wait(), timeout=15)
@@ -467,7 +493,7 @@ async def run() -> None:
         for task in tasks:
             with suppress(asyncio.CancelledError, Exception):
                 await task
-        report("lab_stopped", profile=profile, **counters.summary())
+        report("lab_stopped", profile=profile, advertisement=advertisement, **counters.summary())
 
 
 if __name__ == "__main__":

@@ -252,3 +252,41 @@ Na POC RC9, o envio ao RC requer `Enable_HK_Access_Control` legítimo, conexão 
 A interseção WiiM/Denon adicionaria, entre outros, o **bit 26 (MFi)**. Na RC7, a máscara conjunta levou a `POST /auth-setup`, falha de conexão e nenhum stream. Sem implementação/autorização MFi, anunciar esse bit, o bit 51, modelo Apple ou identidade de fabricante alheio seria uma capacidade falsa; o laboratório **não oferece** esses perfis nem máscaras arbitrárias. O ícone pode depender de classificação/modelo além de `features`; o caso RC7 não isolou causalmente um único bit. O próximo desenvolvimento técnico legítimo é instrumentar a cadeia de classificação e identificar uma capacidade realmente implementável, ou um modelo TecnoHead verdadeiro, antes de qualquer novo anúncio ao iPhone. Não remover/reparear acessórios sem autorização específica.
 
 Para repetir ensaios rapidamente no futuro, uma API interna do próprio App HAOS poderia aplicar perfis versionados na zona de teste e revertê-los automaticamente após prazo curto. **Reiniciar Shairport perde o bit 10 e a lista de controladores da implementação atual**; para comparar relay sem readopção a cada rodada seria preciso atualização de configuração em processo que preserve uma sessão legitimamente negociada, ou primeiro corrigir a persistência dos pareamentos. Esta interface Windows **não** faz isso: construir tal controle exige autenticação, limites de sessão, rollback e teste de não interferência com ARC/CEC. Nunca rodar múltiplos anúncios mutantes com a mesma identidade em paralelo, pois o cache/pareamento da Apple confundiria a atribuição do resultado.
+
+### Ensaio v0.1.5 — classificação sem credencial alheia
+
+Hipótese do usuário: o ícone diferente pode indicar que a classificação do
+destino TecnoHead impede a UI de reprodução no Casa, mesmo quando o Lab recebe
+Now Playing e obtém RTSP 2xx na conexão RC. O [mapeamento reverso de
+`features`](https://emanuelecozzi.net/docs/airplay2/features/) atribui
+`ThirdPartySpeaker` à condição `bit 26 || bit 51`, ambos relacionados a MFi;
+não é uma especificação pública da Apple nem prova de que esse bit habilite o
+cartão. A cópia da máscara WiiM/Denon na RC7 provocou `POST /auth-setup` e
+falha de conexão. Portanto, esta rodada **não** afirma possuir MFi nem simula
+certificados, fabricante comercial, chave, serial, pareamento ou HomePod.
+
+O Lab 0.1.5 adiciona a opção `advertisement`, independente do perfil B0/M1:
+
+| Valor | Alteração isolável no próprio Lab |
+| --- | --- |
+| `stock` | Anúncio original Shairport; controle. |
+| `tecnohead_model` | `model=TecnoHead AirPlay Lab`, mantendo `features` originais. |
+| `classic_bits` | Adiciona somente os bits 15–17, que o receptor sabe ler, mantendo o bit 50 e o modelo original. |
+| `tecnohead_model_classic_bits` | Combina as duas mudanças, ainda sem MFi. |
+
+O mesmo `config.airplay_features` alimenta o TXT mDNS, `fex` e `GET /info`; o
+modelo próprio alimenta TXT e `GET /info`. Nada altera o ID persistente, a
+saída de áudio descartada, Cozinha/Piscina, ou o código do relay. As variantes
+de bits clássicos **não prometem** que o iPhone entregue metadados clássicos e
+plist simultaneamente; bit 50 pode prevalecer. Para distinguir classificação
+de funcionalidade, anotar separadamente (1) visibilidade e ícone no seletor,
+(2) conexão AirPlay e chegada de metadados, (3) RC/ACK, (4) capa/botões no
+mesmo cartão Casa. Igualdade de ícone, se ocorrer, não homologa D16–D19.
+
+Ordem após build e atualização **somente do Lab**, sempre com uma instância e
+uma identidade: confirmar `B0/stock`; testar `M1/tecnohead_model` e depois
+`M1/tecnohead_model_classic_bits`, com readopção **somente do Lab** quando
+necessária pelo estado volátil do Shairport. Se o primeiro já mudar o ícone,
+isolar `M1/classic_bits` antes de atribuir causa. Parar se AirPlay falhar;
+voltar a `B0/stock` e confirmar `lab_ready` no log. Não promover a produção ou
+uma release estável sem teste físico positivo. **Resultado de campo pendente.**
