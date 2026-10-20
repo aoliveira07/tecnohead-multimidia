@@ -129,6 +129,17 @@ peer. Este patch diagnóstico não corrige o cartão Casa por si só; requer
 compilação, atualização isolada e novo teste físico antes de qualquer
 conclusão sobre o protocolo.
 
+O commit `08d8da0` passou nos testes locais do Lab (13), nos testes do App
+principal (54 passaram, 1 ignorado), Ruff e em todos os jobs da CI, inclusive
+builds amd64/arm64 do Lab e do App principal (run `39479829498`). O Supervisor
+atualizou **somente o Lab** para v0.1.3,
+solicitando backup da v0.1.2, e confirmou a nova versão em funcionamento.
+M1 foi iniciado e `lab_ready` confirmado; entretanto, não houve nova sessão
+AirPlay nem readopção durante a janela observada (`pcm_bytes_discarded=0`,
+sem novos marcadores RC). Logo **a v0.1.3 não tem resultado físico**. M1 voltou
+a B0, com `lab_ready` confirmado. Nenhum App de produção foi atualizado ou
+reiniciado por este ensaio.
+
 ## Planejador offline para Windows
 
 O programa [`tools/airplay_trial_lab.py`](../tools/airplay_trial_lab.py) roda no Windows com Python 3.12 e Tkinter (biblioteca padrão). Iniciar no diretório do repositório com `python tools/airplay_trial_lab.py`. Para uso sem janela: `python tools/airplay_trial_lab.py --compare` ou `python tools/airplay_trial_lab.py --scenario M3 --zone pool`.
