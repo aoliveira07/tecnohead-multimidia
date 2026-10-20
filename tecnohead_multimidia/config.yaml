@@ -50,8 +50,10 @@ map:
 options:
   apple_mediaremote_experimental: false
   apple_legacy_metadata_zone: "off"
+  apple_feature_comparison_zone: "off"
 schema:
   apple_mediaremote_experimental: bool
   apple_legacy_metadata_zone: str
+  apple_feature_comparison_zone: str
 
 backup: hot

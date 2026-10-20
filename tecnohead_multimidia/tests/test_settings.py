@@ -8,6 +8,7 @@ def test_mediaremote_probe_defaults_off_when_options_missing(tmp_path, monkeypat
     monkeypatch.delenv("APPLE_MEDIAREMOTE_EXPERIMENTAL", raising=False)
     assert load_settings().apple_mediaremote_experimental is False
     assert load_settings().apple_legacy_metadata_zone == "off"
+    assert load_settings().apple_feature_comparison_zone == "off"
 
 
 def test_mediaremote_probe_reads_haos_option(tmp_path, monkeypatch):
@@ -47,3 +48,18 @@ def test_legacy_metadata_option_allows_only_one_known_zone(tmp_path, monkeypatch
     ):
         options.write_text(content, encoding="utf-8")
         assert load_settings().apple_legacy_metadata_zone == "off"
+
+
+def test_feature_comparison_is_opt_in_for_kitchen_only(tmp_path, monkeypatch):
+    monkeypatch.setenv("APP_DATA_DIR", str(tmp_path))
+    options = tmp_path / "options.json"
+    options.write_text('{"apple_feature_comparison_zone": "kitchen"}', encoding="utf-8")
+    assert load_settings().apple_feature_comparison_zone == "kitchen"
+    for content in (
+        '{"apple_feature_comparison_zone": "pool"}',
+        '{"apple_feature_comparison_zone": "both"}',
+        '{"apple_feature_comparison_zone": true}',
+        "{bad json",
+    ):
+        options.write_text(content, encoding="utf-8")
+        assert load_settings().apple_feature_comparison_zone == "off"

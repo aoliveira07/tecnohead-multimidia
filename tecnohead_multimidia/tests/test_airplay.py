@@ -87,6 +87,32 @@ def test_legacy_metadata_trial_changes_only_selected_zone(tmp_path):
     assert 'cover_art_cache_directory' not in pool_config
 
 
+def test_feature_comparison_changes_only_kitchen_advertisement(tmp_path):
+    async def record(**kwargs):
+        return None
+
+    manager = AirPlayEndpointManager(
+        Settings(data_dir=tmp_path, apple_feature_comparison_zone="kitchen"), None, None, record
+    )  # type: ignore[arg-type]
+    kitchen = AudioZoneProfile(zone_id="kitchen", airplay={"enabled": True, "stable_id": "0123456789abcdef"})
+    pool = AudioZoneProfile(zone_id="pool", airplay={"enabled": True, "stable_id": "fedcba9876543210"})
+    kitchen_config = manager._config_text(kitchen, 7000)
+    pool_config = manager._config_text(pool, 7001)
+    assert 'apple_feature_comparison = "wiim_shared";' in kitchen_config
+    assert 'get_plist_metadata = "no";' in kitchen_config
+    assert 'include_cover_art = "yes";' in kitchen_config
+    assert 'apple_feature_comparison' not in pool_config
+    assert 'get_plist_metadata = "no";' not in pool_config
+    assert 'include_cover_art = "no";' in pool_config
+    assert 'service_type = "airplay2";' in kitchen_config
+    assert 'service_type = "airplay2";' in pool_config
+
+    unsafe_manager = AirPlayEndpointManager(
+        Settings(data_dir=tmp_path, apple_feature_comparison_zone="pool"), None, None, record
+    )  # type: ignore[arg-type]
+    assert 'apple_feature_comparison' not in unsafe_manager._config_text(pool, 7001)
+
+
 def test_airplay_volume_maps_source_db_to_linear_player_percent():
     assert airplay_volume_to_percent("0.00") == 100
     assert airplay_volume_to_percent("-15.00") == 50
