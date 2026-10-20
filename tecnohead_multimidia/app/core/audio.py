@@ -5,7 +5,7 @@ from collections.abc import Awaitable, Callable
 from typing import Any
 
 from app.core.discovery import AreaValidationError, DiscoveryService
-from app.core.ha_client import HomeAssistantClient, HomeAssistantError
+from app.core.ha_client import HomeAssistantClient, HomeAssistantError, HomeAssistantUnavailable
 from app.models import (
     AudioCommandRequest,
     AudioGroupRequest,
@@ -256,7 +256,15 @@ class AudioManager:
     async def start_airplay_output(self, config: MultiroomConfig, zone_id: str, stream_url: str) -> dict[str, Any]:
         """Ask the configured LinkPlay entity to consume the local AirPlay stream."""
 
-        zone, _entity, _state = await self._checked_zone(config, zone_id)
+        try:
+            zone, _entity, _state = await self._checked_zone(config, zone_id)
+        except AudioActionError as exc:
+            # _checked_zone preserves the original HA failure as its cause.
+            # A transient read-only validation can be retried by the active
+            # AirPlay session; an invalid zone or wrong area cannot.
+            if isinstance(exc.__cause__, HomeAssistantUnavailable):
+                raise HomeAssistantUnavailable(str(exc)) from exc
+            raise
         # The amplifier owns source arbitration. When the TV is turned on it
         # may select ARC through its native CEC/ARC path; an explicit AirPlay
         # request must still be allowed to reach the player, even if the last

@@ -24,9 +24,10 @@ from app.core.airplay import (
     airplay_volume_to_percent,
     percent_to_airplay_volume_db,
 )
-from app.core.audio import AudioManager
+from app.core.audio import AudioActionError, AudioManager
 from app.core.discovery import DiscoveryService
-from app.models import AudioZoneProfile
+from app.core.ha_client import HomeAssistantUnavailable
+from app.models import AudioPriority, AudioZoneProfile, MultiroomConfig
 from app.settings import Settings
 
 
@@ -39,6 +40,137 @@ async def test_audio_stream_broker_replays_recent_chunk_and_fans_out():
     assert await asyncio.wait_for(anext(stream), timeout=0.2) == b"second"
     await stream.aclose()
     assert broker.client_count == 0
+
+
+async def test_airplay_activation_retries_temporary_ha_failure_for_normal_zone(tmp_path, monkeypatch):
+    monkeypatch.setattr("app.core.airplay.AIRPLAY_HA_RETRY_DELAYS", (0,))
+    events = []
+
+    async def record(**kwargs):
+        events.append(kwargs)
+
+    manager = AirPlayEndpointManager(Settings(data_dir=tmp_path), None, None, record)  # type: ignore[arg-type]
+    manager._stream_url = lambda _endpoint: "http://192.0.2.1/stream"  # type: ignore[method-assign]
+    endpoint = _Endpoint(zone=AudioZoneProfile(zone_id="kitchen", priority=AudioPriority.NORMAL), port=7000)
+    endpoint.output_started = True
+    endpoint.session_started_at = time.monotonic()
+    endpoint.last_mp3_at = time.monotonic()
+    endpoint.process = SimpleNamespace(returncode=None)  # type: ignore[assignment]
+    calls = []
+
+    async def start(_config, zone_id, stream_url):
+        calls.append((zone_id, stream_url))
+        if len(calls) == 1:
+            raise HomeAssistantUnavailable("WebSocket do Home Assistant indisponível")
+
+    manager.audio = SimpleNamespace(start_airplay_output=start)  # type: ignore[assignment]
+    await manager._activate_linkplay(endpoint)
+
+    assert len(calls) == 2
+    assert endpoint.state == "streaming"
+    assert endpoint.linkplay_started is True
+    assert endpoint.last_error is None
+    assert [item["event"] for item in events] == [
+        "airplay_linkplay_retry_scheduled",
+        "airplay_linkplay_play_requested",
+    ]
+
+
+async def test_airplay_activation_never_reclaims_arc_after_ha_failure(tmp_path, monkeypatch):
+    monkeypatch.setattr("app.core.airplay.AIRPLAY_HA_RETRY_DELAYS", (0, 0))
+
+    async def record(**_kwargs):
+        return None
+
+    manager = AirPlayEndpointManager(Settings(data_dir=tmp_path), None, None, record)  # type: ignore[arg-type]
+    manager._stream_url = lambda _endpoint: "http://192.0.2.1/stream"  # type: ignore[method-assign]
+    endpoint = _Endpoint(zone=AudioZoneProfile(zone_id="pool", priority=AudioPriority.HDMI_ARC), port=7001)
+    endpoint.output_started = True
+    endpoint.session_started_at = time.monotonic()
+    endpoint.last_mp3_at = time.monotonic()
+    endpoint.process = SimpleNamespace(returncode=None)  # type: ignore[assignment]
+    calls = 0
+
+    async def start(_config, _zone_id, _stream_url):
+        nonlocal calls
+        calls += 1
+        raise HomeAssistantUnavailable("WebSocket do Home Assistant indisponível")
+
+    manager.audio = SimpleNamespace(start_airplay_output=start)  # type: ignore[assignment]
+    await manager._activate_linkplay(endpoint)
+
+    assert calls == 1
+    assert endpoint.state == "blocked"
+    assert endpoint.linkplay_started is False
+
+
+async def test_airplay_activation_does_not_retry_a_stopped_session(tmp_path, monkeypatch):
+    monkeypatch.setattr("app.core.airplay.AIRPLAY_HA_RETRY_DELAYS", (0,))
+
+    async def record(**_kwargs):
+        return None
+
+    manager = AirPlayEndpointManager(Settings(data_dir=tmp_path), None, None, record)  # type: ignore[arg-type]
+    manager._stream_url = lambda _endpoint: "http://192.0.2.1/stream"  # type: ignore[method-assign]
+    endpoint = _Endpoint(zone=AudioZoneProfile(zone_id="kitchen"), port=7000)
+    endpoint.output_started = True
+    endpoint.session_started_at = time.monotonic()
+    endpoint.last_mp3_at = time.monotonic()
+    endpoint.process = SimpleNamespace(returncode=None)  # type: ignore[assignment]
+    calls = 0
+
+    async def start(_config, _zone_id, _stream_url):
+        nonlocal calls
+        calls += 1
+        endpoint.output_started = False
+        raise HomeAssistantUnavailable("WebSocket do Home Assistant indisponível")
+
+    manager.audio = SimpleNamespace(start_airplay_output=start)  # type: ignore[assignment]
+    await manager._activate_linkplay(endpoint)
+
+    assert calls == 1
+    assert endpoint.linkplay_started is False
+
+
+async def test_airplay_activation_does_not_retry_invalid_area(tmp_path, monkeypatch):
+    monkeypatch.setattr("app.core.airplay.AIRPLAY_HA_RETRY_DELAYS", (0, 0))
+
+    async def record(**_kwargs):
+        return None
+
+    manager = AirPlayEndpointManager(Settings(data_dir=tmp_path), None, None, record)  # type: ignore[arg-type]
+    manager._stream_url = lambda _endpoint: "http://192.0.2.1/stream"  # type: ignore[method-assign]
+    endpoint = _Endpoint(zone=AudioZoneProfile(zone_id="kitchen"), port=7000)
+    endpoint.output_started = True
+    endpoint.session_started_at = time.monotonic()
+    endpoint.last_mp3_at = time.monotonic()
+    endpoint.process = SimpleNamespace(returncode=None)  # type: ignore[assignment]
+    calls = 0
+
+    async def start(_config, _zone_id, _stream_url):
+        nonlocal calls
+        calls += 1
+        raise AudioActionError("equipamento fora da área")
+
+    manager.audio = SimpleNamespace(start_airplay_output=start)  # type: ignore[assignment]
+    await manager._activate_linkplay(endpoint)
+
+    assert calls == 1
+    assert endpoint.state == "blocked"
+
+
+async def test_airplay_validation_preserves_transient_ha_failure(tmp_path):
+    manager = AudioManager(None, None)  # type: ignore[arg-type]
+
+    async def checked(_config, _zone_id):
+        try:
+            raise HomeAssistantUnavailable("WebSocket do Home Assistant indisponível")
+        except HomeAssistantUnavailable as exc:
+            raise AudioActionError(str(exc)) from exc
+
+    manager._checked_zone = checked  # type: ignore[method-assign]
+    with pytest.raises(HomeAssistantUnavailable):
+        await manager.start_airplay_output(MultiroomConfig(), "kitchen", "http://192.0.2.1/stream")
 
 
 def test_airplay_config_has_distinct_airplay2_identity_and_port(tmp_path):
