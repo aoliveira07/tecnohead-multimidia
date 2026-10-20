@@ -22,4 +22,6 @@ A RC9 preparada após constatar `media_player.cozinha_room` indisponível permit
 
 A RC9 foi publicada e instalada no HAOS após backup local RC8; o App e ambos os endpoints AirPlay voltaram online, e a Piscina física foi vista como pronta. O relay permaneceu `off`. Isso é apenas verificação de implantação, não homologação de D17–D19: não houve ainda áudio físico ou cartão Casa testados nesta variante. A Cozinha física continuou indisponível e requer diagnóstico separado.
 
+Após essa instalação, houve ensaio consentido da RC9 **somente na Piscina**: áudio AirPlay recebido e som confirmado, porém o mesmo cartão do Casa ainda mostrou “Controles não disponíveis”. O relay foi revertido a `off` e o App voltou online com ambas as zonas anunciadas. Não foi observado ACK de metadados ao RC durante a janela; portanto o ensaio não comprova entrega de capa à central nem resolve a classificação do acessório. Sem botões no Casa, não houve teste de play/pause/volume nativos. O foco seguinte é distinguir anúncio/ícone, bit 10 de acesso Casa, conexão RC, entrega e UI; [o laboratório offline](AIRPLAY_TRIAL_LAB.md) registra esses checkpoints sem alterar o HAOS.
+
 Consulte [APPLE_MEDIAREMOTE_RESEARCH.md](APPLE_MEDIAREMOTE_RESEARCH.md) para evidências/hipóteses e [MEDIAREMOTE_D01_D24.md](MEDIAREMOTE_D01_D24.md) para o checklist de homologação.
