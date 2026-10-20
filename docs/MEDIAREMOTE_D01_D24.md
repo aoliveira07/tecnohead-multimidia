@@ -59,6 +59,8 @@ Adendo de campo tardio v0.1.3/B0 a D12–D19: a resposta do usuário ao pedido d
 
 Preparação D12 v0.1.4: inspeção do código Shairport fixado confirmou que `EVENT_CLEANUP` isolado não diferencia TEARDOWN, EOF do peer, erro de socket ou cancelamento da thread. O patch de diagnóstico do Lab marca somente esses motivos de saída RTSP, sem registrar peer, mídia ou payload; nenhum resultado físico v0.1.4 é presumido aqui. D14 e D16–D19 continuam pendentes de ensaio com relay realmente ativo e conexão RC sobreposta à sessão de áudio. Não declarar BLOQUEADO_POR_PLATAFORMA com o B0 atual.
 
+Instalação v0.1.4 a D03/D12/D24: commit `ae02891`, CI `39482937480` bem-sucedida e atualização apenas do Lab no HAOS, com backup 0.1.3. Versão 0.1.4 em funcionamento e `lab_ready M1` confirmado; aguarda teste físico no iPhone/Casa. Não houve release estável nem atualização do App principal.
+
 ## Provas automatizadas locais (não são D16–D19)
 
 `python -m pytest -q` em `tecnohead_multimidia`: **50 passed, 1 skipped** na RC5; Ruff, auditoria, CI e build multi-arquitetura passaram. Os testes novos reproduzem o enquadramento real do pipe (`Base64</data></item>` sem quebra), além de `copl`, privacidade, flag desligada por padrão, continuidade de `pvol` após item volumoso ou falha da sonda, isolamento por zona dos marcadores RC e seleção de metadados clássicos em uma única zona. Os testes automatizados não substituem iPhone, hub, HAOS ou amplificador físico.

@@ -163,6 +163,15 @@ ensaio deverá correlacionar esses marcadores com a chegada dos metadados e,
 se necessário, comparar com um receptor comercial autorizado. Até esse teste,
 a causa exata da curta vida do canal RC permanece indeterminada.
 
+Build e instalação v0.1.4: commit `ae02891` na branch isolada; testes locais
+do Lab 13/13, Ruff e aplicação integral da pilha de patches passaram. A CI
+`39482937480` concluiu com sucesso, inclusive as imagens amd64/arm64 do Lab.
+O Supervisor atualizou **somente o Lab** de 0.1.3 para 0.1.4, com backup da
+versão anterior, e confirmou “Em funcionamento”. A configuração foi então
+alterada de B0 para M1; o log confirmou `lab_ready` em M1, com relay ativo.
+O teste físico v0.1.4 foi solicitado, mas seu resultado ainda não foi
+registrado nesta nota. O App principal permanece fora do escopo da atualização.
+
 ## Planejador offline para Windows
 
 O programa [`tools/airplay_trial_lab.py`](../tools/airplay_trial_lab.py) roda no Windows com Python 3.12 e Tkinter (biblioteca padrão). Iniciar no diretório do repositório com `python tools/airplay_trial_lab.py`. Para uso sem janela: `python tools/airplay_trial_lab.py --compare` ou `python tools/airplay_trial_lab.py --scenario M3 --zone pool`.
