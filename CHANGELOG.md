@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.4.17-rc.6 — retomada limitada do áudio após falha temporária do HA
+
+**Pré-release para atualização manual; não corrige os controles no app Casa.** Em um grupo AirPlay 2 iPhone→WiiM Amp + TecnoHead Cozinha, a primeira tentativa não iniciou a saída da Cozinha; o diagnóstico do App registrou WebSocket do Home Assistant temporariamente indisponível. Ao refazer a seleção pelo iPhone, o usuário confirmou áudio simultâneo nas duas caixas. Esta versão tenta novamente a mesma saída local somente enquanto a sessão AirPlay continua recebendo áudio, com intervalos e número de tentativas limitados. Falhas de área/capacidade não são repetidas e zonas com prioridade HDMI ARC (Piscina) **não** fazem retomada automática. Não mistura agrupamento AirPlay com LinkPlay, não altera Shairport/NQPTP, pareamento ou entidades, nem declara D20 ou o cartão Casa homologados. A instalação reinicia o App e interrompe sessões AirPlay ativas; requer reteste físico.
+
 ## 1.4.17-rc.5 — ensaio isolado de metadados clássicos AirPlay
 
 **Pré-release para atualização manual; não é correção homologada do app Casa.** Adiciona a opção `apple_legacy_metadata_zone`, inicialmente `off`, que permite escolher **uma** zona (`kitchen` ou `pool`) para solicitar os metadados clássicos do Shairport Sync durante AirPlay 2, incluindo arte. O caminho é um modo de compatibilidade **deprecated** no upstream, usado apenas para investigar a diferença de capacidades observada frente ao WiiM; não anuncia identidade ou funções do WiiM. Com a opção desligada, as configurações das duas zonas ficam como na RC4. Com `kitchen`, a Piscina mantém a configuração anterior; áudio PCM, volume, LinkPlay, ARC/CEC, cenas e pareamento não são alterados pelo código. A atualização reinicia o App e interrompe sessões AirPlay em curso. Voltar a `off` e reiniciar reverte o ensaio. Não remove/repareia acessórios Apple automaticamente.
