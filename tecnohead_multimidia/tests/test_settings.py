@@ -7,6 +7,7 @@ def test_mediaremote_probe_defaults_off_when_options_missing(tmp_path, monkeypat
     monkeypatch.setenv("APP_DATA_DIR", str(tmp_path))
     monkeypatch.delenv("APPLE_MEDIAREMOTE_EXPERIMENTAL", raising=False)
     assert load_settings().apple_mediaremote_experimental is False
+    assert load_settings().apple_legacy_metadata_zone == "off"
 
 
 def test_mediaremote_probe_reads_haos_option(tmp_path, monkeypatch):
@@ -30,3 +31,19 @@ def test_mediaremote_probe_environment_override_is_explicit(tmp_path, monkeypatc
     (tmp_path / "options.json").write_text('{"apple_mediaremote_experimental": true}', encoding="utf-8")
     monkeypatch.setenv("APPLE_MEDIAREMOTE_EXPERIMENTAL", "false")
     assert load_settings().apple_mediaremote_experimental is False
+
+
+def test_legacy_metadata_option_allows_only_one_known_zone(tmp_path, monkeypatch):
+    monkeypatch.setenv("APP_DATA_DIR", str(tmp_path))
+    options = tmp_path / "options.json"
+    for value in ("kitchen", "pool"):
+        options.write_text('{"apple_legacy_metadata_zone": "' + value + '"}', encoding="utf-8")
+        assert load_settings().apple_legacy_metadata_zone == value
+    for content in (
+        '{"apple_legacy_metadata_zone": "both"}',
+        '{"apple_legacy_metadata_zone": ["kitchen", "pool"]}',
+        '{"apple_legacy_metadata_zone": true}',
+        "{bad json",
+    ):
+        options.write_text(content, encoding="utf-8")
+        assert load_settings().apple_legacy_metadata_zone == "off"

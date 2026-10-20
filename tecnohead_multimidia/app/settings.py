@@ -44,6 +44,19 @@ def _load_mediaremote_probe_option(data_dir: Path) -> bool:
     return isinstance(options, dict) and options.get("apple_mediaremote_experimental") is True
 
 
+def _load_legacy_metadata_zone(data_dir: Path) -> str:
+    """Fail closed: opt in one physical zone, never both, for the RC5 trial."""
+
+    try:
+        options = json.loads((data_dir / "options.json").read_text(encoding="utf-8"))
+    except (OSError, UnicodeError, ValueError):
+        return "off"
+    if not isinstance(options, dict):
+        return "off"
+    zone = options.get("apple_legacy_metadata_zone")
+    return zone if zone in ("kitchen", "pool") else "off"
+
+
 @dataclass(frozen=True)
 class Settings:
     app_version: str = "1.4.16"
@@ -58,12 +71,13 @@ class Settings:
     mqtt_topic_prefix: str = "tecnohead"
     ha_request_timeout: float = 12.0
     apple_mediaremote_experimental: bool = False
+    apple_legacy_metadata_zone: str = "off"
 
 
 def load_settings() -> Settings:
     data_dir = Path(os.getenv("APP_DATA_DIR", "/data"))
     return Settings(
-        app_version=os.getenv("APP_VERSION", "1.4.17-rc.4"),
+        app_version=os.getenv("APP_VERSION", "1.4.17-rc.5"),
         app_host=os.getenv("APP_HOST", "0.0.0.0"),
         app_port=int(os.getenv("INGRESS_PORT", os.getenv("APP_PORT", "18199"))),
         data_dir=data_dir,
@@ -75,4 +89,5 @@ def load_settings() -> Settings:
         mqtt_topic_prefix=os.getenv("MQTT_TOPIC_PREFIX", "tecnohead").strip("/"),
         ha_request_timeout=float(os.getenv("HA_REQUEST_TIMEOUT", "12")),
         apple_mediaremote_experimental=_load_mediaremote_probe_option(data_dir),
+        apple_legacy_metadata_zone=_load_legacy_metadata_zone(data_dir),
     )
