@@ -1,6 +1,6 @@
 # Ensaio isolado: máscara AirPlay comum a WiiM e Denon
 
-Status: **preparado em código; não implantado nem homologado fisicamente**.
+Status em 19/10/2026: **ensaiado e revertido; hipótese falhou no teste de conexão/áudio da Cozinha**. A opção experimental permanece `off`. Não há homologação do cartão Casa nem autorização técnica para tornar a máscara definitiva.
 
 O usuário propôs testar em conjunto `features` e o bit de acesso ao Casa após observar cartões funcionais no WiiM Amp e no Denon AVR-S960H. A leitura DNS-SD sanitizada encontrou `features=0x445F8A00,0x1C340` nos dois receptores; o Denon anuncia também o bit 59 no segundo bloco (`0x801C340`), que **não** faz parte da interseção. O Shairport instalado anuncia `0x401C4A00,0x5C340`. Não há demonstração de que a máscara, sozinha ou com `flags`, seja a causa do cartão Casa.
 
@@ -25,3 +25,12 @@ O bit `0x400` de `flags` **não é forçado** pelo patch: no upstream ele é def
 6. Testar reconexão, mudança de faixa, volume, agrupamento AirPlay e regressão Piscina/ARC quando houver disponibilidade física. Se falhar, voltar a `off` e verificar áudio novamente.
 
 Não marcar a variante como definitiva ou v1.3.2 resolvida até que os testes de Casa Cozinha/Piscina e regressões passem. A ausência de controle, mesmo com os bits coincidentes, será evidência contra essa hipótese e orientará a investigação do canal Remote Control Only/Now Playing ou classificação HAP legítima.
+
+## Resultado de campo — RC7
+
+- O App HAOS foi atualizado para `1.4.17-rc.7` (prerelease; `latest` estável não mudou) depois de backup manual local criptografado. A opção começou em `off` e foi ativada **somente na Cozinha**. O mDNS confirmou Cozinha `features=0x445F8A00,0x1C340` e Piscina inalterada em `0x401C4A00,0x5C340`. As duas anunciaram `flags=0x4`; portanto a combinação máscara + bit Casa `0x400` não chegou a ser testada.
+- Ao escolher **somente TecnoHead Cozinha** no Apple Music, o usuário informou “Falha ou oscilação” e enviou captura privada do iPhone com “Não foi possível conectar”. O App não chegou a `streaming`; logs do Shairport mostraram tentativas repetidas `POST /auth-setup` não tratadas. Isto é uma regressão de negociação observada com essa máscara, não identifica qual bit isolado a provocou.
+- Pelo critério de interrupção acima, **não** houve readopção no Casa, teste da interface nativa ou promoção da máscara a configuração definitiva. Piscina, WiiM, Denon e TV não foram alterados neste ensaio.
+- `apple_feature_comparison_zone` foi devolvida a `off` na configuração do App e o App reiniciou. A UI confirmou ambas as zonas prontas/visíveis no AirPlay; consulta mDNS pós-rollback confirmou as duas com a máscara original `0x401C4A00,0x5C340` e `flags=0x4`. O usuário reproduziu novamente **som normal na Cozinha, sem erro ou oscilação**, após o rollback. O áudio da Piscina e o ARC/CEC não foram retestados após este último reinício; a Piscina não recebeu a máscara experimental.
+
+Conclusão: copiar a interseção de `features` de dois receptores comerciais para um build Shairport que não implementa necessariamente todas as capacidades anunciadas **não é seguro nem suficiente**. O resultado não prova que o cartão Casa seja impossível, tampouco demonstra a hipótese da combinação com o bit Casa, pois o fluxo de áudio falhou antes desse checkpoint. Próximos ensaios devem começar por capacidades **implementadas**, em alterações menores e reversíveis, sem afirmar suporte por identidade ou bits desconhecidos.

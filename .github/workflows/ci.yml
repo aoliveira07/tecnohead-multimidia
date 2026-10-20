@@ -54,6 +54,8 @@ jobs:
           assert cfg['schema']['apple_legacy_metadata_zone'] == 'str'
           assert cfg['options']['apple_feature_comparison_zone'] == 'off'
           assert cfg['schema']['apple_feature_comparison_zone'] == 'str'
+          assert cfg['options']['apple_mediaremote_forward_zone'] == 'off'
+          assert cfg['schema']['apple_mediaremote_forward_zone'] == 'str'
           assert cfg['version'] in cfg['breaking_versions']
           print('config.yaml OK')
           PY

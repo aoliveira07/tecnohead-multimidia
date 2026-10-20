@@ -127,12 +127,16 @@ def test_rc_only_probe_counts_fixed_markers_without_retaining_peer_details():
         "TECNOHEAD_RC_SETUP_OK",
         "TECNOHEAD_RC_EVENT_CONNECTED",
         "TECNOHEAD_RC_UPDATE_INFO_ACK",
+        "TECNOHEAD_RC_MEDIAREMOTE_ACK_NOW_PLAYING",
+        "TECNOHEAD_RC_MEDIAREMOTE_ACK_COMMANDS",
     ):
         assert probe.observe_log_marker(f"Shairport: {marker}") is True
     assert probe.observe_log_marker("unrelated sender log") is False
     assert probe.report()["setup_response_prepared"] == 1
     assert probe.report()["event_connected"] == 1
     assert probe.report()["update_info_acked"] == 1
+    assert probe.report()["mediaremote_now_playing_acked"] == 1
+    assert probe.report()["mediaremote_commands_acked"] == 1
     assert probe.report()["sender_session_correlation"] == "not_observed"
     assert "Shairport:" not in repr(probe.report())
 

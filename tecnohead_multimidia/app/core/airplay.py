@@ -164,6 +164,8 @@ class RemoteControlOnlyProbe:
     setup_response_prepared: int = 0
     event_connected: int = 0
     update_info_acked: int = 0
+    mediaremote_now_playing_acked: int = 0
+    mediaremote_commands_acked: int = 0
     last_event_at: float | None = None
 
     def observe_log_marker(self, line: str) -> bool:
@@ -171,6 +173,8 @@ class RemoteControlOnlyProbe:
             "TECNOHEAD_RC_SETUP_OK": "setup_response_prepared",
             "TECNOHEAD_RC_EVENT_CONNECTED": "event_connected",
             "TECNOHEAD_RC_UPDATE_INFO_ACK": "update_info_acked",
+            "TECNOHEAD_RC_MEDIAREMOTE_ACK_NOW_PLAYING": "mediaremote_now_playing_acked",
+            "TECNOHEAD_RC_MEDIAREMOTE_ACK_COMMANDS": "mediaremote_commands_acked",
         }
         for marker, field_name in markers.items():
             if line.endswith(marker):
@@ -184,6 +188,8 @@ class RemoteControlOnlyProbe:
             "setup_response_prepared": self.setup_response_prepared,
             "event_connected": self.event_connected,
             "update_info_acked": self.update_info_acked,
+            "mediaremote_now_playing_acked": self.mediaremote_now_playing_acked,
+            "mediaremote_commands_acked": self.mediaremote_commands_acked,
             "last_event_at": _monotonic_to_iso(self.last_event_at),
             "scope": "same_receiver_process_only",
             "sender_session_correlation": "not_observed",
@@ -905,6 +911,12 @@ publish-aaaa-on-ipv4=no
                     **os.environ,
                     **self._mdns_env,
                     "DBUS_SESSION_BUS_ADDRESS": f"unix:path={endpoint.control_dbus_socket_path}",
+                    "TECNOHEAD_RC_NOW_PLAYING": (
+                        "1"
+                        if zone.zone_id == "kitchen"
+                        and self.settings.apple_mediaremote_forward_zone == "kitchen"
+                        else "0"
+                    ),
                 },
                 stdout=asyncio.subprocess.PIPE,
                 stderr=asyncio.subprocess.PIPE,

@@ -69,6 +69,18 @@ def _load_feature_comparison_zone(data_dir: Path) -> str:
     return "kitchen" if options.get("apple_feature_comparison_zone") == "kitchen" else "off"
 
 
+def _load_mediaremote_forward_zone(data_dir: Path) -> str:
+    """Fail closed: RC relay is an opt-in, kitchen-only experiment."""
+
+    try:
+        options = json.loads((data_dir / "options.json").read_text(encoding="utf-8"))
+    except (OSError, UnicodeError, ValueError):
+        return "off"
+    if not isinstance(options, dict):
+        return "off"
+    return "kitchen" if options.get("apple_mediaremote_forward_zone") == "kitchen" else "off"
+
+
 @dataclass(frozen=True)
 class Settings:
     app_version: str = "1.4.16"
@@ -85,12 +97,13 @@ class Settings:
     apple_mediaremote_experimental: bool = False
     apple_legacy_metadata_zone: str = "off"
     apple_feature_comparison_zone: str = "off"
+    apple_mediaremote_forward_zone: str = "off"
 
 
 def load_settings() -> Settings:
     data_dir = Path(os.getenv("APP_DATA_DIR", "/data"))
     return Settings(
-        app_version=os.getenv("APP_VERSION", "1.4.17-rc.5"),
+        app_version=os.getenv("APP_VERSION", "1.4.17-rc.8"),
         app_host=os.getenv("APP_HOST", "0.0.0.0"),
         app_port=int(os.getenv("INGRESS_PORT", os.getenv("APP_PORT", "18199"))),
         data_dir=data_dir,
@@ -104,4 +117,5 @@ def load_settings() -> Settings:
         apple_mediaremote_experimental=_load_mediaremote_probe_option(data_dir),
         apple_legacy_metadata_zone=_load_legacy_metadata_zone(data_dir),
         apple_feature_comparison_zone=_load_feature_comparison_zone(data_dir),
+        apple_mediaremote_forward_zone=_load_mediaremote_forward_zone(data_dir),
     )
