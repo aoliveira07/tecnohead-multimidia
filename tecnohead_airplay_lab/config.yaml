@@ -1,0 +1,25 @@
+name: "TecnoHead AirPlay Lab"
+slug: "tecnohead_airplay_lab"
+description: "Receptor AirPlay 2 descartavel para ensaios do cartao Apple Casa"
+version: "0.1.0"
+stage: experimental
+url: "https://github.com/aoliveira07/tecnohead-multimidia"
+startup: application
+boot: manual
+init: false
+apparmor: true
+arch:
+  - amd64
+  - aarch64
+# Shairport uses LAN mDNS and NQPTP's shared-memory clock. No HA Core,
+# Supervisor API, MQTT, ingress, LinkPlay, or audio hardware is accessed.
+host_network: true
+host_ipc: true
+realtime: true
+map:
+  - type: data
+options:
+  profile: "B0"
+schema:
+  profile: "list(B0|M1|M2|M3)"
+backup: hot

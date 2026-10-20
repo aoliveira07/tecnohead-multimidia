@@ -1,5 +1,31 @@
 # Laboratório local de ensaios AirPlay/Casa
 
+## Receptor de laboratório independente (20/10/2026)
+
+O App de produção **TecnoHead Multimídia** foi parado no HAOS e a opção
+**Iniciar no arranque** foi desligada. Nada foi desinstalado ou apagado; a
+configuração e a identidade dos acessórios antigos foram preservadas. O App
+separado [`tecnohead_airplay_lab/`](../tecnohead_airplay_lab/) contém um único
+receptor descartável, com nome/ID próprios e porta 7100. Seu PCM é drenado
+para descarte; não existe integração com HA Core, MQTT, cenas nem LinkPlay.
+
+No laboratório, B0/M1/M2/M3 variam apenas o pedido de metadados clássicos e o
+relay MediaRemote já presente no binário RC9. Nenhum perfil copia a máscara de
+WiiM/Denon, anuncia MFi, altera o modelo para Apple/comercial ou falsifica
+pareamento. A adoção desse novo receptor no app Casa pode ser refeita entre
+ensaios sem mexer nos antigos, como autorizado pelo usuário. A conexão RC
+legítima e o resultado visual ainda precisam ser medidos fisicamente; não
+há declaração de sucesso do cartão neste ponto.
+
+Uma branch de repositório do HAOS pode ser instalada separadamente da loja
+estável usando `#branch`, conforme a documentação oficial do Supervisor.
+Depois da instalação, mudar o perfil na aba Configuração do Lab e reiniciar
+**somente o Lab**. Examinar os contadores saneados em Registo e o mesmo cartão
+no iPhone. Ao terminar, parar o Lab; ele usa `boot: manual`. Para restaurar o
+App original, habilitar seu próprio início automático e pressionar Iniciar.
+
+## Planejador offline para Windows
+
 O programa [`tools/airplay_trial_lab.py`](../tools/airplay_trial_lab.py) roda no Windows com Python 3.12 e Tkinter (biblioteca padrão). Iniciar no diretório do repositório com `python tools/airplay_trial_lab.py`. Para uso sem janela: `python tools/airplay_trial_lab.py --compare` ou `python tools/airplay_trial_lab.py --scenario M3 --zone pool`.
 
 Ele **não altera o HAOS**, não emula um receptor AirPlay, não pede token e não envia música, anúncios ou dados da rede. Mostra as diferenças históricas entre `features` do TecnoHead, WiiM e Denon; gera apenas planos com três opções já existentes na RC9, para **uma zona por vez**; e registra observações do iPhone/Casa em JSON local sem nome da faixa, capa, IP ou identidade do dispositivo. Esses planos devem ser aplicados manualmente na interface autenticada do Supervisor por um operador, com backup e rollback `off` após a janela curta. A opção `apple_mediaremote_experimental` preexistente não é alterada pelo plano.
