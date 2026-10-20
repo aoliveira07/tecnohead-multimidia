@@ -140,6 +140,19 @@ sem novos marcadores RC). Logo **a v0.1.3 não tem resultado físico**. M1 volto
 a B0, com `lab_ready` confirmado. Nenhum App de produção foi atualizado ou
 reiniciado por este ensaio.
 
+Resposta tardia do teste no iPhone, correlacionada com o log **após** esse
+rollback: o usuário confirmou AirPlay conectado e o cartão Casa ainda sem
+controles. Esta sessão ocorreu em **v0.1.3/B0**, não em M1; portanto não pode
+homologar o relay da v0.1.3. O log B0 registrou duas conexões RC com ACK de
+`updateInfo`; ambas emitiram `EVENT_CLEANUP` **antes** dos primeiros contadores
+de PCM e metadados da música. Depois, a sonda contou três Now Playing, quatro
+SupportedCommands e campos de título/arte/posição, mas nenhuma nova conexão
+RC durante a janela visível. Como B0 desliga o relay, a ausência de envio MR
+nesse perfil é esperada. A ordem observada sustenta uma hipótese de falta de
+sobreposição entre canal RC e sessão de áudio, ainda sem provar por que o
+controlador encerrou a conexão ou se outro canal é usado por receptores
+comerciais. Não solicitar nova readopção só para repetir esse baseline.
+
 ## Planejador offline para Windows
 
 O programa [`tools/airplay_trial_lab.py`](../tools/airplay_trial_lab.py) roda no Windows com Python 3.12 e Tkinter (biblioteca padrão). Iniciar no diretório do repositório com `python tools/airplay_trial_lab.py`. Para uso sem janela: `python tools/airplay_trial_lab.py --compare` ou `python tools/airplay_trial_lab.py --scenario M3 --zone pool`.
