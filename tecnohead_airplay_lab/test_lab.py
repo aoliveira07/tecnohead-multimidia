@@ -99,6 +99,8 @@ async def test_rc_gate_logs_only_sanitized_markers(capsys: pytest.CaptureFixture
         f"{secret} TECNOHEAD_RC_GATE_MASK_31\n"
         f"{secret} TECNOHEAD_RC_LOOP_ALIVE_MASK_31\n"
         f"{secret} TECNOHEAD_RC_EVENT_CLEANUP\n"
+        f"{secret} TECNOHEAD_RC_RTSP_PEER_CLOSED\n"
+        f"{secret} TECNOHEAD_RC_RTSP_THREAD_CLEANUP\n"
         f"{secret} TECNOHEAD_RC_SNAPSHOT_CLEARED\n"
         f"{secret} TECNOHEAD_RC_GATE_MASK_999\n"
         f"{secret} TECNOHEAD_RC_LOOP_ALIVE_MASK_999\n".encode()
@@ -110,6 +112,8 @@ async def test_rc_gate_logs_only_sanitized_markers(capsys: pytest.CaptureFixture
     assert counters.rc["TECNOHEAD_RC_GATE_MASK_31"] == 1
     assert counters.rc["TECNOHEAD_RC_LOOP_ALIVE_MASK_31"] == 1
     assert counters.rc["TECNOHEAD_RC_EVENT_CLEANUP"] == 1
+    assert counters.rc["TECNOHEAD_RC_RTSP_PEER_CLOSED"] == 1
+    assert counters.rc["TECNOHEAD_RC_RTSP_THREAD_CLEANUP"] == 1
     assert counters.rc["TECNOHEAD_RC_SNAPSHOT_CLEARED"] == 1
     assert "TECNOHEAD_RC_GATE_MASK_999" not in counters.rc
     assert "TECNOHEAD_RC_LOOP_ALIVE_MASK_999" not in counters.rc

@@ -25,6 +25,7 @@ RUN git clone --filter=blob:none https://github.com/aoliveira07/tecnohead-multim
 
 COPY patches/shairport-rc-gate-diagnostics.patch /tmp/shairport-rc-gate-diagnostics.patch
 COPY patches/shairport-rc-lifecycle-diagnostics.patch /tmp/shairport-rc-lifecycle-diagnostics.patch
+COPY patches/shairport-rc-close-diagnostics.patch /tmp/shairport-rc-close-diagnostics.patch
 
 RUN cd /src/shairport-sync \
     && git apply /src/tecnohead-patches/tecnohead_multimidia/patches/shairport-rc-diagnostics.patch \
@@ -33,7 +34,9 @@ RUN cd /src/shairport-sync \
     && git apply --check /tmp/shairport-rc-gate-diagnostics.patch \
     && git apply /tmp/shairport-rc-gate-diagnostics.patch \
     && git apply --check /tmp/shairport-rc-lifecycle-diagnostics.patch \
-    && git apply /tmp/shairport-rc-lifecycle-diagnostics.patch
+    && git apply /tmp/shairport-rc-lifecycle-diagnostics.patch \
+    && git apply --check /tmp/shairport-rc-close-diagnostics.patch \
+    && git apply /tmp/shairport-rc-close-diagnostics.patch
 
 RUN cd /src/shairport-sync \
     && autoreconf -fi \
@@ -47,7 +50,7 @@ RUN cd /src/shairport-sync \
 
 FROM ghcr.io/aoliveira07/tecnohead-multimidia:1.4.17-rc.9
 
-LABEL io.hass.version="0.1.3" \
+LABEL io.hass.version="0.1.4" \
       io.hass.type="app" \
       org.opencontainers.image.description="Isolated TecnoHead AirPlay 2 Home-card laboratory"
 

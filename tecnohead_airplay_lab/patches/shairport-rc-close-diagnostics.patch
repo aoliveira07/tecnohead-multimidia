@@ -1,0 +1,47 @@
+diff --git a/rtsp.c b/rtsp.c
+--- a/rtsp.c
++++ b/rtsp.c
+@@ -2422,6 +2422,8 @@ void handle_teardown_2(rtsp_conn_info *conn, __attribute__((unused)) rtsp_message *req,
+         debug_log_rtsp_message_conn(conn, 4, "Contents follow:", req);
+       }
+       msg_add_header(resp, "Connection", "close");
++      if (conn->airplay_stream_category == remote_control_stream)
++        debug(1, "TECNOHEAD_RC_RTSP_TEARDOWN_CLOSE");
+       debug(4,
+             "Connection %d from \"%s\": TEARDOWN (AP2 %s) %s Content-Length %d is asking to "
+             "terminate the connection.",
+@@ -4091,5 +4093,7 @@ void rtsp_conversation_thread_cleanup_function(void *arg) {
+   rtsp_conn_info *conn = (rtsp_conn_info *)arg;
+   if (conn != NULL) {
+     int oldState;
+     pthread_setcancelstate(PTHREAD_CANCEL_DISABLE, &oldState);
++    if (conn->airplay_stream_category == remote_control_stream)
++      debug(1, "TECNOHEAD_RC_RTSP_THREAD_CLEANUP");
+     debug(3, "Connection %d: %s rtsp_conversation_thread_func_cleanup_function called.",
+@@ -4377,6 +4381,8 @@ void *rtsp_conversation_thread_func(void *arg) {
+       // if (conn->stop == 0) {
+       int err = msg_write_response(conn, resp);
+       if (err) {
++        if (conn->airplay_stream_category == remote_control_stream)
++          debug(1, "TECNOHEAD_RC_RTSP_WRITE_ERROR");
+         debug(1,
+               "Connection %d: Unable to write an RTSP message response. Terminating the "
+               "connection.",
+@@ -4397,5 +4403,17 @@ void *rtsp_conversation_thread_func(void *arg) {
+       pthread_cleanup_pop(1);
+       pthread_cleanup_pop(1);
+     } else { // if the response is not rtsp_read_request_response_ok
++      if (conn->airplay_stream_category == remote_control_stream) {
++        if (reply == rtsp_read_request_response_channel_closed)
++          debug(1, "TECNOHEAD_RC_RTSP_PEER_CLOSED");
++        else if (reply == rtsp_read_request_response_read_error)
++          debug(1, "TECNOHEAD_RC_RTSP_READ_ERROR");
++        else if (reply == rtsp_read_request_response_immediate_shutdown_requested)
++          debug(1, "TECNOHEAD_RC_RTSP_SHUTDOWN_REQUESTED");
++        else if (reply == rtsp_read_request_response_bad_packet)
++          debug(1, "TECNOHEAD_RC_RTSP_BAD_PACKET");
++        else
++          debug(1, "TECNOHEAD_RC_RTSP_OTHER_READ_EXIT");
++      }
+       conn->stop = 1;
+       if (reply == rtsp_read_request_response_read_error) {

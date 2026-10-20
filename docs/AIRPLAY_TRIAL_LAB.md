@@ -153,6 +153,16 @@ sobreposição entre canal RC e sessão de áudio, ainda sem provar por que o
 controlador encerrou a conexão ou se outro canal é usado por receptores
 comerciais. Não solicitar nova readopção só para repetir esse baseline.
 
+Auditoria do código fixado: `EVENT_CLEANUP` é emitido quando a thread de eventos
+é cancelada durante a limpeza da conexão RTSP, não identifica a causa do
+encerramento. O Lab v0.1.4 adiciona apenas marcadores saneados para TEARDOWN
+sem streams, fechamento do canal pelo peer, erro de leitura/escrita, shutdown
+solicitado e limpeza da thread RTSP. Não altera anúncio, identidade, áudio,
+relay nem portas. Antes de concluir que há rejeição pela Apple, um próximo
+ensaio deverá correlacionar esses marcadores com a chegada dos metadados e,
+se necessário, comparar com um receptor comercial autorizado. Até esse teste,
+a causa exata da curta vida do canal RC permanece indeterminada.
+
 ## Planejador offline para Windows
 
 O programa [`tools/airplay_trial_lab.py`](../tools/airplay_trial_lab.py) roda no Windows com Python 3.12 e Tkinter (biblioteca padrão). Iniciar no diretório do repositório com `python tools/airplay_trial_lab.py`. Para uso sem janela: `python tools/airplay_trial_lab.py --compare` ou `python tools/airplay_trial_lab.py --scenario M3 --zone pool`.
