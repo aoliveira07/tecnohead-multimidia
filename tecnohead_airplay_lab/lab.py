@@ -39,7 +39,26 @@ RC_MARKERS = (
     "TECNOHEAD_RC_UPDATE_INFO_ACK",
     "TECNOHEAD_RC_MEDIAREMOTE_ACK_NOW_PLAYING",
     "TECNOHEAD_RC_MEDIAREMOTE_ACK_COMMANDS",
+    "TECNOHEAD_RC_RECORD_SEEN",
+    "TECNOHEAD_RC_RECORD_OVERSIZED",
+    "TECNOHEAD_RC_RECORD_NOT_PTP",
+    "TECNOHEAD_RC_RECORD_NOT_OWNER",
+    "TECNOHEAD_RC_RECORD_PARSE_FAILED",
+    "TECNOHEAD_RC_RECORD_COMMANDS_OVERSIZED",
+    "TECNOHEAD_RC_RECORD_RECOGNIZED_NOW_PLAYING",
+    "TECNOHEAD_RC_RECORD_RECOGNIZED_COMMANDS",
+    "TECNOHEAD_RC_RECORD_ALLOC_FAILED",
+    "TECNOHEAD_RC_RECORD_STORED_NOW_PLAYING",
+    "TECNOHEAD_RC_RECORD_STORED_COMMANDS",
+    "TECNOHEAD_RC_RECORD_OWNER_LOST",
+    "TECNOHEAD_RC_SNAPSHOT_READY_NOW_PLAYING",
+    "TECNOHEAD_RC_SNAPSHOT_READY_COMMANDS",
+    "TECNOHEAD_RC_SNAPSHOT_DECODE_FAILED_NOW_PLAYING",
+    "TECNOHEAD_RC_SNAPSHOT_DECODE_FAILED_COMMANDS",
+    "TECNOHEAD_RC_MEDIAREMOTE_SEND_FAILED_NOW_PLAYING",
+    "TECNOHEAD_RC_MEDIAREMOTE_SEND_FAILED_COMMANDS",
 )
+RC_GATE_MARKER = re.compile(r"TECNOHEAD_RC_GATE_MASK_(\d+)$")
 
 
 def report(event: str, **fields: object) -> None:
@@ -298,6 +317,14 @@ async def consume_shairport_log(stream: asyncio.StreamReader, counters: Counters
                 counters.rc[marker] += 1
                 report("rc_marker", marker=marker, count=counters.rc[marker])
                 break
+        else:
+            gate = RC_GATE_MARKER.search(line)
+            if gate is not None:
+                mask = int(gate.group(1))
+                if 0 <= mask <= 31:
+                    marker = f"TECNOHEAD_RC_GATE_MASK_{mask}"
+                    counters.rc[marker] += 1
+                    report("rc_marker", marker=marker, count=counters.rc[marker])
 
 
 async def discard_stream(stream: asyncio.StreamReader | None) -> None:

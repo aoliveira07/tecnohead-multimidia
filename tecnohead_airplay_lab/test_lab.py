@@ -88,3 +88,21 @@ async def test_metadata_pipe_framing() -> None:
     await lab.consume_metadata(stream, counters)
     assert counters.sender_now_playing_updates == 1
     assert title not in json.dumps(counters.summary())
+
+
+@pytest.mark.asyncio
+async def test_rc_gate_logs_only_sanitized_markers(capsys: pytest.CaptureFixture[str]) -> None:
+    secret = "private peer and track"
+    stream = asyncio.StreamReader()
+    stream.feed_data(
+        f"{secret} TECNOHEAD_RC_RECORD_SEEN\n"
+        f"{secret} TECNOHEAD_RC_GATE_MASK_31\n"
+        f"{secret} TECNOHEAD_RC_GATE_MASK_999\n".encode()
+    )
+    stream.feed_eof()
+    counters = lab.Counters()
+    await lab.consume_shairport_log(stream, counters)
+    assert counters.rc["TECNOHEAD_RC_RECORD_SEEN"] == 1
+    assert counters.rc["TECNOHEAD_RC_GATE_MASK_31"] == 1
+    assert "TECNOHEAD_RC_GATE_MASK_999" not in counters.rc
+    assert secret not in capsys.readouterr().out

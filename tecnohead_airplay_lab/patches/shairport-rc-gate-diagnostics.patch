@@ -1,0 +1,128 @@
+diff --git a/ap2_event_receiver.c b/ap2_event_receiver.c
+--- a/ap2_event_receiver.c
++++ b/ap2_event_receiver.c
+@@ -132,6 +132,7 @@ static void ap2_mr_forward_one(rtsp_conn_info *conn, int kind, uint64_t *last_ge
+   uint64_t generation = 0;
+   if (ap2_mr_snapshot_copy(kind, *last_generation, &data, &length, &generation) == 0)
+     return;
++  debug(1, "TECNOHEAD_RC_SNAPSHOT_READY_%s", kind == 0 ? "NOW_PLAYING" : "COMMANDS");
+   plist_t command = NULL;
+   plist_from_bin(data, length, &command);
+   free(data);
+@@ -140,7 +141,13 @@ static void ap2_mr_forward_one(rtsp_conn_info *conn, int kind, uint64_t *last_ge
+     ssize_t result = ap2_event_port_post_command(conn, command);
+     if (result > 0)
+       debug(1, "TECNOHEAD_RC_MEDIAREMOTE_ACK_%s", kind == 0 ? "NOW_PLAYING" : "COMMANDS");
++    else
++      debug(1, "TECNOHEAD_RC_MEDIAREMOTE_SEND_FAILED_%s",
++            kind == 0 ? "NOW_PLAYING" : "COMMANDS");
+     plist_free(command);
++  } else {
++    debug(1, "TECNOHEAD_RC_SNAPSHOT_DECODE_FAILED_%s",
++          kind == 0 ? "NOW_PLAYING" : "COMMANDS");
+   }
+ }
+ 
+@@ -226,13 +233,23 @@ void *ap2_event_receiver(void *arg) {
+       debug(1, "TECNOHEAD_RC_UPDATE_INFO_ACK");
+ 
+     uint64_t mr_seen[2] = {0, 0};
++    unsigned int previous_rc_gate = ~0U;
+     while (1) {
+-      if (conn->airplay_stream_category == remote_control_stream && conn->running &&
+-          conn->event_channel_fd > 0 && !conn->ap2_event_receiver_exited &&
+-          conn->ap2_pairing_context.event_cipher_bundle.cipher_ctx != NULL &&
+-          config.enable_HK_Access_Control != 0) {
+-        ap2_mr_forward_one(conn, 1, &mr_seen[1]); // capabilities before track state
+-        ap2_mr_forward_one(conn, 0, &mr_seen[0]);
++      if (conn->airplay_stream_category == remote_control_stream) {
++        unsigned int rc_gate = (conn->running ? 1U : 0U) |
++                               (conn->event_channel_fd > 0 ? 2U : 0U) |
++                               (!conn->ap2_event_receiver_exited ? 4U : 0U) |
++                               (conn->ap2_pairing_context.event_cipher_bundle.cipher_ctx != NULL
++                                    ? 8U : 0U) |
++                               (config.enable_HK_Access_Control != 0 ? 16U : 0U);
++        if (rc_gate != previous_rc_gate) {
++          debug(1, "TECNOHEAD_RC_GATE_MASK_%u", rc_gate);
++          previous_rc_gate = rc_gate;
++        }
++        if (rc_gate == 31U) {
++          ap2_mr_forward_one(conn, 1, &mr_seen[1]); // capabilities before track state
++          ap2_mr_forward_one(conn, 0, &mr_seen[0]);
++        }
+       }
+       usleep(100000);
+     };
+diff --git a/rtsp.c b/rtsp.c
+--- a/rtsp.c
++++ b/rtsp.c
+@@ -177,20 +177,32 @@ static void ap2_mr_clear_owner(int connection_number) {
+ }
+ 
+ static void ap2_mr_record(rtsp_conn_info *conn, const char *data, uint32_t length) {
+-  if (!ap2_mr_enabled() || conn == NULL || data == NULL || length == 0 ||
+-      length > AP2_MR_NOW_PLAYING_LIMIT || conn->airplay_stream_category != ptp_stream)
++  if (!ap2_mr_enabled() || conn == NULL || data == NULL || length == 0)
+     return;
++  debug(1, "TECNOHEAD_RC_RECORD_SEEN");
++  if (length > AP2_MR_NOW_PLAYING_LIMIT) {
++    debug(1, "TECNOHEAD_RC_RECORD_OVERSIZED");
++    return;
++  }
++  if (conn->airplay_stream_category != ptp_stream) {
++    debug(1, "TECNOHEAD_RC_RECORD_NOT_PTP");
++    return;
++  }
+ 
+   pthread_rwlock_rdlock(&principal_conn_lock);
+   int is_audio_owner = principal_conn == conn;
+   pthread_rwlock_unlock(&principal_conn_lock);
+-  if (!is_audio_owner)
++  if (!is_audio_owner) {
++    debug(1, "TECNOHEAD_RC_RECORD_NOT_OWNER");
+     return;
++  }
+ 
+   plist_t command = NULL;
+   plist_from_memory(data, length, &command);
+-  if (command == NULL)
++  if (command == NULL) {
++    debug(1, "TECNOHEAD_RC_RECORD_PARSE_FAILED");
+     return;
++  }
+   plist_t type_item = plist_dict_get_item(command, "type");
+   char *type = NULL;
+   if (type_item != NULL)
+@@ -202,12 +214,19 @@ static void ap2_mr_record(rtsp_conn_info *conn, const char *data, uint32_t lengt
+     kind = 1;
+   free(type);
+   plist_free(command);
+-  if (kind < 0 || (kind == 1 && length > AP2_MR_COMMANDS_LIMIT))
++  if (kind < 0)
+     return;
++  if (kind == 1 && length > AP2_MR_COMMANDS_LIMIT) {
++    debug(1, "TECNOHEAD_RC_RECORD_COMMANDS_OVERSIZED");
++    return;
++  }
++  debug(1, "TECNOHEAD_RC_RECORD_RECOGNIZED_%s", kind == 0 ? "NOW_PLAYING" : "COMMANDS");
+ 
+   char *copy = malloc(length);
+-  if (copy == NULL)
++  if (copy == NULL) {
++    debug(1, "TECNOHEAD_RC_RECORD_ALLOC_FAILED");
+     return;
++  }
+   memcpy(copy, data, length);
+   pthread_rwlock_rdlock(&principal_conn_lock);
+   if (principal_conn == conn) {
+@@ -225,7 +244,10 @@ static void ap2_mr_record(rtsp_conn_info *conn, const char *data, uint32_t lengt
+     ap2_mr_items[kind].length = length;
+     ap2_mr_items[kind].generation++;
+     copy = NULL;
++    debug(1, "TECNOHEAD_RC_RECORD_STORED_%s", kind == 0 ? "NOW_PLAYING" : "COMMANDS");
+     pthread_mutex_unlock(&ap2_mr_lock);
++  } else {
++    debug(1, "TECNOHEAD_RC_RECORD_OWNER_LOST");
+   }
+   pthread_rwlock_unlock(&principal_conn_lock);
+   free(copy);

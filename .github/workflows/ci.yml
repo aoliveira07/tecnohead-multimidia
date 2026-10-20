@@ -74,3 +74,23 @@ jobs:
           platforms: linux/amd64,linux/arm64
           push: false
           tags: tecnohead-multimidia:ci
+
+  airplay-lab:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: python -m pip install pytest pytest-asyncio ruff
+      - run: ruff check tecnohead_airplay_lab
+      - run: python -m pytest -q tecnohead_airplay_lab/test_lab.py
+      - uses: docker/setup-qemu-action@v3
+      - uses: docker/setup-buildx-action@v3
+      - uses: docker/build-push-action@v6
+        with:
+          context: ./tecnohead_airplay_lab
+          file: ./tecnohead_airplay_lab/Dockerfile
+          platforms: linux/amd64,linux/arm64
+          push: false
+          tags: tecnohead-airplay-lab:ci

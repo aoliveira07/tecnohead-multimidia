@@ -73,8 +73,21 @@ corrigido: `get_plist_metadata=no` fica restrito a M2. M3 agora solicita os
 metadados clássicos **sem desligar** os eventos plist que o relay precisa.
 Contadores de tamanho máximo das duas classes de eventos foram acrescentados
 sem registrar payload, e o encerramento do Lab não deve classificar um stop
-normal como falha. São correções de laboratório; **ainda não são resultado
-físico de M3 nem correção do Casa**.
+normal como falha. O App Lab v0.1.1 foi instalado e executou M3. Depois de
+readotar **somente o Lab**, o usuário reproduziu Apple Music nele e informou
+que o cartão Casa continuava **“Controles não disponíveis”**. Os contadores
+finais saneados de M3 mostraram 29.333.632 bytes de PCM descartado, 3 eventos
+Now Playing, 4 SupportedCommands, os campos título/artista/álbum/capa/duração/
+posição, maior plist Now Playing de 237.231 bytes e maior SupportedCommands de
+7.775 bytes — ambos abaixo dos limites do patch. Houve 2 SETUP RC, 2 conexões
+de event port e 2 respostas válidas a `updateInfo`; `GET /info` durante a
+reprodução mostrou `flags=0x20404`. **Não houve marcador de envio/ACK para
+Now Playing ou SupportedCommands.** Os contadores de itens clássicos ficaram
+em zero apesar de o perfil os solicitar; a arte estava dentro do plist. Assim,
+M3 falhou visualmente, mas ainda não demonstra rejeição de metadados enviados
+pela Apple: o próximo passo é instrumentar qual gate de captura ou envio impediu
+o relay, preservando apenas contadores e sem registrar payloads. O perfil voltou
+a B0, confirmado por `lab_ready`; o App de produção permanece parado.
 
 ## Planejador offline para Windows
 
