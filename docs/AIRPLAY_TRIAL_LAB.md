@@ -89,6 +89,19 @@ pela Apple: o próximo passo é instrumentar qual gate de captura ou envio imped
 o relay, preservando apenas contadores e sem registrar payloads. O perfil voltou
 a B0, confirmado por `lab_ready`; o App de produção permanece parado.
 
+O commit experimental `631c8c6` adicionou instrumentação limitada a marcadores
+de captura, propriedade da sessão, máscara de elegibilidade RC, snapshot e
+resposta do event port, sem conteúdo de mídia ou identificadores de rede.
+O Lab v0.1.2 usa o mesmo Shairport fixado da RC9, recompilado **somente na
+imagem descartável** com um patch incremental; a imagem de produção não foi
+recriada nem instalada. A CI passou nos testes e no build amd64/arm64. O
+Supervisor atualizou apenas o Lab para v0.1.2, com backup da v0.1.1 solicitado.
+M1 foi iniciado e `lab_ready` confirmado para um novo ensaio, mas **não houve
+sessão do iPhone nem nova conexão RC** na janela observada; portanto não há
+resultado físico da instrumentação. Por segurança, o Lab voltou a B0 e o log
+confirmou `lab_ready` com relay desligado. Reativar M1 apenas quando o usuário
+estiver pronto para readotar o Lab e executar uma faixa curta.
+
 ## Planejador offline para Windows
 
 O programa [`tools/airplay_trial_lab.py`](../tools/airplay_trial_lab.py) roda no Windows com Python 3.12 e Tkinter (biblioteca padrão). Iniciar no diretório do repositório com `python tools/airplay_trial_lab.py`. Para uso sem janela: `python tools/airplay_trial_lab.py --compare` ou `python tools/airplay_trial_lab.py --scenario M3 --zone pool`.
