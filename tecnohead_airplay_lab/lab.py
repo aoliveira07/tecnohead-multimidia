@@ -118,7 +118,7 @@ metadata = {{
 sessioncontrol = {{ active_state_timeout = 8.0; }};
 diagnostics = {{
   log_verbosity = 1;
-  {('get_plist_metadata = "no";' if classic else '')}
+  {('get_plist_metadata = "no";' if profile == "M2" else '')}
 }};
 '''
 
@@ -171,7 +171,9 @@ class Counters:
     classic_artwork_items: int = 0
     classic_track_items: int = 0
     sender_now_playing_updates: int = 0
+    sender_now_playing_max_bytes: int = 0
     sender_supported_commands_updates: int = 0
+    sender_supported_commands_max_bytes: int = 0
     sender_playback_updates: int = 0
     sender_field_presence: set[str] = field(default_factory=set)
     oversized_items: int = 0
@@ -197,6 +199,7 @@ class Counters:
         kind = message.get("type")
         if kind == "updateMRNowPlayingInfo":
             self.sender_now_playing_updates += 1
+            self.sender_now_playing_max_bytes = max(self.sender_now_playing_max_bytes, len(payload))
             params = message.get("params")
             info = params.get("params", params) if isinstance(params, dict) else None
             if isinstance(info, dict):
@@ -209,6 +212,9 @@ class Counters:
                         self.sender_field_presence.add(field_name)
         elif kind == "updateMRSupportedCommands":
             self.sender_supported_commands_updates += 1
+            self.sender_supported_commands_max_bytes = max(
+                self.sender_supported_commands_max_bytes, len(payload)
+            )
         elif kind == "updateMRPlaybackState":
             self.sender_playback_updates += 1
 
@@ -219,7 +225,9 @@ class Counters:
             "classic_artwork_items": self.classic_artwork_items,
             "classic_track_items": self.classic_track_items,
             "sender_now_playing_updates": self.sender_now_playing_updates,
+            "sender_now_playing_max_bytes": self.sender_now_playing_max_bytes,
             "sender_supported_commands_updates": self.sender_supported_commands_updates,
+            "sender_supported_commands_max_bytes": self.sender_supported_commands_max_bytes,
             "sender_playback_updates": self.sender_playback_updates,
             "sender_field_presence": sorted(self.sender_field_presence),
             "oversized_items": self.oversized_items,
@@ -404,6 +412,8 @@ async def run() -> None:
             except TimeoutError:
                 pass
             report("lab_counts", **counters.summary())
+            if stop.is_set():
+                break
             if any(process.returncode is not None for process in (bus, avahi, nqptp, reader, receiver)):
                 raise RuntimeError("a laboratory dependency exited")
     finally:

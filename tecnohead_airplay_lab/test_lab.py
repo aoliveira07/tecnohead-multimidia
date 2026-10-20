@@ -49,6 +49,7 @@ def test_config_does_not_claim_vendor_capabilities(profile: str) -> None:
     assert 'output_backend = "stdout";' in config
     assert "airplay_device_id = 0x02AABBCCDDEEL;" in config
     assert 'include_cover_art = "yes";' in config if profile in {"M2", "M3"} else 'include_cover_art = "no";' in config
+    assert ('get_plist_metadata = "no";' in config) == (profile == "M2")
     assert "apple_feature_comparison" not in config
     assert "WiiM" not in config and "HomePod" not in config and "MFi" not in config
 
@@ -63,6 +64,8 @@ def test_mediaremote_counters_retain_no_media() -> None:
     counters.observe_metadata("ssnc", "copl", plist)
     summary = counters.summary()
     assert summary["sender_now_playing_updates"] == 1
+    assert summary["sender_now_playing_max_bytes"] == len(plist)
+    assert summary["sender_supported_commands_max_bytes"] == 0
     assert summary["sender_field_presence"] == ["title"]
     assert secret_title not in json.dumps(summary)
 

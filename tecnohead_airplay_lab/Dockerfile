@@ -2,7 +2,7 @@
 # The old app code is present in the base image but is never started here.
 FROM ghcr.io/aoliveira07/tecnohead-multimidia:1.4.17-rc.9
 
-LABEL io.hass.version="0.1.0" \
+LABEL io.hass.version="0.1.1" \
       io.hass.type="app" \
       org.opencontainers.image.description="Isolated TecnoHead AirPlay 2 Home-card laboratory"
 

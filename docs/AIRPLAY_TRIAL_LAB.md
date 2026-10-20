@@ -38,6 +38,44 @@ O Kanban oficial Smart House continua sem conexão de escrita identificada nesta
 sessão; este registro versionado é provisório e não substitui a atualização do
 Kanban quando houver acesso autorizado.
 
+Primeira observação física do perfil B0: o usuário encontrou **TecnoHead
+AirPlay Lab** no seletor AirPlay, adicionou o novo receptor ao app Casa e viu
+“Controles não disponíveis” no seu cartão. Os contadores consultados em
+seguida ainda registravam `pcm_bytes_discarded=0`, sem Now Playing nem conexão
+RC observada. Portanto, esta observação comprova descoberta e adoção, mas
+**não** avalia a interface durante reprodução; o ensaio com Apple Music ainda
+é necessário.
+
+Durante a sessão de Apple Music no perfil B0, os contadores finais saneados
+registraram 476.328.008 bytes de PCM descartado, 24 eventos
+`updateMRNowPlayingInfo` e 11 `updateMRSupportedCommands`. O registro assinalou
+presença de título, artista, álbum, capa, duração e posição (sem gravar seus
+valores). Houve `RC_SETUP_OK`, `RC_EVENT_CONNECTED` e `RC_UPDATE_INFO_ACK`,
+uma vez cada. O usuário confirmou que o AirPlay permaneceu conectado e o
+cartão do **mesmo Lab** no Casa continuou “Controles não disponíveis”. O perfil
+B0 **não** encaminha Now Playing ao RC; a conexão/ACK por si só não habilita a
+interface. O parser encerrou com 9 itens inválidos; sua causa não foi
+classificada e não deve ser confundida com falha da sessão inteira.
+
+Em seguida, o perfil M1 (relay RC ligado, metadados clássicos ainda desligados)
+foi salvo e **somente o Lab** reiniciado. O novo log confirmou `lab_ready` em
+M1. Após readopção somente do Lab, o usuário confirmou que o AirPlay conectou,
+mas o cartão Casa continuou “Controles não disponíveis”. A sessão M1 recebeu
+6 Now Playing, 5 SupportedCommands e cerca de 59,8 MB de PCM. O `GET /info`
+somente de leitura durante a sessão mostrou `flags=0x20404`, portanto o bit
+de acesso Casa estava legitimamente ativo. Sete conexões RC foram registradas,
+mas **nenhum marcador de envio de Now Playing/Commands** apareceu. Isso torna
+M1 inconclusivo quanto à aceitação da Apple: não há prova de que esses dados
+tenham sido efetivamente entregues ao hub. O relay foi devolvido a B0.
+
+Na preparação de v0.1.1, um erro de configuração do perfil combinado M3 foi
+corrigido: `get_plist_metadata=no` fica restrito a M2. M3 agora solicita os
+metadados clássicos **sem desligar** os eventos plist que o relay precisa.
+Contadores de tamanho máximo das duas classes de eventos foram acrescentados
+sem registrar payload, e o encerramento do Lab não deve classificar um stop
+normal como falha. São correções de laboratório; **ainda não são resultado
+físico de M3 nem correção do Casa**.
+
 ## Planejador offline para Windows
 
 O programa [`tools/airplay_trial_lab.py`](../tools/airplay_trial_lab.py) roda no Windows com Python 3.12 e Tkinter (biblioteca padrão). Iniciar no diretório do repositório com `python tools/airplay_trial_lab.py`. Para uso sem janela: `python tools/airplay_trial_lab.py --compare` ou `python tools/airplay_trial_lab.py --scenario M3 --zone pool`.
