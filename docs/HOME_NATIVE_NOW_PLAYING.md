@@ -20,4 +20,6 @@ A RC8 foi instalada no HAOS com backup RC7. Sem retorno do teste físico do iPho
 
 A RC9 preparada após constatar `media_player.cozinha_room` indisponível permite o mesmo relay **somente** na Piscina quando `apple_mediaremote_forward_zone=pool`; a configuração inicial permanece `off`. Isso não muda prioridade HDMI ARC/CEC nem autoriza uso com TV ativa. A causa da indisponibilidade da Cozinha segue desconhecida. A conexão RC atual não é autenticada contra lista persistente; a opção só deve ser ligada temporariamente com consentimento informado. Sem prova física no cartão do próprio `TecnoHead Piscina`, a meta Casa continua pendente.
 
+A RC9 foi publicada e instalada no HAOS após backup local RC8; o App e ambos os endpoints AirPlay voltaram online, e a Piscina física foi vista como pronta. O relay permaneceu `off`. Isso é apenas verificação de implantação, não homologação de D17–D19: não houve ainda áudio físico ou cartão Casa testados nesta variante. A Cozinha física continuou indisponível e requer diagnóstico separado.
+
 Consulte [APPLE_MEDIAREMOTE_RESEARCH.md](APPLE_MEDIAREMOTE_RESEARCH.md) para evidências/hipóteses e [MEDIAREMOTE_D01_D24.md](MEDIAREMOTE_D01_D24.md) para o checklist de homologação.
