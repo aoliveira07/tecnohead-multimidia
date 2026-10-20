@@ -20,6 +20,7 @@ from app.core.airplay import (
     MediaRemoteProbe,
     RemoteControlOnlyProbe,
     _Endpoint,
+    _mediaremote_forward_env_value,
     _monotonic_to_iso,
     airplay_volume_to_percent,
     percent_to_airplay_volume_db,
@@ -28,6 +29,16 @@ from app.core.audio import AudioManager
 from app.core.discovery import DiscoveryService
 from app.models import AudioZoneProfile
 from app.settings import Settings
+
+
+def test_mediaremote_relay_selects_one_process_and_fails_closed():
+    assert _mediaremote_forward_env_value("kitchen", "kitchen") == "1"
+    assert _mediaremote_forward_env_value("pool", "kitchen") == "0"
+    assert _mediaremote_forward_env_value("kitchen", "pool") == "0"
+    assert _mediaremote_forward_env_value("pool", "pool") == "1"
+    assert _mediaremote_forward_env_value("kitchen", "both") == "0"
+    assert _mediaremote_forward_env_value("pool", "both") == "0"
+    assert _mediaremote_forward_env_value("pool", "off") == "0"
 
 
 async def test_audio_stream_broker_replays_recent_chunk_and_fans_out():

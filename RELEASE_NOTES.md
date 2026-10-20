@@ -1,5 +1,9 @@
 # Release notes
 
+## v1.4.17-rc.9 — ensaio MediaRemote isolado na Piscina
+
+Esta pré-release permite selecionar `pool` em `apple_mediaremote_forward_zone`, mantendo `off` como padrão e impedindo a ativação simultânea das duas zonas. É a mesma POC RC8 no próprio endpoint AirPlay 2, sem novo acessório HomeKit e sem mudança na lógica de áudio/HDMI ARC. A Cozinha foi vista como indisponível no HAOS durante a preparação; isso **não prova** falha de rede e motivou a alternativa de ensaio na Piscina. A flag não deve ficar ativa fora da janela de teste, pois a autenticação persistente do peer RC ainda não foi demonstrada. O cartão do Casa permanece **não homologado** até validação física com Apple Music e iPhone.
+
 ## v1.4.16 — volume AirPlay estável em Cozinha + Piscina
 
 O teste físico com as duas saídas selecionadas no iPhone confirmou áudio, mas mostrou uma oscilação ao arrastar o volume: valores antigos reportados pelo LinkPlay retornavam ao slider Apple antes de o valor final estabilizar. Esta versão guarda as posições recentes por zona, suprime retornos atrasados, serializa as chamadas ao HA e aplica apenas o último valor ainda válido durante um arraste. A leitura D-Bus continua como fallback quando o gancho nativo não entrega uma mudança.

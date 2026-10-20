@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.4.17-rc.9 — seleção isolada da Piscina para o ensaio MediaRemote
+
+**Pré-release experimental; não é correção homologada do app Casa.** A opção `apple_mediaremote_forward_zone`, ainda `off` por padrão, passa a aceitar `kitchen` **ou** `pool`, nunca ambas. O encaminhamento de Now Playing/SupportedCommands continua no mesmo processo AirPlay 2 da zona escolhida; anúncio, identidade, PCM, saída LinkPlay, volumes e arbitragem HDMI ARC/CEC não são alterados por este ajuste. Instalar/reiniciar o App interrompe sessões AirPlay em curso; o teste na Piscina deve ocorrer sem uso da TV. Como o Shairport atual não valida o peer RC contra uma lista persistente de controladores, ativar a opção apenas por janela curta na LAN autorizada e voltar a `off` após o ensaio. O resultado da UI Casa e o áudio físico ainda exigem teste real.
+
 ## 1.4.17-rc.5 — ensaio isolado de metadados clássicos AirPlay
 
 **Pré-release para atualização manual; não é correção homologada do app Casa.** Adiciona a opção `apple_legacy_metadata_zone`, inicialmente `off`, que permite escolher **uma** zona (`kitchen` ou `pool`) para solicitar os metadados clássicos do Shairport Sync durante AirPlay 2, incluindo arte. O caminho é um modo de compatibilidade **deprecated** no upstream, usado apenas para investigar a diferença de capacidades observada frente ao WiiM; não anuncia identidade ou funções do WiiM. Com a opção desligada, as configurações das duas zonas ficam como na RC4. Com `kitchen`, a Piscina mantém a configuração anterior; áudio PCM, volume, LinkPlay, ARC/CEC, cenas e pareamento não são alterados pelo código. A atualização reinicia o App e interrompe sessões AirPlay em curso. Voltar a `off` e reiniciar reverte o ensaio. Não remove/repareia acessórios Apple automaticamente.

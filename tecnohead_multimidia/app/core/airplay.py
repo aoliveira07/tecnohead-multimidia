@@ -52,6 +52,12 @@ _METADATA_HEADER_RE = re.compile(
 _METADATA_ITEM_FOOTER = b"</data></item>\n"
 
 
+def _mediaremote_forward_env_value(zone_id: str, selected_zone: str) -> str:
+    """Enable the trial only in its one selected receiver process."""
+
+    return "1" if selected_zone in ("kitchen", "pool") and zone_id == selected_zone else "0"
+
+
 def _metadata_fourcc(value: bytes) -> str | None:
     try:
         decoded = bytes.fromhex(value.decode("ascii"))
@@ -911,11 +917,8 @@ publish-aaaa-on-ipv4=no
                     **os.environ,
                     **self._mdns_env,
                     "DBUS_SESSION_BUS_ADDRESS": f"unix:path={endpoint.control_dbus_socket_path}",
-                    "TECNOHEAD_RC_NOW_PLAYING": (
-                        "1"
-                        if zone.zone_id == "kitchen"
-                        and self.settings.apple_mediaremote_forward_zone == "kitchen"
-                        else "0"
+                    "TECNOHEAD_RC_NOW_PLAYING": _mediaremote_forward_env_value(
+                        zone.zone_id, self.settings.apple_mediaremote_forward_zone
                     ),
                 },
                 stdout=asyncio.subprocess.PIPE,

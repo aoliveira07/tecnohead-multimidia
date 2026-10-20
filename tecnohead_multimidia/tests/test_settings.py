@@ -66,15 +66,16 @@ def test_feature_comparison_is_opt_in_for_kitchen_only(tmp_path, monkeypatch):
         assert load_settings().apple_feature_comparison_zone == "off"
 
 
-def test_mediaremote_forward_is_opt_in_for_kitchen_only(tmp_path, monkeypatch):
+def test_mediaremote_forward_is_opt_in_for_exactly_one_zone(tmp_path, monkeypatch):
     monkeypatch.setenv("APP_DATA_DIR", str(tmp_path))
     options = tmp_path / "options.json"
-    options.write_text('{"apple_mediaremote_forward_zone": "kitchen"}', encoding="utf-8")
-    assert load_settings().apple_mediaremote_forward_zone == "kitchen"
+    for value in ("kitchen", "pool"):
+        options.write_text('{"apple_mediaremote_forward_zone": "' + value + '"}', encoding="utf-8")
+        assert load_settings().apple_mediaremote_forward_zone == value
     for content in (
-        '{"apple_mediaremote_forward_zone": "pool"}',
         '{"apple_mediaremote_forward_zone": "both"}',
         '{"apple_mediaremote_forward_zone": true}',
+        '{"apple_mediaremote_forward_zone": ["kitchen", "pool"]}',
         "{bad json",
     ):
         options.write_text(content, encoding="utf-8")

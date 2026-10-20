@@ -18,4 +18,6 @@ A RC8 adiciona apenas uma POC opt-in de encaminhamento de Now Playing/SupportedC
 
 A RC8 foi instalada no HAOS com backup RC7. Sem retorno do teste físico do iPhone, a flag foi devolvida a `off`; o App permaneceu em funcionamento e os dois destinos foram anunciados. Não há evidência nova de controles no Casa, nem readopção desta versão. Para uma futura prova física, reativar só `kitchen` por janela curta, confirmar áudio audível e obter autorização separada antes de remover/readicionar a Cozinha. Não habilitar Piscina ou declarar D16–D19 aprovados sem teste real.
 
+A RC9 preparada após constatar `media_player.cozinha_room` indisponível permite o mesmo relay **somente** na Piscina quando `apple_mediaremote_forward_zone=pool`; a configuração inicial permanece `off`. Isso não muda prioridade HDMI ARC/CEC nem autoriza uso com TV ativa. A causa da indisponibilidade da Cozinha segue desconhecida. A conexão RC atual não é autenticada contra lista persistente; a opção só deve ser ligada temporariamente com consentimento informado. Sem prova física no cartão do próprio `TecnoHead Piscina`, a meta Casa continua pendente.
+
 Consulte [APPLE_MEDIAREMOTE_RESEARCH.md](APPLE_MEDIAREMOTE_RESEARCH.md) para evidências/hipóteses e [MEDIAREMOTE_D01_D24.md](MEDIAREMOTE_D01_D24.md) para o checklist de homologação.
