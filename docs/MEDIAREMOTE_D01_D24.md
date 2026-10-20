@@ -1,6 +1,6 @@
 # Homologação MediaRemote D01–D24 — v1.3.2
 
-Atualização: 19/10/2026. `PASSOU` exige o critério inteiro e evidência; teste sintético ou inspeção de código não equivale a teste de iPhone/Casa. Evidências privadas enviadas pelo usuário **não são copiadas ao repositório**. Baseline estável: tag `v1.4.16` (`7c391d665ca9889debf800d33d25e536215ccbe5`). O HAOS confirmou App **v1.4.17-rc.4 instalado e em execução** com backup da RC3 solicitado ao Supervisor, Shairport `cf6998d` AirPlay 2/`smi11` com patch exclusivamente diagnóstico, NQPTP `1.2.9`/`smi11`, Core/Supervisor `2026.10.2` e HAOS `18.3`. [RC4 publicada](https://github.com/aoliveira07/tecnohead-multimidia/releases/tag/v1.4.17-rc.4); `latest` segue na v1.4.16. A RC4 não foi homologada como correção do Casa.
+Atualização: 19/10/2026. `PASSOU` exige o critério inteiro e evidência; teste sintético ou inspeção de código não equivale a teste de iPhone/Casa. Evidências privadas enviadas pelo usuário **não são copiadas ao repositório**. Baseline estável: tag `v1.4.16` (`7c391d665ca9889debf800d33d25e536215ccbe5`). O HAOS confirmou App **v1.4.17-rc.5 instalado e em execução** com backup da RC4 solicitado ao Supervisor, Shairport `cf6998d` AirPlay 2/`smi11` com patch exclusivamente diagnóstico, NQPTP `1.2.9`/`smi11`, Core/Supervisor `2026.10.2` e HAOS `18.3`. [RC5 publicada](https://github.com/aoliveira07/tecnohead-multimidia/releases/tag/v1.4.17-rc.5); `latest` segue na v1.4.16. A opção experimental de metadados clássicos está ativa **somente na Cozinha**, pendente de teste físico; a RC5 não foi homologada como correção do Casa.
 
 | ID | Estado | Evidência disponível / falta exata |
 | --- | --- | --- |
@@ -27,7 +27,7 @@ Atualização: 19/10/2026. `PASSOU` exige o critério inteiro e evidência; test
 | D21 | NÃO TESTADO | ARC/CEC e TV Piscina→Cozinha relatados antes; regressão pós-alteração ainda não executada. |
 | D22 | NÃO TESTADO | Faltam reconexão, troca, pausa e reinício App/HAOS reais. |
 | D23 | NÃO TESTADO | Há ensaio parcial de Apple Music nas duas zonas RC3, separadamente (som audível, metadados recebidos), mas ainda falta Spotify via AirPlay e suporte real de comandos por origem. |
-| D24 | BLOQUEADO | [RC4](https://github.com/aoliveira07/tecnohead-multimidia/releases/tag/v1.4.17-rc.4) publicada e instalada manualmente no App existente, com flag de diagnóstico habilitada; CI aprovou testes, configuração e build multi-arquitetura. Cozinha/Piscina tiveram som audível e Casa sem controles. Comparador WiiM e readopção Cozinha refutam explicações simples: bit 10/RC legítimos não bastaram. Resultado geral **PARCIAL**: D16–D19 não passaram; não há homologação nativa Casa nem API autorizada do Kanban. |
+| D24 | BLOQUEADO | [RC5](https://github.com/aoliveira07/tecnohead-multimidia/releases/tag/v1.4.17-rc.5) publicada e instalada manualmente no mesmo App com backup RC4; CI/testes/auditoria/build passaram. Ensaio de metadados clássicos habilitado só na Cozinha; mDNS confirmou mudança apenas nessa zona, mas **ainda não há resultado físico RC5**. Cozinha/Piscina tiveram som audível e Casa sem controles na RC4; bit 10/RC legítimos da readopção Cozinha não bastaram. Resultado geral **PARCIAL**: D16–D19 não passaram; não há homologação nativa Casa nem API autorizada do Kanban. |
 
 ## Provas automatizadas locais (não são D16–D19)
 
