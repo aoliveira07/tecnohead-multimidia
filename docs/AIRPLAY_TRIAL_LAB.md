@@ -188,9 +188,14 @@ enviou nem por que a sessão foi encerrada.
 
 Conclusão limitada: M1 não testou a aceitação de Now Playing pelo hub/Casa.
 O resultado visual é negativo, mas não demonstra um bloqueio de classificação
-da Apple. A próxima hipótese objetiva é a duração/negociação da conexão RC
-em comparação com um receptor comercial autorizado; não forçar a conexão
-após TEARDOWN nem tratar `updateInfo` ACK como ACK de faixa. Após coletar os
+da Apple. Próximo ensaio proposto, **ainda não executado**: começar a sessão
+AirPlay no Lab antes da adoção no Casa, para observar se uma nova conexão RC
+se sobrepõe aos snapshots já disponíveis; caso o áudio seja interrompido pela
+adoção, registrar isso sem atribuir falsamente o resultado à UI. Em paralelo,
+comparar a duração/negociação RC de um receptor comercial autorizado, somente
+se houver um ponto de captura de rede que realmente observe esse tráfego.
+Não forçar a conexão após TEARDOWN nem tratar `updateInfo` ACK como ACK de
+faixa. Após coletar os
 contadores finais (`pcm_bytes_discarded=44341952`), M1 foi devolvido a B0;
 o Supervisor confirmou Lab 0.1.4 em funcionamento e `lab_ready B0`.
 
