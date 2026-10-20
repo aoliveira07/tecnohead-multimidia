@@ -1,0 +1,282 @@
+diff --git a/ap2_event_receiver.c b/ap2_event_receiver.c
+index 1bbdeac..d21eb37 100644
+--- a/ap2_event_receiver.c
++++ b/ap2_event_receiver.c
+@@ -27,6 +27,7 @@
+ #include "ap2_event_receiver.h"
+ #include "common.h"
+ #include "player.h"
++#include "rtsp.h"
+ #include "utilities/network_utilities.h"
+ #include "utilities/rtsp_message_utilities.h"
+ #include "utilities/structured_buffer.h"
+@@ -95,34 +96,54 @@ ssize_t ap2_event_port_send_message(rtsp_conn_info *conn, char *data, size_t dat
+ }
+ 
+ ssize_t ap2_event_port_post_command(rtsp_conn_info *conn, plist_t command) {
+-  ssize_t result = 0;
++  ssize_t result = -1;
+   decodeAndLogPlist(3, command);
+-  structured_buffer *sbuf = sbuf_new(4096);
+-  if (sbuf != NULL) {
+-    pthread_cleanup_push(sbuf_cleanup, sbuf);
+-    char *plistString = NULL;
+-    uint32_t plistStringLength = 0;
+-
+-    plist_to_bin(command, &plistString, &plistStringLength);
+-    if (plistString != NULL) {
+-      sbuf_printf(sbuf, "POST /command RTSP/1.0\r\nContent-Length: %u\r\n", plistStringLength);
+-      sbuf_printf(sbuf, "Content-Type: application/x-apple-binary-plist\r\n\r\n");
+-      sbuf_append(sbuf, plistString, plistStringLength);
+-      free(plistString); // should be plist_to_bin_free, but it's not defined in older
+-                         // libraries
+-      char *b = 0;
+-      size_t l = 0;
+-      sbuf_buf_and_length(sbuf, &b, &l);
+-      result = ap2_event_port_send_message(conn, b, l);
+-      debug(3, "Connection %d: POST /command sent on the event port. Result is %zd.",
+-            conn->connection_number, result);
+-      sbuf_clear(sbuf);
++  char *plistString = NULL;
++  uint32_t plistStringLength = 0;
++  plist_to_bin(command, &plistString, &plistStringLength);
++  // 512 KiB covers normal artwork, while bounding allocation from a remote sender.
++  if (plistString != NULL && plistStringLength <= 512U * 1024U) {
++    structured_buffer *sbuf = sbuf_new((size_t)plistStringLength + 256U);
++    if (sbuf != NULL) {
++      pthread_cleanup_push(sbuf_cleanup, sbuf);
++      int header_ok = sbuf_printf(sbuf, "POST /command RTSP/1.0\r\nContent-Length: %u\r\n",
++                                  plistStringLength) >= 0 &&
++                      sbuf_printf(sbuf, "Content-Type: application/x-apple-binary-plist\r\n\r\n") >= 0;
++      if (header_ok && sbuf_append(sbuf, plistString, plistStringLength) == 0) {
++        free(plistString); // plist_to_bin_free is absent in older libplist versions
++        plistString = NULL;
++        char *b = 0;
++        size_t l = 0;
++        if (sbuf_buf_and_length(sbuf, &b, &l) == 0)
++          result = ap2_event_port_send_message(conn, b, l);
++        debug(3, "Connection %d: POST /command sent on the event port. Result is %zd.",
++              conn->connection_number, result);
++      }
++      pthread_cleanup_pop(1);
+     }
+-    pthread_cleanup_pop(1); // delete the structured buffer
+   }
++  free(plistString);
+   return result;
+ }
+ 
++static void ap2_mr_forward_one(rtsp_conn_info *conn, int kind, uint64_t *last_generation) {
++  char *data = NULL;
++  uint32_t length = 0;
++  uint64_t generation = 0;
++  if (ap2_mr_snapshot_copy(kind, *last_generation, &data, &length, &generation) == 0)
++    return;
++  plist_t command = NULL;
++  plist_from_bin(data, length, &command);
++  free(data);
++  *last_generation = generation; // never retry a stalled or rejected event in a tight loop
++  if (command != NULL) {
++    ssize_t result = ap2_event_port_post_command(conn, command);
++    if (result > 0)
++      debug(1, "TECNOHEAD_RC_MEDIAREMOTE_ACK_%s", kind == 0 ? "NOW_PLAYING" : "COMMANDS");
++    plist_free(command);
++  }
++}
++
+ ssize_t ap2_event_send_update_info(rtsp_conn_info *conn) {
+   // sends the updateInfo plist on the event port
+   ssize_t result = -1;
+@@ -205,9 +226,17 @@ void *ap2_event_receiver(void *arg) {
+     if (conn->airplay_stream_category == remote_control_stream && update_info_result > 0)
+       debug(1, "TECNOHEAD_RC_UPDATE_INFO_ACK");
+
++    uint64_t mr_seen[2] = {0, 0};
+     while (1) {
++      if (conn->airplay_stream_category == remote_control_stream && conn->running &&
++          conn->event_channel_fd > 0 && !conn->ap2_event_receiver_exited &&
++          conn->ap2_pairing_context.event_cipher_bundle.cipher_ctx != NULL &&
++          config.enable_HK_Access_Control != 0) {
++        ap2_mr_forward_one(conn, 1, &mr_seen[1]); // capabilities before track state
++        ap2_mr_forward_one(conn, 0, &mr_seen[0]);
++      }
+       usleep(100000);
+     };
+
+     debug(3, "Connection %d: AP2 Event Receiver RTP thread starting \"normal\" exit.",
+           conn->connection_number);
+diff --git a/rtsp.c b/rtsp.c
+index 3e66903..2e15d5a 100644
+--- a/rtsp.c
++++ b/rtsp.c
+@@ -144,6 +144,116 @@ pthread_rwlock_t principal_conn_lock = PTHREAD_RWLOCK_INITIALIZER;
+ // always lock this when accessing the list of connection threads
+ pthread_mutex_t conns_lock = PTHREAD_MUTEX_INITIALIZER;
+ 
++#ifdef CONFIG_AIRPLAY_2
++// Opt-in, per-process relay cache. TecnoHead starts one receiver process per zone.
++// Never log the plist: it may contain track metadata and artwork.
++#define AP2_MR_NOW_PLAYING_LIMIT (512U * 1024U)
++#define AP2_MR_COMMANDS_LIMIT (64U * 1024U)
++typedef struct {
++  char *data;
++  uint32_t length;
++  uint64_t generation;
++} ap2_mr_item;
++static pthread_mutex_t ap2_mr_lock = PTHREAD_MUTEX_INITIALIZER;
++static ap2_mr_item ap2_mr_items[2];
++static int ap2_mr_owner = 0;
++
++static int ap2_mr_enabled(void) {
++  const char *value = getenv("TECNOHEAD_RC_NOW_PLAYING");
++  return value != NULL && strcmp(value, "1") == 0;
++}
++
++static void ap2_mr_clear_owner(int connection_number) {
++  pthread_mutex_lock(&ap2_mr_lock);
++  if (connection_number == 0 || ap2_mr_owner == connection_number) {
++    for (int i = 0; i < 2; i++) {
++      free(ap2_mr_items[i].data);
++      ap2_mr_items[i].data = NULL;
++      ap2_mr_items[i].length = 0;
++    }
++    ap2_mr_owner = 0;
++  }
++  pthread_mutex_unlock(&ap2_mr_lock);
++}
++
++static void ap2_mr_record(rtsp_conn_info *conn, const char *data, uint32_t length) {
++  if (!ap2_mr_enabled() || conn == NULL || data == NULL || length == 0 ||
++      length > AP2_MR_NOW_PLAYING_LIMIT || conn->airplay_stream_category != ptp_stream)
++    return;
++
++  pthread_rwlock_rdlock(&principal_conn_lock);
++  int is_audio_owner = principal_conn == conn;
++  pthread_rwlock_unlock(&principal_conn_lock);
++  if (!is_audio_owner)
++    return;
++
++  plist_t command = NULL;
++  plist_from_memory(data, length, &command);
++  if (command == NULL)
++    return;
++  plist_t type_item = plist_dict_get_item(command, "type");
++  char *type = NULL;
++  if (type_item != NULL)
++    plist_get_string_val(type_item, &type);
++  int kind = -1;
++  if (type != NULL && strcmp(type, "updateMRNowPlayingInfo") == 0)
++    kind = 0;
++  else if (type != NULL && strcmp(type, "updateMRSupportedCommands") == 0)
++    kind = 1;
++  free(type);
++  plist_free(command);
++  if (kind < 0 || (kind == 1 && length > AP2_MR_COMMANDS_LIMIT))
++    return;
++
++  char *copy = malloc(length);
++  if (copy == NULL)
++    return;
++  memcpy(copy, data, length);
++  pthread_rwlock_rdlock(&principal_conn_lock);
++  if (principal_conn == conn) {
++    pthread_mutex_lock(&ap2_mr_lock);
++    if (ap2_mr_owner != conn->connection_number) {
++      for (int i = 0; i < 2; i++) {
++        free(ap2_mr_items[i].data);
++        ap2_mr_items[i].data = NULL;
++        ap2_mr_items[i].length = 0;
++      }
++      ap2_mr_owner = conn->connection_number;
++    }
++    free(ap2_mr_items[kind].data);
++    ap2_mr_items[kind].data = copy;
++    ap2_mr_items[kind].length = length;
++    ap2_mr_items[kind].generation++;
++    copy = NULL;
++    pthread_mutex_unlock(&ap2_mr_lock);
++  }
++  pthread_rwlock_unlock(&principal_conn_lock);
++  free(copy);
++}
++
++int ap2_mr_snapshot_copy(int command_kind, uint64_t last_generation, char **data,
++                         uint32_t *length, uint64_t *generation) {
++  if (!ap2_mr_enabled() || command_kind < 0 || command_kind > 1 || data == NULL ||
++      length == NULL || generation == NULL)
++    return 0;
++  int result = 0;
++  pthread_mutex_lock(&ap2_mr_lock);
++  ap2_mr_item *item = &ap2_mr_items[command_kind];
++  if (item->data != NULL && item->length > 0 && item->generation != last_generation) {
++    char *copy = malloc(item->length);
++    if (copy != NULL) {
++      memcpy(copy, item->data, item->length);
++      *data = copy;
++      *length = item->length;
++      *generation = item->generation;
++      result = 1;
++    }
++  }
++  pthread_mutex_unlock(&ap2_mr_lock);
++  return result;
++}
++#endif
++
+ // only one thread is allowed to use the player at once.
+ // it monitors the request variable (at least when interrupted)
+ // static pthread_mutex_t playing_mutex = PTHREAD_MUTEX_INITIALIZER;
+@@ -302,6 +412,9 @@ void stop_play() {
+   pthread_rwlock_wrlock(&principal_conn_lock);
+   if (principal_conn != NULL) {
+     debug(1, "Connection %d: stop and close this connection.", principal_conn->connection_number);
++#ifdef CONFIG_AIRPLAY_2
++    ap2_mr_clear_owner(principal_conn->connection_number);
++#endif
+     terminate_conn(principal_conn->connection_number);
+ #ifdef CONFIG_AIRPLAY_2
+     if (principal_conn->airplay_gid) {
+@@ -323,6 +436,9 @@ void release_play_lock(rtsp_conn_info *conn) {
+   pthread_rwlock_wrlock(&principal_conn_lock);
+   if ((principal_conn == conn) || (conn == NULL)) { // if we have the player
+     if (principal_conn != NULL) {
++#ifdef CONFIG_AIRPLAY_2
++      ap2_mr_clear_owner(principal_conn->connection_number);
++#endif
+ #ifdef CONFIG_AIRPLAY_2
+       if (principal_conn->airplay_gid) {
+         free(principal_conn->airplay_gid);
+@@ -387,6 +503,9 @@ play_lock_r get_play_lock(rtsp_conn_info *conn, int allow_session_interruption)
+       debug(4, "Connection %d: (%s) about to be terminated.", principal_conn->connection_number,
+             get_category_string(conn->airplay_stream_category));
+       rtsp_conn_info *previous_principal_conn = principal_conn;
++#ifdef CONFIG_AIRPLAY_2
++      ap2_mr_clear_owner(previous_principal_conn->connection_number);
++#endif
+       principal_conn = conn; // make the conn the new principal_conn
+       debug(4, "Connection %d: (%s) is pre-empting play lock from connection %d.",
+             conn->connection_number, get_category_string(conn->airplay_stream_category),
+@@ -2055,6 +2174,9 @@ void handle_command(rtsp_conn_info *conn, rtsp_message *req, rtsp_message *resp)
+ #ifdef CONFIG_METADATA
+     if (config.metadata_enabled != 0) {
+       if (rtsp_message_contains_plist(req)) {
++#ifdef CONFIG_AIRPLAY_2
++        ap2_mr_record(conn, req->content, req->contentlength);
++#endif
+         // we are not going to load the plist here because we don't wamt
+         // to incur the memory and processing cost. So we'll just send it to the
+         // metadata handling code and it can be dealt with there.
+diff --git a/rtsp.h b/rtsp.h
+index 312763c..7da5db5 100644
+--- a/rtsp.h
++++ b/rtsp.h
+@@ -42,6 +42,9 @@ ssize_t write_encrypted(int fd, pair_cipher_bundle *ctx, const void *buf, size_t
+ void generateTxtDataValueInfo(rtsp_conn_info *conn, void **response, size_t *responseLength);
+ plist_t generateInfoPlist(rtsp_conn_info *conn);
+ char *plist_as_xml_text(plist_t the_plist); // caller must free the returned NUL-terminated string
++// Experimental same-receiver MediaRemote relay. Returns a malloc-owned copy, or zero.
++int ap2_mr_snapshot_copy(int command_kind, uint64_t last_generation, char **data,
++                         uint32_t *length, uint64_t *generation);
+ #endif
+ 
+ #endif // _RTSP_H

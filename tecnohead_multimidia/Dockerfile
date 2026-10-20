@@ -64,12 +64,15 @@ RUN git clone --filter=blob:none https://github.com/mikebrady/shairport-sync.git
 
 COPY patches/shairport-rc-diagnostics.patch /tmp/shairport-rc-diagnostics.patch
 COPY patches/shairport-feature-comparison.patch /tmp/shairport-feature-comparison.patch
+COPY patches/shairport-rc-now-playing-forward.patch /tmp/shairport-rc-now-playing-forward.patch
 
 RUN cd /src/shairport-sync \
     && git apply --check /tmp/shairport-rc-diagnostics.patch \
     && git apply /tmp/shairport-rc-diagnostics.patch \
     && git apply --check /tmp/shairport-feature-comparison.patch \
-    && git apply /tmp/shairport-feature-comparison.patch
+    && git apply /tmp/shairport-feature-comparison.patch \
+    && git apply --check /tmp/shairport-rc-now-playing-forward.patch \
+    && git apply /tmp/shairport-rc-now-playing-forward.patch
 
 RUN cd /src/shairport-sync \
     && autoreconf -fi \
@@ -95,7 +98,7 @@ RUN cd /src/shairport-sync \
 
 FROM ghcr.io/home-assistant/base:latest
 
-ARG BUILD_VERSION=1.4.17-rc.5
+ARG BUILD_VERSION=1.4.17-rc.8
 ARG BUILD_ARCH=local
 ARG NQPTP_COMMIT=ab8fb67483411640fd7f1e193889482f2421c37c
 ARG SHAIRPORT_SYNC_COMMIT=cf6998daa1876c5a8f97128a960c8afc0e731841
