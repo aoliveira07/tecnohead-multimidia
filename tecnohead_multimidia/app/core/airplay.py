@@ -20,8 +20,8 @@ from pathlib import Path
 from typing import Any
 
 from app.core.audio import AudioActionError
-from app.core.ha_client import HomeAssistantError
-from app.models import AudioZoneProfile, MultiroomConfig
+from app.core.ha_client import HomeAssistantError, HomeAssistantUnavailable
+from app.models import AudioPriority, AudioZoneProfile, MultiroomConfig
 
 LOGGER = logging.getLogger("tecnohead.airplay")
 
@@ -30,6 +30,8 @@ PCM_RATE = 48000
 PCM_CHANNELS = 2
 PCM_SAMPLE_FORMAT = "s32le"
 STREAM_IDLE_SECONDS = 8.0
+AIRPLAY_HA_RETRY_DELAYS = (1.0, 2.0)
+AIRPLAY_ACTIVATION_FRESH_SECONDS = 3.0
 MDNS_PROBE_TIMEOUT = 3.0
 METADATA_STREAM_LIMIT = 4 * 1024 * 1024
 MAX_METADATA_ITEM_BYTES = 2 * 1024 * 1024
@@ -1597,23 +1599,50 @@ diagnostics = {{
             endpoint.state = "blocked"
             endpoint.diagnostic = "não foi possível resolver um endereço LAN para a ponte de áudio"
             return
-        try:
-            await self.audio.start_airplay_output(self._config, endpoint.zone.zone_id, url)
-            endpoint.linkplay_started = True
-            endpoint.state = "streaming"
-            endpoint.diagnostic = "PCM recebido; reprodução HTTP solicitada ao LinkPlay via Home Assistant"
-            await self.event_recorder(
-                event="airplay_linkplay_play_requested",
-                area_id=endpoint.zone.area_id,
-                entity_id=endpoint.zone.media_player_entity_id,
-                message="URL de áudio AirPlay encaminhada ao media_player pela API do Home Assistant",
-                command_kind="media_player.play_media",
-                result="accepted_by_home_assistant",
-                physical_confirmation="not_observable",
-            )
-        except (HomeAssistantError, RuntimeError, ValueError) as exc:
+        session_started_at = endpoint.session_started_at
+        # ARC must never be reclaimed automatically after a transient HA
+        # outage. Only zones without ARC priority retry while fresh audio from
+        # the same explicit Apple session continues to arrive.
+        retry_delays = AIRPLAY_HA_RETRY_DELAYS if endpoint.zone.priority is AudioPriority.NORMAL else ()
+        for attempt in range(len(retry_delays) + 1):
+            if not self._activation_session_is_live(endpoint, session_started_at):
+                return
+            try:
+                await self.audio.start_airplay_output(self._config, endpoint.zone.zone_id, url)
+                endpoint.linkplay_started = True
+                endpoint.state = "streaming"
+                endpoint.last_error = None
+                endpoint.diagnostic = "PCM recebido; reprodução HTTP solicitada ao LinkPlay via Home Assistant"
+                await self.event_recorder(
+                    event="airplay_linkplay_play_requested",
+                    area_id=endpoint.zone.area_id,
+                    entity_id=endpoint.zone.media_player_entity_id,
+                    message="URL de áudio AirPlay encaminhada ao media_player pela API do Home Assistant",
+                    command_kind="media_player.play_media",
+                    result="accepted_by_home_assistant",
+                    physical_confirmation="not_observable",
+                )
+                return
+            except HomeAssistantUnavailable as exc:
+                if attempt < len(retry_delays):
+                    endpoint.state = "degraded"
+                    endpoint.diagnostic = "Home Assistant temporariamente indisponível; aguardando nova tentativa de áudio"
+                    await self.event_recorder(
+                        event="airplay_linkplay_retry_scheduled",
+                        area_id=endpoint.zone.area_id,
+                        entity_id=endpoint.zone.media_player_entity_id,
+                        message="nova tentativa limitada após indisponibilidade temporária do Home Assistant",
+                        level="warning",
+                        command_kind="media_player.play_media",
+                        result="retry_pending",
+                    )
+                    await asyncio.sleep(retry_delays[attempt])
+                    continue
+                failure = exc
+            except (HomeAssistantError, RuntimeError, ValueError) as exc:
+                failure = exc
             endpoint.state = "blocked"
-            endpoint.last_error = _redact_process_line(str(exc))
+            endpoint.last_error = _redact_process_line(str(failure))
             endpoint.diagnostic = endpoint.last_error
             await self.event_recorder(
                 event="airplay_linkplay_play_blocked",
@@ -1624,6 +1653,18 @@ diagnostics = {{
                 command_kind="media_player.play_media",
                 result="blocked",
             )
+            return
+
+    @staticmethod
+    def _activation_session_is_live(endpoint: _Endpoint, session_started_at: float | None) -> bool:
+        return bool(
+            endpoint.output_started
+            and endpoint.session_started_at == session_started_at
+            and endpoint.last_mp3_at is not None
+            and time.monotonic() - endpoint.last_mp3_at <= AIRPLAY_ACTIVATION_FRESH_SECONDS
+            and endpoint.process
+            and endpoint.process.returncode is None
+        )
 
     async def _watch_idle(self, endpoint: _Endpoint) -> None:
         try:
