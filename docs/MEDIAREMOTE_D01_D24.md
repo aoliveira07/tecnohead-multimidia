@@ -192,3 +192,16 @@ mesma versão, o usuário informou **“Controles não disponíveis”** no
 próprio cartão Lab. D16–D19 permanecem FALHOU para as zonas reais conforme
 os ensaios anteriores, e não passaram no Lab 0.1.10. Nenhuma variante
 experimental foi promovida à produção. Ver [resultado completo](AIRPLAY_TRIAL_LAB.md#resultado-físico-lab-0110--comandos-na-sessão-de-áudioptp).
+
+Adendo de readição controlada do Lab 0.1.10, 21/10/2026, a D12–D19:
+com Apple Music já direcionado **somente ao Lab**, o usuário o removeu e
+readicionou ao Casa sem parar a faixa. Capturas privadas mostraram a
+transição do anúncio mDNS `flags=0x4` para `flags=0x20404` (bit 10 de
+acesso Casa ativo). Os logs saneados registraram sessão RC, ACK de
+`updateInfo`, `GATE_MASK_31`, snapshots e ACKs de SupportedCommands e
+NowPlaying. O usuário confirmou **“Conectado; Casa sem controles”**.
+Assim, D12 e o transporte de D14 receberam evidência adicional no Lab,
+mas D16–D19 **não passaram**; ACK no canal RC não implica habilitação do
+cartão nativo. Não se atribui o bloqueio a uma política Apple sem prova
+independente. As zonas de produção não foram alteradas. Evidências e
+limites constam no [registro do Lab](AIRPLAY_TRIAL_LAB.md#controle-de-readição-durante-reprodução--21102026).

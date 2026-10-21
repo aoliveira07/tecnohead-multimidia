@@ -931,12 +931,11 @@ pacotes, SHA-256
 Os horários são locais de São Paulo. Cozinha, Piscina, WiiM, Denon e o App
 de produção não foram alterados.
 
-### Próxima variante honesta preparada localmente — bit 50 omitido
+### Ensaio Lab 0.1.11 — bit 50 omitido
 
 Nas respostas comparadas, o WiiM funcional não anuncia o bit 50 de
 `features`, enquanto o Lab M1 anuncia esse bit de metadados plist. Foi
-preparada **somente na árvore local, sem publicação nem instalação** uma
-variante Lab 0.1.11 chamada
+preparada uma variante Lab 0.1.11 chamada
 `tecnohead_model_classic_bits_no_bit50`. Em relação ao perfil atual
 `tecnohead_model_classic_bits`, ela *somente retira* o bit 50 anunciado no
 TXT e em `GET /info`; mantém modelo próprio, bits clássicos, IPv6, perfil M1,
@@ -944,9 +943,22 @@ parser interno de plist e relay RC. É uma hipótese de classificação, não um
 afirmação de que o bit cause o cartão vazio. O emissor pode deixar de enviar
 Now Playing rico quando o bit faltar, o que deve ser medido separadamente.
 Não se ativam os bits comerciais/MFi 22/26/51 nem o status bit 11. O patch
-incremental passou `git apply --check` contra o Shairport fixado com a pilha
-existente; 75 testes locais e Ruff passaram. Antes de qualquer deploy,
-concluir o ensaio de readição do Lab **na configuração atual** para obter uma
-linha de base comparável; se o Casa continuar vazio, então compilar e testar
-apenas essa redução no Lab, com rollback para a opção anterior. Ainda não há
-resultado físico nem release dessa variante.
+incremental foi validado sobre o Shairport fixado com a pilha existente;
+75 testes locais e Ruff passaram. O commit `103c098` foi publicado apenas na
+branch de laboratório. A CI `39597947572` passou integralmente, incluindo
+builds amd64/arm64, e a [pré-release fonte `lab-v0.1.11`](https://github.com/aoliveira07/tecnohead-multimidia/releases/tag/lab-v0.1.11)
+foi criada sem imagem de produção. O Supervisor atualizou **somente o Lab**
+de 0.1.10 para 0.1.11 com backup da versão anterior habilitado. Confirmou
+0.1.11 em execução. Configuração preservada: perfil M1, `dual_stack`, TXT e
+info `stock`; somente `advertisement` passou para
+`tecnohead_model_classic_bits_no_bit50` e o Lab reiniciou. O log confirmou
+`lab_ready` com esses campos. Uma captura privada de cinco minutos
+(`lab-nobit50-readopt-20261021.pcapng`, SHA-256
+`E42D6EEA8B3C49354C59502D22D90EF4E3A1EFB4F3D933026CD56A5308596D35`)
+confirmou o anúncio do Lab com `features=0x401FCA00,0x1C340` e
+`flags=0x4`; a porção alta da máscara não contém o bit 50. Não houve nova
+sessão RC após o `lab_ready` nesta janela nem resposta física do usuário
+até o fechamento da captura. Resultado no iPhone/Casa **NÃO TESTADO** para
+esta variante; ela ainda não é considerada uma correção. A readição do Lab
+continua necessária após o reinício para testar acesso Casa. O App de
+produção e os demais acessórios continuam intactos.
