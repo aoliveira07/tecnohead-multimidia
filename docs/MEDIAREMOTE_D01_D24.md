@@ -144,3 +144,20 @@ Cozinha/Piscina ou prova de bloqueio pela plataforma. O Lab permanece em
 execução no último perfil experimental a pedido do usuário; produção segue
 parada e o espelhamento da rede foi mantido. Evidências sanitizadas e hashes
 das duas capturas privadas estão no [registro do Lab](AIRPLAY_TRIAL_LAB.md#ensaio-combinado-v016--ipv6-anúncio-próprio-e-relay-rc).
+
+Adendo Lab v0.1.8 de 20/10/2026 a D12–D19/D24: o commit `fbc787b`
+introduziu somente no Lab a variante reversível
+`info_variant=omit_audio_only_ui`, que omite
+`playbackCapabilities.supportsUIForAudioOnlyContent=false` da resposta
+`GET /info`. A pré-release experimental `lab-v0.1.8` foi instalada apenas
+no Lab, após CI aprovada. A captura privada da sessão real confirmou que
+o iPhone recebeu a resposta RTSP `200 OK` por IPv6 com o campo ausente;
+o backend continuou a receber metadados e capa. O usuário confirmou AirPlay
+conectado e **“Casa sem controles”**, inclusive depois de remover e
+readicionar somente o Lab. Assim, essa alteração isolada não passou os
+critérios visuais/funcionais de D16–D19 no Lab; não foi reteste das zonas
+reais nem prova de bloqueio geral da plataforma. Ao final, somente
+`info_variant` voltou a `stock`, confirmado por nova resposta `GET /info`
+com o campo original `false`. Produção permaneceu parada, outros
+acessórios intactos e espelhamento ativo a pedido do usuário. Evidências
+saneadas e limites estão no [registro do Lab](AIRPLAY_TRIAL_LAB.md#ensaio-lab-018--indicador-de-interface-em-get-info).
