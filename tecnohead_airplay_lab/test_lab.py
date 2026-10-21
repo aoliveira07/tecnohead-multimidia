@@ -76,6 +76,22 @@ def test_txt_variant_defaults_to_stock_and_rejects_unknown(tmp_path: Path) -> No
         lab.load_txt_variant(options)
 
 
+@pytest.mark.parametrize("variant", lab.INFO_VARIANTS)
+def test_info_variant_options(tmp_path: Path, variant: str) -> None:
+    options = tmp_path / "options.json"
+    options.write_text(json.dumps({"info_variant": variant}), encoding="utf-8")
+    assert lab.load_info_variant(options) == variant
+
+
+def test_info_variant_defaults_to_stock_and_rejects_unknown(tmp_path: Path) -> None:
+    options = tmp_path / "options.json"
+    options.write_text('{"profile":"B0"}', encoding="utf-8")
+    assert lab.load_info_variant(options) == "stock"
+    options.write_text('{"info_variant":"supports_ui_true"}', encoding="utf-8")
+    with pytest.raises(ValueError):
+        lab.load_info_variant(options)
+
+
 def test_unknown_profile_fails_closed(tmp_path: Path) -> None:
     options = tmp_path / "options.json"
     options.write_text('{"profile":"vendor-mask"}', encoding="utf-8")
@@ -108,6 +124,7 @@ def test_config_does_not_claim_vendor_capabilities(profile: str, advertisement: 
     assert "apple_feature_comparison" not in config
     assert f'apple_lab_advertisement = "{advertisement}";' in config
     assert 'apple_lab_txt_variant = "stock";' in config
+    assert 'apple_lab_info_variant = "stock";' in config
     assert "WiiM" not in config and "HomePod" not in config and "MFi" not in config
 
 
@@ -133,6 +150,33 @@ def test_invalid_config_txt_variant_fails_closed() -> None:
             "M1", "02AABBCCDDEE", "192.0.2.5", Path("/tmp/metadata"),
             txt_variant="vendor_certificate",
         )
+
+
+def test_info_variant_changes_only_diagnostic_option() -> None:
+    args = ("M1", "02AABBCCDDEE", "192.0.2.5", Path("/tmp/metadata"))
+    baseline = lab.shairport_config(*args)
+    changed = lab.shairport_config(*args, info_variant="omit_audio_only_ui")
+    assert changed == baseline.replace(
+        'apple_lab_info_variant = "stock";',
+        'apple_lab_info_variant = "omit_audio_only_ui";',
+    )
+    assert "WiiM" not in changed and "HomePod" not in changed and "MFi" not in changed
+
+
+def test_invalid_config_info_variant_fails_closed() -> None:
+    with pytest.raises(ValueError):
+        lab.shairport_config(
+            "M1", "02AABBCCDDEE", "192.0.2.5", Path("/tmp/metadata"),
+            info_variant="supports_ui_true",
+        )
+
+
+def test_info_patch_omits_only_negative_ui_hint() -> None:
+    patch = (Path(__file__).with_name("patches") / "shairport-lab-info-variant.patch").read_text()
+    assert 'plist_dict_remove_item(capabilities, "supportsUIForAudioOnlyContent")' in patch
+    assert 'config_lookup_string(config.cfg, "diagnostics.apple_lab_info_variant"' in patch
+    assert "plist_new_bool" not in patch
+    assert "airplay_features" not in patch
 
 
 def test_dual_stack_changes_only_network_binding() -> None:

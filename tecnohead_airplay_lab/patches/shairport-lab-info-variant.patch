@@ -1,0 +1,23 @@
+diff --git a/rtsp.c b/rtsp.c
+--- a/rtsp.c
++++ b/rtsp.c
+@@ -1281,4 +1281,19 @@ plist_t generateInfoPlist(rtsp_conn_info *conn) {
+     debug(1, "generateInfoPlist plist not created!");
+   } else {
++    // Lab-only /info probe: omit one negative UI hint without claiming support.
++    // This never changes the production receiver, identity or feature mask.
++    const char *lab_info_variant = "stock";
++    if (config_lookup_string(config.cfg, "diagnostics.apple_lab_info_variant",
++                             &lab_info_variant)) {
++      if (strcmp(lab_info_variant, "omit_audio_only_ui") == 0) {
++        plist_t capabilities = plist_dict_get_item(response_plist, "playbackCapabilities");
++        if (capabilities != NULL && plist_get_node_type(capabilities) == PLIST_DICT)
++          plist_dict_remove_item(capabilities, "supportsUIForAudioOnlyContent");
++        else
++          die("Lab /info playbackCapabilities dictionary missing.");
++      } else if (strcmp(lab_info_variant, "stock") != 0) {
++        die("Invalid diagnostics.apple_lab_info_variant value.");
++      }
++    }
+     pthread_rwlock_rdlock(&principal_conn_lock); // don't let the principal_conn be changed
+     pthread_cleanup_push(rwlock_unlock, (void *)&principal_conn_lock);

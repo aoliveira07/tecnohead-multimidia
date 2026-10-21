@@ -619,3 +619,55 @@ provam que uma credencial Apple seja necessária para a interface: apenas
 descartam esses campos TXT isolados nas condições testadas. O próximo passo
 de engenharia é delimitar com evidência a classificação/capacidades aceitas
 pelo Casa, sem imitar identidade ou credenciais comerciais.
+
+### Auditoria da negociação real dos endpoints — capturas privadas de 20/10/2026
+
+As capturas já existentes do WiiM funcional e do Lab B0 foram relidas sem
+exportar áudio, arte, endereços, identificadores ou payloads. Em ambos, o
+mesmo iPhone fez `GET /info` (requisição de 227 bytes) seguido das duas
+etapas `POST /pair-setup` (288 e 738 bytes); as três respostas foram RTSP
+`200`. O Lab repetiu o último `POST` com o mesmo número de sequência TCP,
+o que não constitui uma terceira etapa distinta. Isto comprova que a
+descoberta e o início do pareamento de áudio funcionaram nos dois casos;
+não comprova a negociação necessária para habilitar a interface do Casa.
+
+O `GET /info` **daquelas sessões físicas** trouxe `statusFlags=0x4` nos dois
+receptores. Logo, a presença do bit `0x400` nessa resposta específica não
+separou o WiiM funcional do Lab vazio. A estrutura da resposta, porém, foi
+distinta: WiiM incluiu `sourceVersion`, `manufacturer`, `sdk`, `OSInfo`,
+`PTPInfo` e informações de firmware, e não incluiu `playbackCapabilities`;
+Lab não incluiu aqueles campos e trouxe
+`playbackCapabilities.supportsUIForAudioOnlyContent=false`. No ensaio
+posterior `M1/tecnohead_model_classic_bits/dual_stack`, a resposta do Lab
+continuou com esse campo `false` e sem os campos superiores citados,
+apesar de `features` ter mudado. Trata-se de **diferenças observadas, não
+da causa comprovada** do ícone ou do cartão.
+
+No [Shairport Sync fixado em `cf6998d`](https://github.com/mikebrady/shairport-sync/blob/cf6998d/rtsp.c),
+`generateInfoPlist()` parte de um
+[modelo estático](https://github.com/mikebrady/shairport-sync/blob/cf6998d/plists/get_info_response.xml)
+e sobrepõe identidade, `features` e `statusFlags`. Portanto as variações
+de TXT já testadas não isolaram o efeito desse bloco estático de `/info`.
+Seu significado para o cartão Casa precisa ser verificado antes de
+qualquer alteração; não definir `true` sem implementar a capacidade real.
+
+A [discussão #2262](https://github.com/mikebrady/shairport-sync/discussions/2262)
+comprovou outro pedaço do protocolo: comandos **do receptor para o iPhone
+emissor** pela porta de eventos da sessão de áudio/PTP, não pelo canal
+`remote_control_stream`. O código fixado já contém o envio
+`sendMediaRemoteCommand` em
+[`remote/remote.c`](https://github.com/mikebrady/shairport-sync/blob/cf6998d/remote/remote.c),
+e o release 5.6 o anuncia como Remote Control para AirPlay 2. Isso não
+explica por si só **como o app Casa cria os botões, chega ao endpoint e
+entrega um comando recebido**. O relay experimental RC do Lab também não
+habilitou o cartão. Após o pareamento, a captura de rede não decodifica
+o conteúdo cifrado: ACK, conexão TCP ou presença de metadados no backend
+não devem ser registrados como controles nativos aprovados.
+
+Próxima investigação restrita ao mesmo endpoint: mapear por sessão e
+papel (emissor versus controlador Casa/hub) as solicitações RC recebidas
+e a resposta `/info`, sem conteúdo pessoal; comparar o anúncio e a
+resposta de capacidades do WiiM/Denon com o Lab; isolar **um** campo
+honesto por variante somente no Lab, com rollback, antes de pedir novo
+teste visual. Não há alteração de firmware, produção ou publicação nesta
+auditoria.

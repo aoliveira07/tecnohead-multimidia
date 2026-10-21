@@ -66,6 +66,16 @@ an mDNS record, an RTSP acknowledgement, or an icon change as Home control
 success; only visible metadata and a functional pause/volume control count.
 No variant includes an Apple/MFi certificate or advertises MFi authentication.
 
+The independent `info_variant` option (v0.1.8) isolates one difference in
+the endpoint's `GET /info` response. `stock` retains Shairport Sync's original
+plist. `omit_audio_only_ui` removes only the existing
+`playbackCapabilities.supportsUIForAudioOnlyContent=false` key; it does not
+set that capability to `true`, remove the other `playbackCapabilities` keys,
+change TXT/`features`/`statusFlags`, or change the AirPlay identity. First
+verify the response field difference and AirPlay connection, then inspect
+the same Lab card in Casa during playback. If the card remains empty, restore
+`stock`; absence of this key is not evidence that the UI will be enabled.
+
 Only counters and field *presence* are logged. Never print track names,
 artwork, payloads, audio, IPs or pairing details. Review the logs after each
 test, then compare the same lab card in Apple Home. On completion stop the lab
