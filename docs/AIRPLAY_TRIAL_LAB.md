@@ -762,12 +762,43 @@ contém somente código-fonte. O Supervisor atualizou **somente** o Lab de
 `200 OK` sem `playbackCapabilities`, preservando `features` e
 `statusFlags`.
 
-Uma captura privada com filtro restrito à porta AirPlay do Lab e limite
-de três minutos terminou com **zero pacotes**: não houve sessão física
-do iPhone nessa janela. Logo, o ensaio visual do Casa v0.1.9 está
-**PENDENTE**, sem inferência positiva ou negativa. O Lab permanece nessa
-variante experimental para o teste autorizado, com áudio descartado;
-produção continua parada e o espelhamento do switch continua ativo.
-Após o teste, restaurar somente `info_variant=stock` e confirmar o
-retorno da resposta `/info` original. Não promover a variante às zonas
+Uma primeira captura privada com filtro restrito à porta AirPlay do Lab
+terminou com **zero pacotes**: não houve sessão física do iPhone naquela
+janela. No reteste de 21/10/2026, a captura privada
+`lab-v019-select-20261021.pcapng` registrou 1.215 quadros, sem perdas. A
+sessão IPv4 real incluiu `GET /info`; a resposta RTSP `200 OK` continha
+`features` e **não** continha `playbackCapabilities`, confirmando que a
+variante chegou ao iPhone. O usuário informou **“Conectou; Casa sem
+controles”** ao abrir o cartão do mesmo Lab. Não houve readopção nesse
+retorno e não foram ensaiados comandos D10/D11. A omissão do dicionário
+isoladamente não habilitou a interface nativa; isso não demonstra uma
+restrição geral da Apple.
+
+Após o ensaio, foi restaurado somente `info_variant=stock`. O log
+`lab_ready` confirmou `stock` com M1, relay RC, anúncio TecnoHead,
+`dual_stack` e TXT original preservados. A produção continua parada, os
+outros acessórios não foram alterados e o espelhamento do switch
+permanece ativo por pedido do usuário. Não promover a variante às zonas
 reais sem D16–D19 e regressões físicas.
+
+### Ensaio preparado Lab 0.1.10 — canal de comandos áudio/PTP
+
+A discussão upstream #2262 distingue o `sendMediaRemoteCommand` na porta de
+eventos **negociada para a sessão de áudio/PTP** do canal Remote Control
+Only. D10/D11 continuavam não testados; os ACKs do relay RC não são
+substitutos desse ensaio. O Lab 0.1.10 acrescenta somente um controle
+administrativo por `hassio.app_stdin`, sem porta HTTP ou novo acessório.
+Aceita JSON com exatamente `{"command":"pause"}` ou
+`{"command":"play"}`; recusa entradas desconhecidas, repetição rápida e
+ausência de PCM recente. Cada comando chama o D-Bus privado do Shairport
+do Lab. Um patch de diagnóstico **somente do Lab** registra marcadores
+constantes de categoria PTP/outra e sucesso/falha do POST de evento, sem
+conteúdo de mídia, pares ou endereços.
+
+Critério físico: com Apple Music dirigido somente ao Lab, enviar pausa
+uma vez e observar o iPhone parar; depois enviar play e observar retomar.
+Uma resposta D-Bus ou RTSP positiva isolada não aprova o teste. O Lab
+continua descartando áudio; D10/D11 das zonas reais não são antecipados.
+O patch foi verificado contra o commit Shairport fixado, e os 69 testes
+locais do Lab e o lint passaram antes de publicação. O App principal
+permanece parado; Cozinha e Piscina não são alteradas neste ensaio.

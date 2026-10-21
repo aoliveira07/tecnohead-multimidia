@@ -29,6 +29,7 @@ COPY patches/shairport-rc-close-diagnostics.patch /tmp/shairport-rc-close-diagno
 COPY patches/shairport-lab-advertisement.patch /tmp/shairport-lab-advertisement.patch
 COPY patches/shairport-lab-txt-matrix.patch /tmp/shairport-lab-txt-matrix.patch
 COPY patches/shairport-lab-info-variant.patch /tmp/shairport-lab-info-variant.patch
+COPY patches/shairport-lab-event-command-diagnostics.patch /tmp/shairport-lab-event-command-diagnostics.patch
 
 RUN cd /src/shairport-sync \
     && git apply /src/tecnohead-patches/tecnohead_multimidia/patches/shairport-rc-diagnostics.patch \
@@ -45,7 +46,9 @@ RUN cd /src/shairport-sync \
     && git apply --check /tmp/shairport-lab-txt-matrix.patch \
     && git apply /tmp/shairport-lab-txt-matrix.patch \
     && git apply --check /tmp/shairport-lab-info-variant.patch \
-    && git apply /tmp/shairport-lab-info-variant.patch
+    && git apply /tmp/shairport-lab-info-variant.patch \
+    && git apply --check /tmp/shairport-lab-event-command-diagnostics.patch \
+    && git apply /tmp/shairport-lab-event-command-diagnostics.patch
 
 RUN cd /src/shairport-sync \
     && autoreconf -fi \
@@ -59,7 +62,7 @@ RUN cd /src/shairport-sync \
 
 FROM ghcr.io/aoliveira07/tecnohead-multimidia:1.4.17-rc.9
 
-LABEL io.hass.version="0.1.9" \
+LABEL io.hass.version="0.1.10" \
       io.hass.type="app" \
       org.opencontainers.image.description="Isolated TecnoHead AirPlay 2 Home-card laboratory"
 

@@ -12,6 +12,8 @@ import re
 import secrets
 import signal
 import socket
+import sys
+import time
 from collections import Counter
 from contextlib import suppress
 from dataclasses import dataclass, field
@@ -82,6 +84,10 @@ RC_MARKERS = (
     "TECNOHEAD_RC_RTSP_SHUTDOWN_REQUESTED",
     "TECNOHEAD_RC_RTSP_BAD_PACKET",
     "TECNOHEAD_RC_RTSP_OTHER_READ_EXIT",
+    "TECNOHEAD_LAB_COMMAND_CHANNEL_PTP",
+    "TECNOHEAD_LAB_COMMAND_CHANNEL_OTHER",
+    "TECNOHEAD_LAB_COMMAND_POST_ACCEPTED",
+    "TECNOHEAD_LAB_COMMAND_POST_FAILED",
 )
 RC_GATE_MARKER = re.compile(r"TECNOHEAD_RC_GATE_MASK_(\d+)$")
 RC_HEARTBEAT_MARKER = re.compile(r"TECNOHEAD_RC_LOOP_ALIVE_MASK_(\d+)$")
@@ -265,6 +271,8 @@ publish-aaaa-on-ipv4={"yes" if ipv6 else "no"}
 @dataclass
 class Counters:
     pcm_bytes_discarded: int = 0
+    last_pcm_at: float = 0.0
+    last_remote_command_at: float = 0.0
     metadata_items: int = 0
     classic_artwork_items: int = 0
     classic_track_items: int = 0
@@ -385,6 +393,62 @@ async def consume_metadata(stream: asyncio.StreamReader, counters: Counters) -> 
 async def discard_pcm(stream: asyncio.StreamReader, counters: Counters) -> None:
     while chunk := await stream.read(64 * 1024):
         counters.pcm_bytes_discarded += len(chunk)
+        counters.last_pcm_at = time.monotonic()
+
+
+def parse_lab_control(raw: bytes) -> str | None:
+    """Accept only one small, explicit command from the HAOS admin action."""
+
+    if len(raw) > 128:
+        return None
+    try:
+        payload = json.loads(raw)
+    except (UnicodeDecodeError, ValueError):
+        return None
+    if not isinstance(payload, dict) or set(payload) != {"command"}:
+        return None
+    command = payload["command"]
+    return command if type(command) is str and command in {"pause", "play"} else None
+
+
+async def handle_lab_control(raw: bytes, env: dict[str, str], counters: Counters) -> None:
+    command = parse_lab_control(raw)
+    if command is None:
+        report("lab_command_rejected", reason="invalid_input")
+        return
+    now = time.monotonic()
+    if counters.last_pcm_at == 0.0 or now - counters.last_pcm_at > 180:
+        report("lab_command_skipped", command=command, reason="no_recent_audio")
+        return
+    if now - counters.last_remote_command_at < 2:
+        report("lab_command_skipped", command=command, reason="rate_limited")
+        return
+    counters.last_remote_command_at = now
+    process: asyncio.subprocess.Process | None = None
+    try:
+        process = await asyncio.create_subprocess_exec(
+            "dbus-send", "--session", "--print-reply", "--type=method_call",
+            "--dest=org.gnome.ShairportSync", "/org/gnome/ShairportSync",
+            f"org.gnome.ShairportSync.RemoteControl.{command.title()}",
+            env=env, stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.STDOUT,
+        )
+        await asyncio.wait_for(process.communicate(), timeout=4)
+    except (OSError, TimeoutError):
+        await terminate(process)
+        report("lab_command_result", command=command, result="dbus_error")
+        return
+    report(
+        "lab_command_result", command=command,
+        result="dbus_returned" if process.returncode == 0 else "dbus_error",
+    )
+
+
+async def consume_lab_control(stream: asyncio.StreamReader, env: dict[str, str], counters: Counters) -> None:
+    try:
+        while raw := await stream.readline():
+            await handle_lab_control(raw, env, counters)
+    except ValueError:
+        report("lab_command_rejected", reason="line_too_long")
 
 
 async def consume_shairport_log(stream: asyncio.StreamReader, counters: Counters) -> None:
@@ -478,6 +542,7 @@ async def run() -> None:
         loop.add_signal_handler(sig, stop.set)
     processes: list[asyncio.subprocess.Process] = []
     tasks: list[asyncio.Task[None]] = []
+    control_transport: asyncio.BaseTransport | None = None
     counters = Counters()
     report(
         "lab_starting", profile=profile, advertisement=advertisement,
@@ -492,6 +557,10 @@ async def run() -> None:
         processes.append(bus)
         tasks.append(asyncio.create_task(discard_stream(bus.stdout)))
         await wait_for_socket(bus_socket, bus)
+        control_reader = asyncio.StreamReader(limit=4096)
+        control_protocol = asyncio.StreamReaderProtocol(control_reader)
+        control_transport, _ = await loop.connect_read_pipe(lambda: control_protocol, sys.stdin.buffer)
+        tasks.append(asyncio.create_task(consume_lab_control(control_reader, env, counters)))
         avahi = await asyncio.create_subprocess_exec(
             "avahi-daemon", "--no-chroot", "--no-drop-root", "--no-rlimits", "--debug",
             f"--file={RUNTIME / 'avahi.conf'}", env=env,
@@ -544,6 +613,8 @@ async def run() -> None:
             if any(process.returncode is not None for process in (bus, avahi, nqptp, reader, receiver)):
                 raise RuntimeError("a laboratory dependency exited")
     finally:
+        if control_transport is not None:
+            control_transport.close()
         for process in reversed(processes):
             await terminate(process)
         for task in tasks:

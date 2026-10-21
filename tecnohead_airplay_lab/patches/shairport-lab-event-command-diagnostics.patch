@@ -1,0 +1,20 @@
+diff --git a/remote/remote.c b/remote/remote.c
+--- a/remote/remote.c
++++ b/remote/remote.c
+@@ -515,7 +515,15 @@ void remote_simple_command(simple_command_t command) {
+         break;
+       default:
+         debug(4, "remote_simple_command %u -- AirPlay 2.", command);
+-        ap2_event_send_simple_modern_media_remote_command(principal_conn, command);
++        if (principal_conn->airplay_stream_category == ptp_stream)
++          debug(1, "TECNOHEAD_LAB_COMMAND_CHANNEL_PTP");
++        else
++          debug(1, "TECNOHEAD_LAB_COMMAND_CHANNEL_OTHER");
++        ssize_t result = ap2_event_send_simple_modern_media_remote_command(principal_conn, command);
++        if (result > 0)
++          debug(1, "TECNOHEAD_LAB_COMMAND_POST_ACCEPTED");
++        else
++          debug(1, "TECNOHEAD_LAB_COMMAND_POST_FAILED");
+         break;
+       }
+     }

@@ -83,6 +83,19 @@ not a claim of those products' identity or capabilities. All other response
 fields and Lab settings stay unchanged. After testing, restore `stock`;
 AirPlay connectivity and a native Casa card must be checked independently.
 
+Lab v0.1.10 adds an administrator-only, bounded command probe for the
+**audio/PTP session event channel**, separate from the RC Now Playing relay.
+It uses the Supervisor's existing stdin action; it opens no HTTP port and
+does not create another HomeKit accessory. While Apple Music is playing
+**only on this Lab**, run `hassio.app_stdin` in Home Assistant Developer
+Tools with `app: b622e1ca_tecnohead_airplay_lab` and
+`input: {command: pause}`; wait at least two seconds, then use
+`input: {command: play}`. The Lab accepts no other commands or extra JSON
+fields, and declines a command if it has seen no recent PCM. A D-Bus reply
+and the Shairport channel/POST markers are transport evidence only: verify
+the iPhone actually pauses/resumes. The Lab still discards audio; do not
+interpret a missing sound change as failure. All output is sanitized.
+
 Only counters and field *presence* are logged. Never print track names,
 artwork, payloads, audio, IPs or pairing details. Review the logs after each
 test, then compare the same lab card in Apple Home. On completion stop the lab

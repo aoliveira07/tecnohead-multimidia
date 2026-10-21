@@ -7,6 +7,7 @@ import json
 import plistlib
 import re
 import sys
+import time
 from pathlib import Path
 
 import pytest
@@ -290,3 +291,60 @@ async def test_rc_gate_logs_only_sanitized_markers(capsys: pytest.CaptureFixture
     assert "TECNOHEAD_RC_GATE_MASK_999" not in counters.rc
     assert "TECNOHEAD_RC_LOOP_ALIVE_MASK_999" not in counters.rc
     assert secret not in capsys.readouterr().out
+
+
+def test_lab_stdin_is_explicit_and_not_a_network_control_port() -> None:
+    config = Path(__file__).with_name("config.yaml").read_text(encoding="utf-8")
+    assert "stdin: true" in config
+    assert "ingress: true" not in config
+    assert "ports:" not in config
+
+
+@pytest.mark.parametrize("command", ["pause", "play"])
+def test_lab_control_accepts_only_play_and_pause(command: str) -> None:
+    assert lab.parse_lab_control(json.dumps({"command": command}).encode() + b"\n") == command
+
+
+@pytest.mark.parametrize("raw", [
+    b"not-json\n", b"{}\n", b'{"command":"next"}\n',
+    b'{"command":"pause","shell":"id"}\n', b'{"command":1}\n',
+    b"a" * 129,
+])
+def test_lab_control_rejects_other_input(raw: bytes) -> None:
+    assert lab.parse_lab_control(raw) is None
+
+
+@pytest.mark.asyncio
+async def test_lab_control_requires_recent_audio(capsys: pytest.CaptureFixture[str]) -> None:
+    counters = lab.Counters()
+    await lab.handle_lab_control(b'{"command":"pause"}\n', {}, counters)
+    assert '"result": "dbus_returned"' not in capsys.readouterr().out
+    assert counters.last_remote_command_at == 0.0
+
+
+@pytest.mark.asyncio
+async def test_lab_control_calls_private_dbus_once(monkeypatch: pytest.MonkeyPatch,
+                                                  capsys: pytest.CaptureFixture[str]) -> None:
+    calls: list[tuple[tuple[str, ...], dict[str, str]]] = []
+
+    class FakeProcess:
+        returncode = 0
+
+        async def communicate(self) -> tuple[bytes, bytes]:
+            return b"secret reply", b""
+
+    async def fake_exec(*args: str, **kwargs: object) -> FakeProcess:
+        calls.append((args, kwargs["env"]))
+        return FakeProcess()
+
+    monkeypatch.setattr(lab.asyncio, "create_subprocess_exec", fake_exec)
+    counters = lab.Counters(last_pcm_at=time.monotonic())
+    env = {"DBUS_SESSION_BUS_ADDRESS": "unix:path=/private/bus.sock"}
+    await lab.handle_lab_control(b'{"command":"pause"}\n', env, counters)
+    await lab.handle_lab_control(b'{"command":"pause"}\n', env, counters)
+    assert len(calls) == 1
+    assert calls[0][0][-1] == "org.gnome.ShairportSync.RemoteControl.Pause"
+    assert calls[0][1] == env
+    output = capsys.readouterr().out
+    assert '"result": "dbus_returned"' in output
+    assert "secret reply" not in output

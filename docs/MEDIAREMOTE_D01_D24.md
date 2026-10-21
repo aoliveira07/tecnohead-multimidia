@@ -162,14 +162,16 @@ com o campo original `false`. Produção permaneceu parada, outros
 acessórios intactos e espelhamento ativo a pedido do usuário. Evidências
 saneadas e limites estão no [registro do Lab](AIRPLAY_TRIAL_LAB.md#ensaio-lab-018--indicador-de-interface-em-get-info).
 
-Adendo Lab v0.1.9 de 20/10/2026 a D12–D19/D24: somente o Lab foi
+Adendo Lab v0.1.9 de 21/10/2026 a D12–D19/D24: somente o Lab foi
 atualizado após CI aprovada e backup; a variante
 `info_variant=omit_playback_capabilities` remove o dicionário inteiro
-de `GET /info`, mantendo os demais parâmetros. Uma consulta local
-confirmou RTSP `200 OK`, dicionário ausente e `features`/`statusFlags`
-presentes. A primeira captura filtrada de três minutos teve **zero
-pacotes do Lab** porque ainda não houve sessão física do iPhone durante
-a janela. D16–D19 **não foram testados nessa variante**; não inferir
-sucesso nem falha no Casa. Lab permanece ativo aguardando teste,
-produção parada e espelho do switch mantido. Detalhes e rollback no
-[registro do Lab](AIRPLAY_TRIAL_LAB.md#próximo-ensaio-isolado--estrutura-de-playbackcapabilities).
+de `GET /info`, mantendo os demais parâmetros. A primeira janela de
+captura ficou sem sessão física. Na captura seguinte, o iPhone fez
+`GET /info` por IPv4 e recebeu RTSP `200 OK` com `features` e sem
+`playbackCapabilities`. O usuário confirmou **“Conectou; Casa sem
+controles”** no próprio Lab. Portanto D16–D19 não passaram nesta
+variante; D10/D11 permanecem **NÃO TESTADO**, pois não houve comando
+play/pause/próxima enviado pelo receptor e verificado no iPhone. O
+`info_variant` voltou a `stock`, comprovado por `lab_ready`; demais
+ajustes do Lab preservados. Produção parada e espelho do switch mantido.
+Detalhes no [registro do Lab](AIRPLAY_TRIAL_LAB.md#próximo-ensaio-isolado--estrutura-de-playbackcapabilities).
