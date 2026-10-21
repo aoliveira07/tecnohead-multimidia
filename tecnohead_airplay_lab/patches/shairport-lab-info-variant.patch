@@ -1,7 +1,7 @@
 diff --git a/rtsp.c b/rtsp.c
 --- a/rtsp.c
 +++ b/rtsp.c
-@@ -1281,4 +1281,24 @@ plist_t generateInfoPlist(rtsp_conn_info *conn) {
+@@ -1281,4 +1281,25 @@ plist_t generateInfoPlist(rtsp_conn_info *conn) {
      debug(1, "generateInfoPlist plist not created!");
    } else {
 +    // Lab-only /info probes: omit a hint or dictionary without claiming support.

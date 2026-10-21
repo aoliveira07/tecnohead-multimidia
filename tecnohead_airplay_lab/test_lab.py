@@ -5,6 +5,7 @@ import base64
 import importlib.util
 import json
 import plistlib
+import re
 import sys
 from pathlib import Path
 
@@ -178,6 +179,17 @@ def test_info_patch_omits_only_negative_ui_hint() -> None:
     assert 'config_lookup_string(config.cfg, "diagnostics.apple_lab_info_variant"' in patch
     assert "plist_new_bool" not in patch
     assert "airplay_features" not in patch
+
+
+def test_info_patch_hunk_lengths_are_valid() -> None:
+    patch = (Path(__file__).with_name("patches") / "shairport-lab-info-variant.patch").read_text()
+    lines = patch.splitlines()
+    header_index = next(index for index, line in enumerate(lines) if line.startswith("@@ "))
+    header = re.match(r"@@ -\d+,(\d+) \+\d+,(\d+) @@", lines[header_index])
+    assert header is not None
+    body = lines[header_index + 1:]
+    assert int(header.group(1)) == sum(line.startswith((" ", "-")) for line in body)
+    assert int(header.group(2)) == sum(line.startswith((" ", "+")) for line in body)
 
 
 def test_info_variant_can_remove_entire_capabilities_dictionary() -> None:
