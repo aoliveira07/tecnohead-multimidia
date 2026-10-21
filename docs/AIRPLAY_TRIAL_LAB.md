@@ -1008,3 +1008,11 @@ SHA-256 `B9AAB63AAECCB205914BD33EC8EE67C9D175563916EE03DA75C7E339FAE6E342`).
 Os horários são locais de São Paulo. Não publicar os pcaps. Nenhum
 acessório de produção foi alterado e não houve promoção da 0.1.11 à
 instalação estável.
+
+Limite das quatro capturas desta seção: o filtro de aquisição incluiu o
+endereço IPv4 do HAOS e mDNS, **não o unicast IPv6 do Lab**. Portanto,
+essas capturas sustentam as observações de anúncio mDNS, mas não uma
+comparação completa do RTSP/MediaRemote entre WiiM e Lab. O fechamento
+RC e os contadores Now Playing acima vêm dos logs instrumentados do Lab.
+O próximo ensaio de rede deve incluir explicitamente as duas famílias
+unicast, com escopo e tempo mínimos, sem nova readição inicial.
