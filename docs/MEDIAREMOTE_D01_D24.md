@@ -205,3 +205,21 @@ mas D16–D19 **não passaram**; ACK no canal RC não implica habilitação do
 cartão nativo. Não se atribui o bloqueio a uma política Apple sem prova
 independente. As zonas de produção não foram alteradas. Evidências e
 limites constam no [registro do Lab](AIRPLAY_TRIAL_LAB.md#controle-de-readição-durante-reprodução--21102026).
+
+Adendo Lab 0.1.11 de 21/10/2026 a D03/D08/D12–D19/D24: a variante sem o
+bit 50 permitiu sessão AirPlay após reinício, mas não recebeu nenhum
+`updateMRNowPlayingInfo` ou artwork real em duas sessões observadas, apesar
+de áudio e `updateMRSupportedCommands`. O iPhone mostrou falha de conexão
+AirPlay e falha de adição do Lab ao Casa em uma tentativa; não há prova de
+causalidade exclusiva do bit 50 porque um reinício também recuperou a
+conexão. O anúncio voltou ao perfil anterior com bit 50 **somente no Lab**.
+Após rollback e readição bem-sucedida, oito atualizações Now Playing com
+título/artista/álbum/capa/duração/posição foram recebidas, mas o usuário
+confirmou novamente “Controles não disponíveis” no cartão do próprio Lab.
+No ciclo de log pós-readição, a conexão RC encerrou antes dessas novas
+atualizações; a relação causal com a UI não foi estabelecida, pois um
+ensaio anterior recebeu ACKs de MediaRemote e também falhou visualmente.
+D16–D19 permanecem FALHOU nas zonas reais e não passaram no Lab. Não houve
+alteração da produção, nem release estável. Capturas e hashes privados,
+sem conteúdo de mídia publicado, estão enumerados no
+[registro do Lab](AIRPLAY_TRIAL_LAB.md#resultado-físico-do-lab-0111-e-reversão-do-anúncio--21102026).

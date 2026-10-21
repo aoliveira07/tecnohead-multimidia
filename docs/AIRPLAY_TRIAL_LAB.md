@@ -962,3 +962,49 @@ até o fechamento da captura. Resultado no iPhone/Casa **NÃO TESTADO** para
 esta variante; ela ainda não é considerada uma correção. A readição do Lab
 continua necessária após o reinício para testar acesso Casa. O App de
 produção e os demais acessórios continuam intactos.
+
+### Resultado físico do Lab 0.1.11 e reversão do anúncio — 21/10/2026
+
+O ensaio `tecnohead_model_classic_bits_no_bit50` não resolveu o cartão.
+Em uma sessão real de Apple Music, o Lab recebeu PCM e dez atualizações de
+`updateMRSupportedCommands`, mas **nenhum** `updateMRNowPlayingInfo` nem
+artwork (`sender_field_presence=[]`). O relay RC teve `SETUP`, conexão,
+`GATE_MASK_31` e ACK de SupportedCommands; não houve snapshot/ACK de Now
+Playing rico. O iPhone depois exibiu simultaneamente erro ao conectar via
+AirPlay e erro de adição do **Lab** ao Casa. A captura mostrou anúncio
+`flags=0x20404` transitório durante a tentativa de adoção; isto não
+identifica a causa exata da falha. Um
+reinício **somente do Lab**, sem mudar o anúncio, permitiu ao usuário
+conectar e manter o AirPlay por 30 segundos; novamente não chegaram
+metadados Now Playing ricos. Assim, não atribuir o erro de pareamento ao
+bit 50 isoladamente: reinício/estado de sessão é fator de confusão.
+
+Pelo efeito observado sobre os metadados, a configuração do Lab voltou a
+`M1/tecnohead_model_classic_bits/dual_stack`, mantendo TXT e info `stock`.
+O Supervisor confirmou `lab_ready` com esses valores. Depois desse
+rollback e reinício, o usuário conseguiu adicionar somente o Lab ao Casa
+normalmente. A captura mDNS passou de `flags=0x4` a `flags=0x404` na
+adoção e, na sessão seguinte, `flags=0x20404`. Apple Music voltou a enviar
+Now Playing rico: oito atualizações, presença de título, artista, álbum,
+capa, duração e posição, com payload máximo observado de 178.772 bytes.
+O AirPlay permaneceu conectado, mas o próprio cartão do Lab continuou
+**“Controles não disponíveis”**. Neste ciclo de log, a conexão RC recebeu
+`SETUP`, `updateInfo` ACK e `GATE_MASK_31`, mas fechou antes das novas
+atualizações Now Playing da origem; nenhum ACK de encaminhamento
+MediaRemote apareceu nessa sessão. Isso sugere investigar o ciclo de vida
+da conexão RC, **não prova** que ele seja a causa do cartão vazio: no
+ensaio anterior com o bit 50 presente houve ACKs de Now Playing e
+SupportedCommands e o cartão também ficou vazio.
+
+As capturas truncadas a 256 bytes por pacote permaneceram locais e privadas:
+`lab-nobit50-physical-2-20261021.pcapng` (09:33:35–09:38:34,
+SHA-256 `8A64635E4FBE131B47A171A58AF36BB68A1FE2880EB8ADEBFC7A6694591465BF`),
+`lab-nobit50-restart-connect-20261021.pcapng` (09:40:38–09:42:38,
+SHA-256 `80D9E0D68A739C53F2BEF30C1C8953F91B45C5447AB061C5EDCA244E4CC39652`),
+`lab-bit50-readopt-after-reset-20261021.pcapng` (09:43:54–09:46:19,
+SHA-256 `5A8D55C43A0C509350A75AAEF600BC3B21D06B35B6679A2339F556B39C4D999E`)
+e `lab-bit50-post-readopt-play-20261021.pcapng` (09:46:27–09:48:12,
+SHA-256 `B9AAB63AAECCB205914BD33EC8EE67C9D175563916EE03DA75C7E339FAE6E342`).
+Os horários são locais de São Paulo. Não publicar os pcaps. Nenhum
+acessório de produção foi alterado e não houve promoção da 0.1.11 à
+instalação estável.
