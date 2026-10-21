@@ -833,3 +833,120 @@ informou **“Controles não disponíveis”**. A correção do caminho de coman
 exposição/negociação do acessório ou no mecanismo de controle recebido
 da interface Casa; não prova uma restrição universal da Apple. Nenhum
 patch do Lab foi promovido para Cozinha/Piscina.
+
+### Comparação controlada de conexões WiiM/Lab — 21/10/2026
+
+Com o espelhamento já autorizado das portas do switch para a estação Windows,
+foram feitas duas capturas locais em janelas separadas. O usuário confirmou
+som e pausa/retomada **no próprio cartão Casa** do WiiM; no Lab 0.1.10,
+confirmou AirPlay conectado e **“Controles não disponíveis”**. Os PCAPs
+permanecem somente na estação, sem publicação de endereços, identificadores,
+arte, áudio ou payloads. A captura do Lab foi repetida com truncamento em
+256 bytes por quadro porque a primeira tentativa atingiu o limite de tamanho
+antes da nova conexão.
+
+| Observação | WiiM funcional | Lab vazio |
+|---|---|---|
+| Nova sessão principal | TCP/7000 por IPv6 | TCP/7100 por IPv6 |
+| Conexões seguintes do mesmo emissor | porta de eventos dinâmica e fluxo de áudio dinâmico | porta de eventos dinâmica e fluxo de áudio dinâmico |
+| TXT `_airplay._tcp` antes da reprodução | `flags=0x4` | `flags=0x4` |
+| TXT `_airplay._tcp` durante a reprodução | `flags=0x804` | `flags=0x20004` |
+| Resultado no cartão Casa | capa/faixa/botões e pausa/retomada reais | controles indisponíveis |
+
+O padrão de abertura de conexões é semelhante; contar SYNs de clientes
+distintos **não** separa os dois aparelhos. As tentativas adicionais ao WiiM
+em TCP/49152 partiram do HAOS, não foram atribuídas ao Casa. A semântica dos
+bits de `flags` que diferem durante a reprodução **não foi demonstrada**;
+não os copiar para o Lab sem capacidade implementada. Como o tráfego AirPlay
+após o pareamento é protegido, essa captura não revela o conteúdo da
+negociação RC nem prova o que a central Apple interpretou.
+
+A diferença matemática é específica: WiiM adicionou `0x800` (bit 11) ao
+`0x4`; Lab adicionou `0x20000` (bit 17). O
+[código upstream fixado do Shairport Sync](https://github.com/mikebrady/shairport-sync/blob/cf6998d/shairport.c)
+identifica em comentário o bit 11 como `DeviceSupportsRelay`, mas deixa
+sua ativação comentada; identifica o bit 17 como sessão receptora ativa.
+Esses nomes são pistas de implementação, **não** contrato público da Apple
+nem prova de que o bit 11 habilita o Casa. Em particular, o relay de áudio
+indicado pelo bit 11 não deve ser confundido com o encaminhamento de
+metadados/MediaRemote que o perfil M1 experimenta. Por isso, **não** vamos
+ativar esse bit no Lab apenas para imitar o WiiM: sem implementar a capacidade
+anunciada, o resultado não seria interpretável. A diferença permanece como
+hipótese a investigar, não como combinação de flags autorizada para deploy.
+
+No Lab, os logs dessa execução registraram metadados do emissor e PCM, mas
+**nenhum novo `RC_SETUP_OK` ou `RC_EVENT_CONNECTED`** desde a instalação da
+0.1.10. A sessão de comparação ocorreu após reinício do App, que nesta
+implementação perde o sinal de adoção e a lista de controladores em memória.
+Logo, esta janela **não testa a aceitação do relay RC pelo Casa**. Um ensaio
+de remoção/readição **somente do Lab**, sem reiniciar o processo e com
+captura iniciada antes da adoção, é o próximo controle experimental; não
+considerar a readição uma correção, pois as versões 0.1.4/0.1.6 já tiveram
+ACK RC e cartão vazio.
+
+A leitura do código fixado reforça o limite desse teste: em `rtsp.c`, o
+`POST /configure` altera `config.enable_HK_Access_Control` e o bit 10 de
+`statusFlags` em memória; a lista `pairings` também é uma lista em memória,
+sem gravação persistente nesse caminho. Reiniciar o Shairport Sync, portanto,
+zera esse estado local mesmo se o app Casa ainda mostrar o acessório adotado.
+Isso explica por que não devemos atribuir a ausência de RC na captura atual
+somente a uma decisão da interface. Também **não prova** que persistir esse
+estado faria surgir o cartão: houve ensaios anteriores com RC e ACK, mas sem
+controles. Na próxima readição, correlacionar `POST /configure`, transição
+do bit 10, `SETUP (RC)`, evento conectado, ACK do Now Playing e resultado
+visual como eventos separados. Não forçar o bit 10 sem configuração legítima
+enviada pelo controlador.
+
+Arquivos privados: `wiim-casa-controlled-20261021.pcapng` (SHA-256
+`5B55F834FBB7EC9D646976E24997B1041C64A26843F1B7E6BD1B1EF48D53AFB9`)
+e `lab-casa-controlled-retry-20261021.pcapng` (SHA-256
+`6A0000795050B81F49BE6BD9D969355F8A350AB9A6ADD954D7FD3358A8E08667`).
+
+### Controle de readição durante reprodução — 21/10/2026
+
+Somente o acessório descartável **TecnoHead AirPlay Lab** foi removido do
+Casa. Duas capturas privadas e truncadas a 256 bytes por pacote cobriram a
+janela de remoção, início da reprodução no Apple Music fora do Casa e readição
+sem parar a faixa. O usuário confirmou que o AirPlay permaneceu conectado e
+que o cartão do **mesmo Lab** ainda exibiu **“Controles não disponíveis”**.
+
+Antes da readição, o anúncio mDNS do Lab tinha `flags=0x4`. Depois, a captura
+mostrou `flags=0x20404`, isto é, o bit 10 de acesso HomeKit foi ativado sem
+alterar a identidade do Lab. O conteúdo de `POST /configure` não é legível
+nessa captura; atribuir a transição diretamente a esse POST depende da leitura
+do código Shairport Sync, não de decodificação do payload em rede. Os logs do
+Lab registraram `RC_SETUP_OK`, conexão de eventos, `UPDATE_INFO_ACK`,
+`GATE_MASK_31`, snapshot de SupportedCommands e NowPlaying, e ACKs de ambos
+os envios MediaRemote. Antes da readição havia `GATE_MASK_15`. Logo, este
+ensaio **demonstrou entrega/ACK no canal RC com acesso Casa ativo**, mas
+**não** liberou a interface nativa. ACK RTSP não deve ser contado como sucesso
+visual nem como prova de bloqueio universal da Apple.
+
+Evidência privada local, não publicar pcaps: `lab-readopt-stock-20261021.pcapng`
+(09:04:10–09:07:10, 38 mil pacotes, SHA-256
+`199F980B69C2588C5DD786FC952590DDFFAB73488C85264A8F61DD4BE9F518F6`)
+e `lab-readopt-stock-retry-20261021.pcapng` (09:07:42–09:09:41, 50 mil
+pacotes, SHA-256
+`95BA5BB8FBEEB2DF58750FE271D7AD6ECDDEE2B2AB254ABB044B722F52AF6897`).
+Os horários são locais de São Paulo. Cozinha, Piscina, WiiM, Denon e o App
+de produção não foram alterados.
+
+### Próxima variante honesta preparada localmente — bit 50 omitido
+
+Nas respostas comparadas, o WiiM funcional não anuncia o bit 50 de
+`features`, enquanto o Lab M1 anuncia esse bit de metadados plist. Foi
+preparada **somente na árvore local, sem publicação nem instalação** uma
+variante Lab 0.1.11 chamada
+`tecnohead_model_classic_bits_no_bit50`. Em relação ao perfil atual
+`tecnohead_model_classic_bits`, ela *somente retira* o bit 50 anunciado no
+TXT e em `GET /info`; mantém modelo próprio, bits clássicos, IPv6, perfil M1,
+parser interno de plist e relay RC. É uma hipótese de classificação, não uma
+afirmação de que o bit cause o cartão vazio. O emissor pode deixar de enviar
+Now Playing rico quando o bit faltar, o que deve ser medido separadamente.
+Não se ativam os bits comerciais/MFi 22/26/51 nem o status bit 11. O patch
+incremental passou `git apply --check` contra o Shairport fixado com a pilha
+existente; 75 testes locais e Ruff passaram. Antes de qualquer deploy,
+concluir o ensaio de readição do Lab **na configuração atual** para obter uma
+linha de base comparável; se o Casa continuar vazio, então compilar e testar
+apenas essa redução no Lab, com rollback para a opção anterior. Ainda não há
+resultado físico nem release dessa variante.

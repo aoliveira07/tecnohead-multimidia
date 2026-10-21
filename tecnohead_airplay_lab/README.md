@@ -17,17 +17,24 @@ The `profile` option is applied on app restart:
 
 The lab does **not** offer arbitrary `features` masks, MFi authentication,
 commercial/Apple model spoofing, or a HomePod/WiiM/Denon persona. The separate
-`advertisement` option provides four restricted, lab-only variants:
+`advertisement` option provides five restricted, lab-only variants:
 
-| Advertisement | Own TecnoHead model | Classic metadata bits 15–17 added |
-| --- | --- | --- |
-| `stock` | No | No |
-| `tecnohead_model` | Yes | No |
-| `classic_bits` | No | Yes |
-| `tecnohead_model_classic_bits` | Yes | Yes |
+| Advertisement | Own TecnoHead model | Classic metadata bits 15–17 added | Bit 50 advertised |
+| --- | --- | --- | --- |
+| `stock` | No | No | Stock |
+| `tecnohead_model` | Yes | No | Stock |
+| `classic_bits` | No | Yes | Stock |
+| `tecnohead_model_classic_bits` | Yes | Yes | Stock |
+| `tecnohead_model_classic_bits_no_bit50` | Yes | Yes | No |
 
-The `classic_bits` variants retain bit 50 (binary-plist Now Playing) and only
-advertise formats the receiver parses. AirPlay may still choose a single format;
+The v0.1.11 `no_bit50` variant is a lab-only, opt-in *reduction* of the
+current combined announcement: it clears only advertised feature bit 50,
+without disabling Shairport's internal plist parser or adding vendor features.
+It must be compared directly with `tecnohead_model_classic_bits` in M1. The
+sender may stop providing rich metadata when bit 50 is absent; record this
+separately from the Casa card result. The other `classic_bits` variants retain
+bit 50 (binary-plist Now Playing) and only advertise formats the receiver
+parses. AirPlay may still choose a single format;
 these variants do **not** guarantee two metadata streams. They never set bit 26
 or 51, which published protocol research associates with MFi. A speaker icon
 is a separate observation from a working Home card. The RC relay is

@@ -1,0 +1,33 @@
+diff --git a/shairport.c b/shairport.c
+--- a/shairport.c
++++ b/shairport.c
+@@ -2010,7 +2010,8 @@
+   const char *lab_advertisement = NULL;
+   if (config_lookup_string(config.cfg, "diagnostics.apple_lab_advertisement", &lab_advertisement)) {
+     int own_model = 0;
+     int classic_bits = 0;
++    int hide_rich_metadata_bit = 0;
+     if (strcasecmp(lab_advertisement, "stock") == 0) {
+       // The stock Shairport advertisement is the control condition.
+     } else if (strcasecmp(lab_advertisement, "tecnohead_model") == 0) {
+@@ -2018,7 +2019,11 @@
+       classic_bits = 1;
+     } else if (strcasecmp(lab_advertisement, "tecnohead_model_classic_bits") == 0) {
+       own_model = 1;
+       classic_bits = 1;
++    } else if (strcasecmp(lab_advertisement, "tecnohead_model_classic_bits_no_bit50") == 0) {
++      own_model = 1;
++      classic_bits = 1;
++      hide_rich_metadata_bit = 1;
+     } else {
+       die("Invalid diagnostics.apple_lab_advertisement value.");
+     }
+@@ -2031,6 +2036,8 @@
+     }
+     if (classic_bits && config.metadata_enabled)
+       config.airplay_features |= (UINT64_C(1) << 15) | (UINT64_C(1) << 16) | (UINT64_C(1) << 17);
++    if (hide_rich_metadata_bit)
++      config.airplay_features &= ~(UINT64_C(1) << 50);
+   }
+
+   // now generate the fex field

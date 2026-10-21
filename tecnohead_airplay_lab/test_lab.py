@@ -46,6 +46,16 @@ def test_unknown_advertisement_fails_closed(tmp_path: Path) -> None:
         lab.load_advertisement(options)
 
 
+def test_no_bit50_probe_only_reduces_advertised_capability() -> None:
+    patch = (
+        Path(__file__).with_name("patches") / "shairport-lab-no-rich-bit50.patch"
+    ).read_text(encoding="utf-8")
+    assert '"tecnohead_model_classic_bits_no_bit50"' in patch
+    assert "config.airplay_features &= ~(UINT64_C(1) << 50);" in patch
+    assert "config.airplay_features |= (UINT64_C(1) << 50)" not in patch
+    assert "config.get_plist_metadata" not in patch
+
+
 @pytest.mark.parametrize("mode", lab.NETWORK_MODES)
 def test_network_mode_options(tmp_path: Path, mode: str) -> None:
     options = tmp_path / "options.json"

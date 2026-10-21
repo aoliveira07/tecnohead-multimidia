@@ -32,6 +32,7 @@ ADVERTISEMENTS = (
     "tecnohead_model",
     "classic_bits",
     "tecnohead_model_classic_bits",
+    "tecnohead_model_classic_bits_no_bit50",
 )
 NETWORK_MODES = ("ipv4_only", "dual_stack")
 TXT_VARIANTS = (
