@@ -577,8 +577,8 @@ confirmar conexão em `stock`, mudar uma única variante, confirmar conexão
 AirPlay, observar ícone e cartão Casa com a mesma fonte musical e voltar a
 `stock` se a conexão falhar. Ícone semelhante, metadados no backend ou ACK
 RTSP não contam como D16–D19: é necessária capa/faixa visível e ação real
-dos botões no **mesmo acessório**. A versão 0.1.7 ainda depende de build,
-instalação e resultado físico; esta nota não declara aprovação no Casa.
+dos botões no **mesmo acessório**. A versão 0.1.7 foi compilada e instalada
+apenas no Lab; esta nota não declara aprovação no Casa.
 
 Certificado autoassinado é tecnicamente possível como identidade própria,
 mas não substitui uma credencial MFi. A [documentação de segurança da
@@ -588,3 +588,34 @@ dedicado; o [programa MFi](https://mfi.apple.com/en/how-it-works) inclui
 AirPlay audio, componentes e certificação. Não está demonstrado que a falta
 de MFi seja *a* causa deste cartão vazio; por isso o Lab não simulará esse
 status nem usará certificado de outro dispositivo.
+
+### Execução física v0.1.7 — variantes iniciais
+
+A pré-release `lab-v0.1.7` passou pela CI (49 testes Python, lint e builds
+amd64/arm64) e foi instalada **somente no AirPlay Lab**, com backup da versão
+anterior. O App TecnoHead Multimídia de produção permaneceu parado. O Lab
+conservou `M1/tecnohead_model_classic_bits/dual_stack`; o TXT `stock` após a
+atualização conectou no AirPlay, mas o cartão Casa continuou sem controles.
+
+Mudando **somente** `txt_variant=own_manufacturer`, o log confirmou `lab_ready`
+na nova opção. O usuário confirmou conexão AirPlay, ícone inalterado e
+“Controles não disponíveis” no próprio cartão. Durante a sessão, os contadores
+do Lab registraram metadados e comandos da fonte. Isto demonstra recepção no
+Lab, **não** entrega ao Casa nem interpretação pelo hub.
+
+Mudando **somente** para `own_manufacturer_serial`, o log confirmou `lab_ready`
+na nova opção. O usuário voltou a confirmar conexão AirPlay, ícone inalterado
+e Casa sem controles. Na variante seguinte, `required_sender_zero`, o log
+também confirmou `lab_ready` e o usuário confirmou conexão normal, ícone
+inalterado e Casa sem controles. Em `without_fex`, o log confirmou `lab_ready`
+e o usuário novamente confirmou conexão normal, ícone inalterado e Casa sem
+controles. Nenhuma das quatro variações isoladas passou D16–D19.
+
+Ao final, somente `txt_variant` voltou a `stock`; a interface confirmou o
+Lab 0.1.7 em execução e o log confirmou
+`M1/tecnohead_model_classic_bits/dual_stack/stock`. Nenhum acessório real ou
+App de produção foi modificado durante esta matriz. Esses resultados não
+provam que uma credencial Apple seja necessária para a interface: apenas
+descartam esses campos TXT isolados nas condições testadas. O próximo passo
+de engenharia é delimitar com evidência a classificação/capacidades aceitas
+pelo Casa, sem imitar identidade ou credenciais comerciais.
