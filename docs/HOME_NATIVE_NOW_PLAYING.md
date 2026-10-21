@@ -42,5 +42,17 @@ aos snapshots de comandos e Now Playing; mesmo assim, o próprio cartão Casa
 continuou “Controles não disponíveis”. Assim, essa combinação legítima de
 anúncio + transporte RC não resolve a interface. Não prova que o peer era a
 central, que interpretou o payload ou que uma exigência fechada específica
-da Apple seja a causa. O Lab voltou a `B0/stock` e foi parado; o App principal
-permaneceu parado, sem mudança nas zonas reais. Não há novo Receiver/Bridge.
+da Apple seja a causa. O Lab voltou a `B0/stock` e foi parado **após esse
+ensaio v0.1.5**; o App principal permaneceu parado, sem mudança nas zonas
+reais. Não há novo Receiver/Bridge.
+
+O teste posterior em Lab v0.1.6 isolou IPv6: publicação AAAA e sessão
+efetivamente IPv6, mas o cartão Casa ainda vazio. A combinação subsequente
+`M1/tecnohead_model_classic_bits/dual_stack` manteve o AirPlay conectado e
+obteve gate RC e respostas RTSP 2xx a Now Playing e SupportedCommands após
+readopção do próprio Lab com música tocando; a interface continuou sem
+controles. Assim, nem IPv6 isolado nem a combinação legítima ensaiada
+homologaram a tela. O estado atual do Lab é essa última combinação em
+execução, por solicitação do usuário; produção permanece parada. O ícone
+comercial de speaker ainda não foi reproduzido, e não há demonstração de
+qual bit/campo habilita o cartão. Ver [resultado v0.1.6](AIRPLAY_TRIAL_LAB.md#ensaio-combinado-v016--ipv6-anúncio-próprio-e-relay-rc).

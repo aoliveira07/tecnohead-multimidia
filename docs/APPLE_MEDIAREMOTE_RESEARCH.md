@@ -206,3 +206,34 @@ de anúncio foi aplicada às zonas de produção.
 ## Estado de acesso/governança
 
 Houve acesso autenticado ao HAOS via navegador para inventário, backup, atualização e diagnóstico sanitizado; o usuário forneceu capturas reais do iPhone/Casa. A primeira sessão de Cozinha foi acompanhada até o estado `streaming`, mas a falha de parser impede usar os zeros da RC2 como evidência de ausência de metadados do emissor. A busca por conexão oficial do Kanban Smart House não encontrou o serviço; Trello e ClickHouse não são substitutos autorizados. Checklist e bloqueios permanecem em [MEDIAREMOTE_D01_D24.md](MEDIAREMOTE_D01_D24.md) até que a API oficial esteja disponível. Nenhuma escrita em PostgreSQL foi feita.
+
+### Lab v0.1.6 — diferença de ícone ainda não localizada
+
+O ensaio de IPv6 isolado confirmou anúncio AAAA e sessão de controle IPv6,
+sem habilitar o cartão Casa. A combinação seguinte conservou IPv6 e somou
+modelo próprio, bits 15–17 de metadados implementados e relay RC. Mesmo após
+readopção durante a música, houve snapshots e respostas RTSP 2xx para
+SupportedCommands e Now Playing, mas o usuário confirmou “Casa sem
+controles”. A máscara do Lab combinado foi
+`0x401FCA00,0x5C340`; a observada no WiiM foi
+`0x445F8A00,0x1C340`. Os bits 22 (sem semântica implementada) e 26
+(`ThirdPartySpeaker` em [pesquisa de protocolo](https://emanuelecozzi.net/docs/airplay2/features/))
+são diferenças, **não** uma receita de classificação: habilitar bit
+desconhecido ou associado a perfil comercial/MFi sem suporte real poderia
+quebrar AirPlay ou representar capacidade inexistente. A RC7, com máscara
+comercial, já falhou antes do cartão.
+
+O [mapeamento de descoberta](https://emanuelecozzi.net/docs/airplay2/discovery/)
+mostra que `features` são apenas um dos campos TXT; `model`, `manufacturer`,
+`serialNumber` e `flags` também existem. Na captura local, WiiM anunciou
+`manufacturer` e `serialNumber` próprios; o Shairport fixado só publica
+`model` entre esses campos de identificação. `isGroupLeader=0` no WiiM e
+`igl=0` no Lab não diferenciam um líder ativo nesse ensaio. Não foi
+demonstrado que acrescentar fabricante/série **próprios** altere o ícone
+ou a UI; seria um próximo teste isolado de anúncio, sem falsificar
+identidade ou afirmar MFi. A [issue upstream #2182](https://github.com/mikebrady/shairport-sync/issues/2182)
+contém hipótese comunitária de classificação Apple, mas o WiiM e o Denon
+funcionando no Casa nesta residência impedem tratá-la como bloqueio geral
+comprovado. Estado: PARCIAL; D16–D19 não homologados. O App principal segue
+parado; o Lab v0.1.6 foi mantido em M1/anúncio próprio/IPv6 a pedido do
+usuário.

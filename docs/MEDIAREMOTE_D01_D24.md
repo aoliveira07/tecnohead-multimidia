@@ -1,6 +1,6 @@
 # Homologação MediaRemote D01–D24 — v1.3.2
 
-Atualização: 20/10/2026. `PASSOU` exige o critério inteiro e evidência; teste sintético ou inspeção de código não equivale a teste de iPhone/Casa. Evidências privadas enviadas pelo usuário **não são copiadas ao repositório**. Baseline estável: tag `v1.4.16` (`7c391d665ca9889debf800d33d25e536215ccbe5`). O HAOS executou a RC5 com Shairport `cf6998d` AirPlay 2/`smi11`, NQPTP `1.2.9`/`smi11`, Core/Supervisor `2026.10.2` e HAOS `18.3`. Depois, o App recebeu a [RC7 experimental](https://github.com/aoliveira07/tecnohead-multimidia/releases/tag/v1.4.17-rc.7) e as RC8/RC9 documentadas nos adendos; `latest` segue na v1.4.16. O App principal está parado para os ensaios isolados do Lab v0.1.4, agora em B0. Nenhuma RC está homologada como correção da tela Casa.
+Atualização: 20/10/2026. `PASSOU` exige o critério inteiro e evidência; teste sintético ou inspeção de código não equivale a teste de iPhone/Casa. Evidências privadas enviadas pelo usuário **não são copiadas ao repositório**. Baseline estável: tag `v1.4.16` (`7c391d665ca9889debf800d33d25e536215ccbe5`). O HAOS executou a RC5 com Shairport `cf6998d` AirPlay 2/`smi11`, NQPTP `1.2.9`/`smi11`, Core/Supervisor `2026.10.2` e HAOS `18.3`. Depois, o App recebeu a [RC7 experimental](https://github.com/aoliveira07/tecnohead-multimidia/releases/tag/v1.4.17-rc.7) e as RC8/RC9 documentadas nos adendos; `latest` segue na v1.4.16. O App principal está parado para os ensaios isolados; o Lab v0.1.6 está em `M1/tecnohead_model_classic_bits/dual_stack` conforme o último teste físico. Nenhuma RC está homologada como correção da tela Casa.
 
 | ID | Estado | Evidência disponível / falta exata |
 | --- | --- | --- |
@@ -126,3 +126,21 @@ conexão e cartão fisicamente. Evidências e limitações:
 4. Comparar visualmente Casa com o baseline, executar D16–D23 e regressões de ARC/volume. Só então considerar release, atualização HAOS e D24.
 
 Kanban: registro pendente por falta de API oficial autorizada; não houve escrita em PostgreSQL. A conexão de Trello encontrada no catálogo não é o Kanban Smart House e não foi usada.
+
+Adendo Lab v0.1.6 de 20/10/2026 a D03/D12–D19/D24: o commit `07889b1`
+e a pré-release **somente de código-fonte** `lab-v0.1.6` foram publicados na
+branch experimental; a CI `39521826826` passou, e apenas o Lab foi atualizado
+no HAOS com backup solicitado. Em `B0/stock/dual_stack`, o mesmo iPhone
+conectou por IPv6 ao endereço AAAA anunciado, mas o Casa permaneceu vazio.
+Depois, em `M1/tecnohead_model_classic_bits/dual_stack`, AirPlay conectou,
+o receptor recebeu Now Playing/SupportedCommands com capa, e a readopção
+**somente do Lab durante a música** produziu gate RC `31` e RTSP 2xx para
+ambos os snapshots. O usuário confirmou novamente **“Conectado; Casa sem
+controles”**. D14 tem transporte parcial observado no Lab, mas sem peer RC
+identificado nem aceitação semântica comprovada; D13/D15 seguem NÃO TESTADO
+quanto à causa. D16–D19 **não passaram neste Lab**, e as zonas reais não
+foram retestadas nessa rodada. Não houve novo release estável, mudança em
+Cozinha/Piscina ou prova de bloqueio pela plataforma. O Lab permanece em
+execução no último perfil experimental a pedido do usuário; produção segue
+parada e o espelhamento da rede foi mantido. Evidências sanitizadas e hashes
+das duas capturas privadas estão no [registro do Lab](AIRPLAY_TRIAL_LAB.md#ensaio-combinado-v016--ipv6-anúncio-próprio-e-relay-rc).

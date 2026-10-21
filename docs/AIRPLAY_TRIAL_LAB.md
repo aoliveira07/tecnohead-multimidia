@@ -447,7 +447,7 @@ inferir necessidade de IPv6, MFi ou classificação Apple a partir desta única
 comparação. O Lab foi parado após a captura, verificado no Supervisor; a
 configuração ficou em `B0/stock`.
 
-### Variante experimental v0.1.6 — hipótese dual-stack, homologação pendente
+### Variante experimental v0.1.6 — IPv6 confirmado, cartão ainda vazio
 
 A inspeção do código mostrou dois bloqueios explícitos de IPv6 **somente no
 Lab** v0.1.5: `address` liga o listener Shairport a IPv4, e o Avahi privado
@@ -466,8 +466,7 @@ vínculo Shairport a um IP único e habilita IPv6 e AAAA no Avahi privado. O
 mesmo nome, ID persistente, porta 7100, perfil B0/stock, `features`, `flags`,
 metadata, saída descartada e ausência de relay RC permanecem. Testes locais:
 37 testes do Lab e 4 do utilitário de ensaio passaram; Ruff e
-`git diff --check` sem erros. **Ainda não há verificação de build, mDNS,
-conexão AirPlay nem cartão Casa para v0.1.6.**
+`git diff --check` sem erros.
 
 Antes de considerar essa hipótese, instalar apenas uma pré-release do Lab
 com backup/rollback, confirmar `AAAA` para o próprio Lab e conexão IPv6
@@ -475,3 +474,89 @@ efetiva no PCAP, e só então pedir observação do cartão Casa com Apple Music
 Se IPv6 não for anunciado ou a conexão falhar, retornar a `ipv4_only` sem
 inferir qualquer conclusão sobre classificação Apple. Nenhum App de produção
 deve receber esta mudança experimental.
+
+Resultado físico (20/10/2026): o commit `07889b1` foi publicado somente na
+branch `codex/airplay-lab`, com [pré-release experimental de código-fonte
+`lab-v0.1.6`](https://github.com/aoliveira07/tecnohead-multimidia/releases/tag/lab-v0.1.6).
+Todos os jobs da [CI `39521826826`](https://github.com/aoliveira07/tecnohead-multimidia/actions/runs/39521826826)
+passaram, incluindo o build amd64/arm64 do Lab. O Supervisor atualizou
+**somente o Lab** de 0.1.5 para 0.1.6, com a opção de guardar backup da
+versão 0.1.5 habilitada. O App principal permaneceu parado e não recebeu
+imagem, atualização ou release. Em `B0/stock/dual_stack`, o log do Lab marcou
+`lab_ready`, mantendo relay RC desligado.
+
+Com espelhamento ainda ativo das portas 1/2/10 para a 15, uma captura
+filtrada em mDNS e TCP/7100 registrou 927 quadros em 112 s. Ela permanece
+somente no diretório privado local, com SHA-256
+`FE1236970DD7CAB2D3E428C41544EAFB929FED591B8CC3137A69A0A48EC3A129`;
+não há PCAP, IP, MAC, faixa, arte ou áudio anexado à release. O DNS-SD do
+Lab publicou AAAA (8 respostas capturadas); houve um SYN IPv6 do controlador
+para a porta 7100 exatamente no endereço AAAA anunciado e 514 quadros
+IPv6 nessa porta, sem quadros IPv4 de controle na janela. O usuário confirmou
+que o AirPlay conectou, mas o cartão do **mesmo Lab** no app Casa continuou
+“Controles não disponíveis”. Contadores finais do Lab: 2 Now Playing,
+4 SupportedCommands, campos de álbum/artista/capa/duração/posição/título
+presentes; nenhum relay RC era esperado no perfil B0.
+
+Conclusão restrita: **a ausência de IPv6, isoladamente, não explica a tela
+vazia nesta sessão**. O teste não identifica o critério Apple, não valida
+framing MediaRemote após pareamento e não refuta a necessidade de outros
+mecanismos. O Lab foi parado e a opção `ipv4_only` restaurada e verificada
+após recarregar a interface; `B0/stock`, arranque automático, watchdog e
+atualização automática continuam desativados. O espelhamento do switch foi
+mantido ativo, conforme pedido do usuário. Cozinha/Piscina, WiiM e Denon não
+foram alterados nem retestados nesta rodada.
+
+### Ensaio combinado v0.1.6 — IPv6, anúncio próprio e relay RC
+
+Depois do ensaio isolado acima, a pedido do usuário o mesmo Lab 0.1.6 foi
+reativado em `M1/tecnohead_model_classic_bits/dual_stack`. **Este é o estado
+mais recente: o Lab permanece em execução nesse perfil experimental**; o
+parágrafo anterior descreve apenas a reversão intermediária de B0. Arranque
+automático, watchdog e atualização automática seguem desligados. O App
+principal continua parado, sem modificação de Cozinha/Piscina. O espelhamento
+das portas 1/2/10 para a 15 continua ativo, por solicitação do usuário; não
+há captura em andamento.
+
+O anúncio observado usou modelo próprio `TecnoHead AirPlay Lab` e
+`features=0x401FCA00,0x5C340`, contra `0x401C4A00,0x5C340` em B0/stock.
+Foram acrescentados somente os bits 15–17 de metadados que o receptor
+processa; bits 26/51 associados à classe de speaker de terceiro/MFi não
+foram anunciados. O Lab publicou AAAA e a captura registrou 671 quadros
+IPv6 em TCP/7100, zero IPv4 nessa porta, durante a primeira janela combinada.
+O usuário confirmou AirPlay conectado e música direcionada ao Lab, mas o
+cartão do próprio Lab no Casa permaneceu sem controles.
+
+Com a faixa ainda tocando, o usuário removeu e readicionou **somente o Lab**.
+O AirPlay permaneceu conectado, porém o cartão continuou “Controles não
+disponíveis”. Os logs sanitizados desse segundo ensaio registraram 6
+`updateMRNowPlayingInfo`, 5 `updateMRSupportedCommands`, presença dos campos
+álbum/artista/capa/duração/posição/título, dois SETUP RC, dois event ports,
+um gate RC `31`, um snapshot de comandos, um de Now Playing e uma resposta
+RTSP 2xx para cada envio. As duas conexões RC receberam TEARDOWN. A captura
+da readopção registrou 897 quadros IPv6 em TCP/7100 e zero IPv4. Essas
+respostas comprovam transporte RTSP, **não** que a central interpretou os
+payloads ou habilitou a interface.
+
+Os PCAPs brutos permanecem somente no armazenamento privado da estação,
+sem publicação. SHA-256 da primeira janela combinada:
+`254B1A9E8BCB935D9C1BF406C360AA1381120AD0121B984D8BFED2C9F645FDE5`
+(2169 quadros/120 s). SHA-256 da readopção:
+`BC2DA4A150810ACBD9841CE363E3AA3B0EF2034157BCDBAFBB99DBA877292B46`
+(1566 quadros/93 s). Filtro das capturas: mDNS e TCP/7100. Nenhum endereço,
+MAC, chave, faixa, capa ou payload foi incorporado ao repositório.
+
+Conclusão: **IPv6 + modelo próprio + bits clássicos legítimos + relay RC +
+readopção durante reprodução não bastaram** neste Lab. A diferença do ícone
+em relação a WiiM/Denon continua sendo pista de classificação, não causa
+demonstrada. No anúncio comercial, os únicos bits presentes no primeiro
+bloco e ausentes deste Lab combinado são 22 (não documentado no upstream)
+e 26 (categoria `ThirdPartySpeaker` em pesquisa de protocolo, associada ao
+ecossistema MFi); o Lab tem também bits próprios diferentes. Não ativar
+22/26/51 nem copiar modelo, identidade ou certificado comercial por tentativa
+cega: a máscara comercial completa já causou falha de conexão na RC7.
+O código Shairport fixado publica `model`, mas não `manufacturer` nem
+`serialNumber` no TXT atual; esses campos **próprios e verdadeiros** são uma
+hipótese futura separável, não uma capacidade Home comprovada. Ainda não há
+prova suficiente para declarar bloqueio universal da Apple ou D16–D19
+aprovados nas zonas reais.
