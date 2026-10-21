@@ -1,7 +1,7 @@
 name: "TecnoHead AirPlay Lab"
 slug: "tecnohead_airplay_lab"
 description: "Receptor AirPlay 2 descartavel para ensaios do cartao Apple Casa"
-version: "0.1.8"
+version: "0.1.9"
 stage: experimental
 url: "https://github.com/aoliveira07/tecnohead-multimidia"
 startup: application
@@ -29,5 +29,5 @@ schema:
   advertisement: "list(stock|tecnohead_model|classic_bits|tecnohead_model_classic_bits)"
   network_mode: "list(ipv4_only|dual_stack)"
   txt_variant: "list(stock|own_manufacturer|own_manufacturer_serial|required_sender_zero|without_fex)"
-  info_variant: "list(stock|omit_audio_only_ui)"
+  info_variant: "list(stock|omit_audio_only_ui|omit_playback_capabilities)"
 backup: hot

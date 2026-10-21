@@ -39,7 +39,7 @@ TXT_VARIANTS = (
     "required_sender_zero",
     "without_fex",
 )
-INFO_VARIANTS = ("stock", "omit_audio_only_ui")
+INFO_VARIANTS = ("stock", "omit_audio_only_ui", "omit_playback_capabilities")
 MAX_ITEM = 2 * 1024 * 1024
 MAX_DECLARED_ITEM = 64 * 1024 * 1024
 HEADER = re.compile(

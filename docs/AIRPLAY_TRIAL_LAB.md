@@ -727,3 +727,23 @@ RTSP `200 OK` com `supportsUIForAudioOnlyContent=false`. A produção
 permaneceu parada, Cozinha/Piscina/WiiM/Denon intactos, e o espelho do
 switch permaneceu ativo conforme pedido do usuário. D16–D19 seguem
 **FALHOU** para esta variante, não homologados.
+
+### Próximo ensaio isolado — estrutura de `playbackCapabilities`
+
+A comparação anterior das respostas `GET /info` observou o bloco
+`playbackCapabilities` ausente no WiiM/Denon e presente no Shairport Sync.
+O ensaio anterior omitiu só um campo e não mudou o Casa; portanto a nova
+hipótese, **ainda não comprovada**, é se a estrutura inteira participa da
+classificação. A variante Lab 0.1.9 `omit_playback_capabilities` remove
+somente esse dicionário da resposta do mesmo Lab. Ela não afirma suporte
+novo, não copia identidade/certificados de terceiros e não altera TXT,
+`features`, `statusFlags`, perfil M1, RC relay ou áudio. O padrão e o
+rollback permanecem `stock`.
+
+Ordem: verificar build e resposta local, capturar uma conexão real de
+iPhone por IPv4/IPv6 e confirmar que o dicionário está ausente na resposta
+recebida; observar AirPlay e o próprio cartão Casa durante a mesma faixa;
+somente se necessário readotar **apenas** o Lab. Restaurar `stock` após
+o ensaio. Resposta RTSP 200, chegada de metadados e ícone não constituem
+aprovação de D16–D19: exigem capa/faixa visíveis e controles funcionais
+no mesmo acessório. Nenhum resultado físico é antecipado nesta nota.

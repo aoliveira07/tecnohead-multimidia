@@ -174,9 +174,21 @@ def test_invalid_config_info_variant_fails_closed() -> None:
 def test_info_patch_omits_only_negative_ui_hint() -> None:
     patch = (Path(__file__).with_name("patches") / "shairport-lab-info-variant.patch").read_text()
     assert 'plist_dict_remove_item(capabilities, "supportsUIForAudioOnlyContent")' in patch
+    assert 'plist_dict_remove_item(response_plist, "playbackCapabilities")' in patch
     assert 'config_lookup_string(config.cfg, "diagnostics.apple_lab_info_variant"' in patch
     assert "plist_new_bool" not in patch
     assert "airplay_features" not in patch
+
+
+def test_info_variant_can_remove_entire_capabilities_dictionary() -> None:
+    args = ("M1", "02AABBCCDDEE", "192.0.2.5", Path("/tmp/metadata"))
+    baseline = lab.shairport_config(*args)
+    changed = lab.shairport_config(*args, info_variant="omit_playback_capabilities")
+    assert changed == baseline.replace(
+        'apple_lab_info_variant = "stock";',
+        'apple_lab_info_variant = "omit_playback_capabilities";',
+    )
+    assert "WiiM" not in changed and "HomePod" not in changed and "MFi" not in changed
 
 
 def test_dual_stack_changes_only_network_binding() -> None:

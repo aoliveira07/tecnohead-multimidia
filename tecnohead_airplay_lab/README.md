@@ -76,6 +76,13 @@ verify the response field difference and AirPlay connection, then inspect
 the same Lab card in Casa during playback. If the card remains empty, restore
 `stock`; absence of this key is not evidence that the UI will be enabled.
 
+The v0.1.9 `omit_playback_capabilities` variant removes the **entire**
+`playbackCapabilities` dictionary from `GET /info`, matching one structural
+difference seen in the WiiM/Denon comparison. This is a separate experiment,
+not a claim of those products' identity or capabilities. All other response
+fields and Lab settings stay unchanged. After testing, restore `stock`;
+AirPlay connectivity and a native Casa card must be checked independently.
+
 Only counters and field *presence* are logged. Never print track names,
 artwork, payloads, audio, IPs or pairing details. Review the logs after each
 test, then compare the same lab card in Apple Home. On completion stop the lab
