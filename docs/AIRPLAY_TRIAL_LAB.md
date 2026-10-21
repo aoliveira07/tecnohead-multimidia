@@ -671,3 +671,35 @@ resposta de capacidades do WiiM/Denon com o Lab; isolar **um** campo
 honesto por variante somente no Lab, com rollback, antes de pedir novo
 teste visual. Não há alteração de firmware, produção ou publicação nesta
 auditoria.
+
+### Ensaio Lab 0.1.8 — indicador de interface em `GET /info`
+
+O commit `fbc787b` introduziu `info_variant=stock|omit_audio_only_ui`
+somente no Lab. A variante experimental remove o campo
+`playbackCapabilities.supportsUIForAudioOnlyContent=false` da resposta
+`GET /info`, sem afirmar `true` nem alterar o restante do bloco, TXT,
+`features`, `statusFlags`, identidade, perfil M1, RC relay ou áudio
+descartado. O retorno é `info_variant=stock`; a opção padrão permanece
+`stock`. Os 55 testes locais, lint e o build multi-arquitetura do Lab na
+[CI 39530644724](https://github.com/aoliveira07/tecnohead-multimidia/actions/runs/39530644724)
+passaram. A [pré-release experimental `lab-v0.1.8`](https://github.com/aoliveira07/tecnohead-multimidia/releases/tag/lab-v0.1.8)
+contém somente o código-fonte, sem capturas ou dados pessoais.
+
+No HAOS, somente o Lab foi atualizado de 0.1.7 para 0.1.8, com backup da
+versão anterior habilitado. O App permaneceu em execução e preservou
+`M1/tecnohead_model_classic_bits/dual_stack/txt_variant=stock`. Antes de
+ativar a opção, uma consulta local à resposta real `GET /info` retornou
+RTSP 200 e o campo com valor `false`. Após selecionar apenas
+`info_variant=omit_audio_only_ui` e reiniciar o Lab, o log confirmou
+`lab_ready` nessa opção; nova consulta retornou RTSP 200 com o campo
+**ausente**, mantendo `supportsFPSSecureStop` e
+`supportsInterstitials`. Isso valida o mecanismo da sonda, **não** o
+comportamento do app Casa.
+
+Uma captura privada e filtrada de 180 segundos no espelho do switch
+(`lab-info-omit-session-2026-10-20.pcapng`) terminou com 13.094 pacotes e
+zero perdas, mas **não** registrou tráfego na porta AirPlay do Lab durante
+essa janela. O teste de conexão AirPlay e do cartão Casa foi solicitado
+ao usuário e está **NÃO TESTADO** até confirmação física. Manter a
+variante ativa apenas para esse teste; se houver falha de conexão ou
+nenhuma mudança visual, restaurar `stock` sem tocar nos receptores reais.
