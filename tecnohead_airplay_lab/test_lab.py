@@ -60,6 +60,22 @@ def test_network_mode_defaults_to_ipv4_and_rejects_unknown(tmp_path: Path) -> No
         lab.load_network_mode(options)
 
 
+@pytest.mark.parametrize("variant", lab.TXT_VARIANTS)
+def test_txt_variant_options(tmp_path: Path, variant: str) -> None:
+    options = tmp_path / "options.json"
+    options.write_text(json.dumps({"profile": "M1", "txt_variant": variant}), encoding="utf-8")
+    assert lab.load_txt_variant(options) == variant
+
+
+def test_txt_variant_defaults_to_stock_and_rejects_unknown(tmp_path: Path) -> None:
+    options = tmp_path / "options.json"
+    options.write_text('{"profile":"B0"}', encoding="utf-8")
+    assert lab.load_txt_variant(options) == "stock"
+    options.write_text('{"profile":"B0","txt_variant":"vendor_certificate"}', encoding="utf-8")
+    with pytest.raises(ValueError):
+        lab.load_txt_variant(options)
+
+
 def test_unknown_profile_fails_closed(tmp_path: Path) -> None:
     options = tmp_path / "options.json"
     options.write_text('{"profile":"vendor-mask"}', encoding="utf-8")
@@ -91,12 +107,32 @@ def test_config_does_not_claim_vendor_capabilities(profile: str, advertisement: 
     assert ('get_plist_metadata = "no";' in config) == (profile == "M2")
     assert "apple_feature_comparison" not in config
     assert f'apple_lab_advertisement = "{advertisement}";' in config
+    assert 'apple_lab_txt_variant = "stock";' in config
     assert "WiiM" not in config and "HomePod" not in config and "MFi" not in config
 
 
 def test_invalid_config_advertisement_fails_closed() -> None:
     with pytest.raises(ValueError):
         lab.shairport_config("M1", "02AABBCCDDEE", "192.0.2.5", Path("/tmp/metadata"), "vendor")
+
+
+@pytest.mark.parametrize("variant", lab.TXT_VARIANTS)
+def test_txt_variant_changes_only_diagnostic_option(variant: str) -> None:
+    args = ("M1", "02AABBCCDDEE", "192.0.2.5", Path("/tmp/metadata"))
+    baseline = lab.shairport_config(*args)
+    changed = lab.shairport_config(*args, txt_variant=variant)
+    assert changed == baseline.replace(
+        'apple_lab_txt_variant = "stock";', f'apple_lab_txt_variant = "{variant}";'
+    )
+    assert "WiiM" not in changed and "HomePod" not in changed and "MFi" not in changed
+
+
+def test_invalid_config_txt_variant_fails_closed() -> None:
+    with pytest.raises(ValueError):
+        lab.shairport_config(
+            "M1", "02AABBCCDDEE", "192.0.2.5", Path("/tmp/metadata"),
+            txt_variant="vendor_certificate",
+        )
 
 
 def test_dual_stack_changes_only_network_binding() -> None:

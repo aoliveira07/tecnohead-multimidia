@@ -45,6 +45,27 @@ test. A missing AAAA record or failed connection makes the experiment
 inconclusive; restore `ipv4_only` and restart the Lab. Do not apply this
 option to the production Cozinha/Piscina receivers.
 
+The independent `txt_variant` option (v0.1.7) compares truthful, Lab-only
+AirPlay discovery fields. Each choice changes the `_airplay._tcp` TXT record
+and the corresponding `GET /info` TXT payload, leaving the selected metadata
+profile, feature mask and IPv4/IPv6 mode untouched:
+
+| TXT variant | Difference from stock |
+| --- | --- |
+| `stock` | No extra field; default and rollback setting |
+| `own_manufacturer` | `manufacturer=TecnoHead` |
+| `own_manufacturer_serial` | Own manufacturer and stable `THLAB-…` serial derived from the Lab's own ID |
+| `required_sender_zero` | `rsf=0x0`, no extra sender capability requested |
+| `without_fex` | Omits the optional `fex` field; retains the actual `features` mask |
+
+These are protocol probes, not a claim that the icon or Casa card will change.
+Test one variant at a time on the **same Lab accessory**, first checking
+AirPlay connection, then the Casa card during Apple Music playback. If a
+variant prevents connection, restore `stock` immediately. Do not interpret
+an mDNS record, an RTSP acknowledgement, or an icon change as Home control
+success; only visible metadata and a functional pause/volume control count.
+No variant includes an Apple/MFi certificate or advertises MFi authentication.
+
 Only counters and field *presence* are logged. Never print track names,
 artwork, payloads, audio, IPs or pairing details. Review the logs after each
 test, then compare the same lab card in Apple Home. On completion stop the lab

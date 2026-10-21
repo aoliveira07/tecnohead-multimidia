@@ -32,6 +32,13 @@ ADVERTISEMENTS = (
     "tecnohead_model_classic_bits",
 )
 NETWORK_MODES = ("ipv4_only", "dual_stack")
+TXT_VARIANTS = (
+    "stock",
+    "own_manufacturer",
+    "own_manufacturer_serial",
+    "required_sender_zero",
+    "without_fex",
+)
 MAX_ITEM = 2 * 1024 * 1024
 MAX_DECLARED_ITEM = 64 * 1024 * 1024
 HEADER = re.compile(
@@ -107,6 +114,14 @@ def load_network_mode(path: Path = DATA / "options.json") -> str:
     return mode
 
 
+def load_txt_variant(path: Path = DATA / "options.json") -> str:
+    options = json.loads(path.read_text(encoding="utf-8"))
+    variant = options.get("txt_variant", "stock")
+    if variant not in TXT_VARIANTS:
+        raise ValueError("invalid laboratory TXT variant")
+    return variant
+
+
 def stable_lab_id(path: Path = DATA / "lab_device_id") -> str:
     """A separate, locally administered 48-bit ID; never a commercial MAC."""
 
@@ -136,11 +151,13 @@ def lan_address() -> str:
 def shairport_config(
     profile: str, identity: str, address: str, pipe: Path,
     advertisement: str = "stock", network_mode: str = "ipv4_only",
+    txt_variant: str = "stock",
 ) -> str:
     if (
         profile not in PROFILES
         or advertisement not in ADVERTISEMENTS
         or network_mode not in NETWORK_MODES
+        or txt_variant not in TXT_VARIANTS
     ):
         raise ValueError("invalid laboratory configuration")
     classic, _ = PROFILES[profile]
@@ -183,6 +200,7 @@ sessioncontrol = {{ active_state_timeout = 8.0; }};
 diagnostics = {{
   log_verbosity = 1;
   apple_lab_advertisement = "{advertisement}";
+  apple_lab_txt_variant = "{txt_variant}";
   {('get_plist_metadata = "no";' if profile == "M2" else '')}
 }};
 '''
@@ -417,6 +435,7 @@ async def run() -> None:
     profile = load_profile()
     advertisement = load_advertisement()
     network_mode = load_network_mode()
+    txt_variant = load_txt_variant()
     identity = stable_lab_id()
     address = lan_address()
     classic, relay = PROFILES[profile]
@@ -429,7 +448,7 @@ async def run() -> None:
     (RUNTIME / "bus.conf").write_text(bus_config(bus_socket), encoding="utf-8")
     (RUNTIME / "avahi.conf").write_text(avahi_config(network_mode), encoding="utf-8")
     (RUNTIME / "shairport.conf").write_text(
-        shairport_config(profile, identity, address, pipe, advertisement, network_mode),
+        shairport_config(profile, identity, address, pipe, advertisement, network_mode, txt_variant),
         encoding="utf-8",
     )
     env = {
@@ -447,7 +466,7 @@ async def run() -> None:
     counters = Counters()
     report(
         "lab_starting", profile=profile, advertisement=advertisement,
-        network_mode=network_mode,
+        network_mode=network_mode, txt_variant=txt_variant,
         classic_metadata=classic, rc_relay=relay, audio_output="discarded",
     )
     try:
@@ -496,7 +515,7 @@ async def run() -> None:
             raise RuntimeError("Shairport exited during startup")
         report(
             "lab_ready", profile=profile, advertisement=advertisement,
-            network_mode=network_mode,
+            network_mode=network_mode, txt_variant=txt_variant,
             name="TecnoHead AirPlay Lab", port=7100,
         )
         while not stop.is_set():

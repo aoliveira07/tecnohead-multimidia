@@ -560,3 +560,31 @@ O código Shairport fixado publica `model`, mas não `manufacturer` nem
 hipótese futura separável, não uma capacidade Home comprovada. Ainda não há
 prova suficiente para declarar bloqueio universal da Apple ou D16–D19
 aprovados nas zonas reais.
+
+### Ensaio proposto v0.1.7 — campos TXT independentes
+
+O Lab ganhou uma opção `txt_variant` para variar somente os campos do
+anúncio `_airplay._tcp` e da resposta `GET /info`, mantendo independentes
+`profile`, `advertisement` e `network_mode`. As alternativas são `stock`
+(controle), `own_manufacturer`, `own_manufacturer_serial`,
+`required_sender_zero` (`rsf=0x0`) e `without_fex`. O fabricante e o serial
+são próprios do Lab; nenhuma variante usa identidade comercial, certificado
+ou bit MFi. O serial é estável enquanto o ID local do Lab persistir.
+
+Hipótese: um desses campos pode influenciar a classificação do acessório
+sem romper a sessão. Isto **não foi demonstrado**. A ordem do teste será:
+confirmar conexão em `stock`, mudar uma única variante, confirmar conexão
+AirPlay, observar ícone e cartão Casa com a mesma fonte musical e voltar a
+`stock` se a conexão falhar. Ícone semelhante, metadados no backend ou ACK
+RTSP não contam como D16–D19: é necessária capa/faixa visível e ação real
+dos botões no **mesmo acessório**. A versão 0.1.7 ainda depende de build,
+instalação e resultado físico; esta nota não declara aprovação no Casa.
+
+Certificado autoassinado é tecnicamente possível como identidade própria,
+mas não substitui uma credencial MFi. A [documentação de segurança da
+Apple](https://support.apple.com/guide/security/verifying-accessories-sec70a4f377d/web)
+descreve certificado fornecido pela Apple e autenticação por componente
+dedicado; o [programa MFi](https://mfi.apple.com/en/how-it-works) inclui
+AirPlay audio, componentes e certificação. Não está demonstrado que a falta
+de MFi seja *a* causa deste cartão vazio; por isso o Lab não simulará esse
+status nem usará certificado de outro dispositivo.

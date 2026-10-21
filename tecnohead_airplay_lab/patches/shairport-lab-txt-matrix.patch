@@ -1,0 +1,123 @@
+diff --git a/bonjour_strings.c b/bonjour_strings.c
+index eae9121..b1e5981 100644
+--- a/bonjour_strings.c
++++ b/bonjour_strings.c
+@@ -27,6 +27,8 @@
+ #include "bonjour_strings.h"
+ #include "common.h"
+ #include <inttypes.h>
++#include <libconfig.h>
++#include <string.h>
+ 
+ char *txt_records[128];
+ char *secondary_txt_records[128];
+@@ -52,6 +54,7 @@ char piString[128];
+ char gidString[128];
+ char psiString[128];
+ char fexString[128];
++char labSerialString[128];
+ char modelString[128];
+ char srcversString[128];
+ char osversString[128];
+@@ -158,12 +161,20 @@ void build_bonjour_strings(__attribute((unused)) rtsp_conn_info *conn) {
+   entry_number = 0;
+ #ifdef CONFIG_AIRPLAY_2
+   if (config.service_type == APST_airplay2) {
++    const char *lab_txt_variant = "stock";
++    config_lookup_string(config.cfg, "diagnostics.apple_lab_txt_variant", &lab_txt_variant);
++    int lab_manufacturer = (strcmp(lab_txt_variant, "own_manufacturer") == 0) ||
++                           (strcmp(lab_txt_variant, "own_manufacturer_serial") == 0);
++    int lab_serial = strcmp(lab_txt_variant, "own_manufacturer_serial") == 0;
++    int lab_rsf = strcmp(lab_txt_variant, "required_sender_zero") == 0;
++    int lab_without_fex = strcmp(lab_txt_variant, "without_fex") == 0;
+     secondary_txt_records[entry_number++] = "acl=0";
+     // secondary_txt_records[entry_number++] = "btaddr=00:00:00:00:00:00";
+     secondary_txt_records[entry_number++] =
+         bnprintf(deviceIdString, sizeof(deviceIdString), "deviceid=%s", config.airplay_device_id);
+-    secondary_txt_records[entry_number++] =
+-        bnprintf(fexString, sizeof(fexString), "fex=%s", config.airplay_fex);
++    if (!lab_without_fex)
++      secondary_txt_records[entry_number++] =
++          bnprintf(fexString, sizeof(fexString), "fex=%s", config.airplay_fex);
+     secondary_txt_records[entry_number++] =
+         bnprintf(featuresString, sizeof(featuresString), "features=0x%" PRIX64 ",0x%" PRIX64 "",
+                  features_lo, features_hi); // features_hi and features_lo already calculated.
+@@ -177,6 +188,15 @@ void build_bonjour_strings(__attribute((unused)) rtsp_conn_info *conn) {
+     }
+     secondary_txt_records[entry_number++] = gidString;
+ 
++    if (lab_manufacturer)
++      secondary_txt_records[entry_number++] = "manufacturer=TecnoHead";
++    if (lab_serial)
++      secondary_txt_records[entry_number++] =
++          bnprintf(labSerialString, sizeof(labSerialString), "serialNumber=THLAB-%s",
++                   config.airplay_device_id);
++    if (lab_rsf)
++      secondary_txt_records[entry_number++] = "rsf=0x0";
++
+     if ((conn != NULL) && (conn->groupContainsGroupLeader != 0)) {
+       secondary_txt_records[entry_number++] = "igl=0";
+       secondary_txt_records[entry_number++] = "gcgl=1";
+diff --git a/rtsp.c b/rtsp.c
+index 3e66903..234fe86 100644
+--- a/rtsp.c
++++ b/rtsp.c
+@@ -32,6 +32,7 @@
+ #include <fcntl.h>
+ #include <ifaddrs.h>
+ #include <inttypes.h>
++#include <libconfig.h>
+ #include <limits.h>
+ #include <memory.h>
+ #include <net/if.h>
+@@ -996,6 +997,13 @@ void generateTxtDataValueInfo(rtsp_conn_info *conn, void **response, size_t *res
+   void *qualifier_response_data = NULL;
+   size_t qualifier_response_data_length = 0;
+   char localString[256];
++  const char *lab_txt_variant = "stock";
++  config_lookup_string(config.cfg, "diagnostics.apple_lab_txt_variant", &lab_txt_variant);
++  int lab_manufacturer = (strcmp(lab_txt_variant, "own_manufacturer") == 0) ||
++                         (strcmp(lab_txt_variant, "own_manufacturer_serial") == 0);
++  int lab_serial = strcmp(lab_txt_variant, "own_manufacturer_serial") == 0;
++  int lab_rsf = strcmp(lab_txt_variant, "required_sender_zero") == 0;
++  int lab_without_fex = strcmp(lab_txt_variant, "without_fex") == 0;
+   if (add_pstring_to_malloc("acl=0", &qualifier_response_data, &qualifier_response_data_length) ==
+       0)
+     debug(1, "Problem");
+@@ -1006,10 +1014,11 @@ void generateTxtDataValueInfo(rtsp_conn_info *conn, void **response, size_t *res
+           bnprintf(localString, sizeof(localString), "deviceid=%s", config.airplay_device_id),
+           &qualifier_response_data, &qualifier_response_data_length) == 0)
+     debug(1, "Problem");
+-  if (add_pstring_to_malloc(
+-          bnprintf(localString, sizeof(localString), "fex=%s", config.airplay_fex),
+-          &qualifier_response_data, &qualifier_response_data_length) == 0)
+-    debug(1, "Problem");
++  if (!lab_without_fex)
++    if (add_pstring_to_malloc(
++            bnprintf(localString, sizeof(localString), "fex=%s", config.airplay_fex),
++            &qualifier_response_data, &qualifier_response_data_length) == 0)
++      debug(1, "Problem");
+ 
+   /*
+     uint64_t features_hi = 0x0001C340445D0A00L;
+@@ -1047,6 +1056,20 @@ void generateTxtDataValueInfo(rtsp_conn_info *conn, void **response, size_t *res
+                             &qualifier_response_data_length) == 0)
+     debug(1, "Problem");
+ 
++  if (lab_manufacturer)
++    if (add_pstring_to_malloc("manufacturer=TecnoHead", &qualifier_response_data,
++                              &qualifier_response_data_length) == 0)
++      debug(1, "Problem");
++  if (lab_serial)
++    if (add_pstring_to_malloc(bnprintf(localString, sizeof(localString),
++                                       "serialNumber=THLAB-%s", config.airplay_device_id),
++                              &qualifier_response_data, &qualifier_response_data_length) == 0)
++      debug(1, "Problem");
++  if (lab_rsf)
++    if (add_pstring_to_malloc("rsf=0x0", &qualifier_response_data,
++                              &qualifier_response_data_length) == 0)
++      debug(1, "Problem");
++
+   int gcgl = 0;
+   if (conn != NULL)
+     gcgl = conn->groupContainsGroupLeader;
