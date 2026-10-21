@@ -696,10 +696,34 @@ RTSP 200 e o campo com valor `false`. Após selecionar apenas
 `supportsInterstitials`. Isso valida o mecanismo da sonda, **não** o
 comportamento do app Casa.
 
-Uma captura privada e filtrada de 180 segundos no espelho do switch
-(`lab-info-omit-session-2026-10-20.pcapng`) terminou com 13.094 pacotes e
-zero perdas, mas **não** registrou tráfego na porta AirPlay do Lab durante
-essa janela. O teste de conexão AirPlay e do cartão Casa foi solicitado
-ao usuário e está **NÃO TESTADO** até confirmação física. Manter a
-variante ativa apenas para esse teste; se houver falha de conexão ou
-nenhuma mudança visual, restaurar `stock` sem tocar nos receptores reais.
+Uma primeira captura privada e filtrada de 180 segundos no espelho do
+switch (`lab-info-omit-session-2026-10-20.pcapng`) terminou com 13.094
+pacotes e zero perdas, mas não registrou tráfego na porta AirPlay do Lab:
+o usuário ainda não havia iniciado o ensaio. Na tentativa física seguinte,
+um filtro limitado ao IPv4 também não viu a sessão. A captura corrigida,
+filtrada pela porta AirPlay em **ambas** as pilhas
+(`lab-info-omit-dualstack-2026-10-20.pcapng`), registrou 732 quadros, todos
+IPv6, incluindo a requisição `GET /info` do iPhone. Sua resposta RTSP
+`200 OK` continha `features=0x5c340401fca00` e `statusFlags=0x4`, o bloco
+`playbackCapabilities` ainda com os outros dois campos, e
+`supportsUIForAudioOnlyContent` **ausente**. Portanto a alteração chegou
+ao emissor real pela conexão correta; não foi apenas uma sonda local.
+
+O usuário confirmou AirPlay conectado, mas **“Casa sem controles”** no
+mesmo Lab. O log do App registrou metadados da origem com presença de
+título, artista, álbum, capa, duração e posição, sem registrar esse
+conteúdo pessoal. Para excluir cache da classificação, o usuário parou a
+música, removeu e readicionou **somente** o Lab ao Casa com a variante
+ativa; a captura privada `lab-info-omit-readopt-2026-10-20.pcapng`
+registrou 1.323 quadros IPv6 e requisições de pareamento. O usuário
+confirmou novamente **“Conectou; Casa sem controles”**. A ausência do
+indicador negativo em `/info`, isoladamente, não liberou o cartão, nem
+mesmo após readoção. Isso **não** prova um bloqueio geral da Apple nem
+autoriza preencher outros campos com identidade comercial falsa.
+
+Foi restaurado apenas `info_variant=stock`; o log confirmou `lab_ready`
+com os demais ajustes preservados e nova consulta `GET /info` retornou
+RTSP `200 OK` com `supportsUIForAudioOnlyContent=false`. A produção
+permaneceu parada, Cozinha/Piscina/WiiM/Denon intactos, e o espelho do
+switch permaneceu ativo conforme pedido do usuário. D16–D19 seguem
+**FALHOU** para esta variante, não homologados.
