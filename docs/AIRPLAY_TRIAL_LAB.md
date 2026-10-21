@@ -747,3 +747,27 @@ somente se necessário readotar **apenas** o Lab. Restaurar `stock` após
 o ensaio. Resposta RTSP 200, chegada de metadados e ícone não constituem
 aprovação de D16–D19: exigem capa/faixa visíveis e controles funcionais
 no mesmo acessório. Nenhum resultado físico é antecipado nesta nota.
+
+Implementação e preparo: commits `78d130b` e `127d0c6` na branch do Lab;
+o segundo corrigiu a contagem do hunk do patch, detectada pelo primeiro
+build da CI, e acrescentou teste estrutural para evitar repetição. A
+[CI 39534206577](https://github.com/aoliveira07/tecnohead-multimidia/actions/runs/39534206577)
+passou com 58 testes locais do Lab e builds amd64/arm64. A
+[pré-release `lab-v0.1.9`](https://github.com/aoliveira07/tecnohead-multimidia/releases/tag/lab-v0.1.9)
+contém somente código-fonte. O Supervisor atualizou **somente** o Lab de
+0.1.8 para 0.1.9 com backup da versão anterior. A interface confirmou
+0.1.9 em execução; o log `lab_ready` confirmou
+`M1/tecnohead_model_classic_bits/dual_stack/txt_variant=stock` com
+`info_variant=omit_playback_capabilities`. Uma sonda RTSP local retornou
+`200 OK` sem `playbackCapabilities`, preservando `features` e
+`statusFlags`.
+
+Uma captura privada com filtro restrito à porta AirPlay do Lab e limite
+de três minutos terminou com **zero pacotes**: não houve sessão física
+do iPhone nessa janela. Logo, o ensaio visual do Casa v0.1.9 está
+**PENDENTE**, sem inferência positiva ou negativa. O Lab permanece nessa
+variante experimental para o teste autorizado, com áudio descartado;
+produção continua parada e o espelhamento do switch continua ativo.
+Após o teste, restaurar somente `info_variant=stock` e confirmar o
+retorno da resposta `/info` original. Não promover a variante às zonas
+reais sem D16–D19 e regressões físicas.
