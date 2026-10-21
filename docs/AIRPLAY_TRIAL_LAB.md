@@ -320,3 +320,158 @@ seguido de `lab_ready` no perfil `B0` com anúncio `stock` e relay desligado.
 O Lab foi então **parado** na aba Info. Nenhuma release estável ou alteração
 do App principal foi publicada nesta etapa; o acessório Lab pode aparecer
 temporariamente indisponível no Casa enquanto o App de ensaio estiver parado.
+
+### Ensaio de captura pelo hotspot Windows — comparador WiiM
+
+Em 20/10/2026, o usuário conectou **iPhone e WiiM Amp** ao hotspot Wi-Fi
+temporário da estação Windows. O próprio WiiM continuou visível no AirPlay;
+o usuário confirmou som, capa e controles funcionais no seu cartão Casa,
+incluindo a ação de pausa/retomada solicitada. Isso o valida como controle
+positivo **nesse arranjo de rede**, não demonstra que todo o fluxo passa pela
+pilha de captura do Windows.
+
+O adaptador USB Realtek RTL8188FTV suporta Wi-Fi Direct GO, mas reporta
+`Network monitor mode: unsupported`. Uma coleta local com PktMon, filtro
+exclusivo para o par iPhone–WiiM, `--comp nics`, truncamento em 128 bytes,
+limite circular de 8 MiB e encerramento automático após 90 s gerou 3.689
+eventos sem perda indicada. O texto abreviado expôs principalmente UDP
+319/320 (sincronização PTP) e duas aparições de mDNS; **não expôs TCP/RTSP**.
+Como o ponto de captura pode não ver encaminhamento entre clientes do hotspot,
+isso **não comprova ausência de RTSP/MediaRemote na rede**. A captura bruta
+permanece somente em diretório temporário local, fora do repositório; este
+registro não contém IP, MAC, SSID, áudio, faixa ou payload de usuário.
+
+O Lab foi iniciado apenas em `B0/stock` e confirmou `lab_ready`; no iPhone
+ainda no hotspot, o usuário informou que ele **não apareceu** no seletor
+AirPlay. Lab/HAOS permaneceram na rede doméstica original, e a falta de
+descoberta é compatível com a separação entre redes, mas a causa exata não foi
+isolada. **Não houve sessão nem captura comparável do Lab** nesse hotspot.
+O Lab foi parado novamente, verificado na aba Info; o App principal e as
+zonas Cozinha/Piscina não foram alterados. Próximo ponto de captura útil:
+AP UniFi ou espelhamento de porta TP-Link no caminho da rede original, após
+confirmar topologia/modelos. Não interpretar este ensaio como D16–D19 do Lab.
+
+### Preparação do espelhamento físico — comparação WiiM/Lab
+
+Em 20/10/2026, o usuário identificou o TL-SG1016PE e confirmou a topologia:
+UniFi na porta 1, WiiM na porta 2, HAOS na porta 10 e estação de captura na
+porta 15. iPhone e WiiM voltaram à rede UniFi original. O switch mostrou
+`Port Mirror=Enable`, destino `Port 15` e somente `Port 1` com ingress/egress
+habilitados; as demais portas-fonte continuam desabilitadas. Por decisão
+explícita do usuário, **manter esse espelhamento após o ensaio**, sem rollback
+automático. A estação mantém a Ethernet como rota de gerenciamento e captura;
+o Wi-Fi ficou com endereço APIPA, sem rota IPv4 doméstica. A configuração no
+switch por si só não comprova
+que a placa de rede capture quadros unicast de terceiros: isso exige teste
+com Npcap/Wireshark e uma sessão real.
+
+O instalador oficial Wireshark 4.6.9 x64 foi baixado localmente, teve hash
+SHA-256 e assinatura Authenticode conferidos. O usuário concluiu o assistente
+Npcap 1.88; `dumpcap -D` lista `Ethernet 2`, e `tshark -v` confirma 4.6.9.
+Uma captura de visibilidade de 12 s na Ethernet, limitada a ARP/mDNS e ao
+comparador, recebeu 133 quadros sem perda, todos com origem/destino MAC
+distintos da placa Ethernet local: 108 ARP e 25 mDNS. Isso confirma o espelho
+para broadcast/multicast, **não ainda para a sessão unicast do iPhone**. O
+endereço do WiiM mudou após voltar do hotspot; a primeira sonda direcionada
+ao endereço antigo não é interpretável. As sondas seguintes com índice `3`
+também foram inválidas: adaptadores virtuais do Windows mudaram a numeração
+de `dumpcap -D`, e o índice passou a indicar outra interface. A captura foi
+fixada pelo identificador NPF da Ethernet, não por número. Com ela, uma sonda
+ICMP de 8 s recebeu 38 quadros sem perda, dos quais 32 trafegavam entre
+terceiros, comprovando que o espelho entrega também unicast. Até este ponto,
+não houve captura comparável de uma
+sessão AirPlay WiiM/Lab nem nova conclusão sobre MediaRemote. Próximo passo:
+captura curta do comparador WiiM com sessão
+Apple Music e controles funcionais no próprio cartão Casa; captura equivalente
+do Lab no mesmo iPhone/rede e perfil conhecido; comparar mDNS, RTSP, conexão
+Remote Control Only, portas e sequência de eventos. Guardar PCAPs apenas em
+área privada local e publicar somente agregados sanitizados. O Lab permanece
+parado; nenhuma mudança de `features`, identidade ou App de produção ocorreu.
+
+### Comparação física Wireshark: WiiM funcional versus Lab B0/stock
+
+Na mesma rede UniFi e com o mesmo iPhone, o usuário confirmou Apple Music,
+som e pausa/retomada **no próprio cartão Casa do WiiM**. Em seguida, com
+`TecnoHead AirPlay Lab` v0.1.5 em `B0/stock`, informou novamente
+**“Controles não disponíveis”** no cartão do próprio Lab. Este último descarta
+PCM por projeto. O App de produção não foi iniciado nem modificado.
+
+Para observar as duas direções dos fluxos cabeados, o TL-SG1016PE ficou com
+espelhamento habilitado das portas 1 (UniFi), 2 (WiiM) e 10 (HAOS), ingress e
+egress, para a porta 15 (estação Windows). A tabela do switch confirmou as
+três fontes habilitadas; **o espelhamento foi mantido ativo a pedido do
+usuário**. `dumpcap`/`tshark` do Wireshark 4.6.9 usaram o identificador NPF
+estável da interface Ethernet, não seu índice variável. As capturas completas
+estão somente no diretório privado local `TecnoHeadMediaRemoteCaptures`, fora
+do repositório:
+
+| Sessão | Captura | Duração | Quadros | Observação física |
+|---|---|---:|---:|---|
+| WiiM | `wiim-port2-session-2026-10-20.pcapng` | 120 s | 10.776 | Casa exibiu controles; pausa/retomada funcionou |
+| Lab | `lab-port10-session-2026-10-20.pcapng` | 150 s | 28.989 | Casa continuou sem controles |
+
+A captura WiiM terminou com 0 perdas reportadas pela interface. A captura
+Lab foi encerrada manualmente após o resultado visual; seu arquivo é legível,
+mas não há estatística confiável de perdas reportadas nesse encerramento. As
+fontes espelhadas podem duplicar quadros, e o filtro Lab incluiu tráfego de
+fundo do HAOS; **contagens brutas não são comparação de desempenho**. O mesmo
+MAC de origem do controlador aparece nas sessões AirPlay dos dois receptores,
+sem ser divulgado neste relatório.
+
+| Indicador observado | WiiM | Lab B0/stock |
+|---|---|---|
+| DNS-SD `_airplay._tcp` | A e AAAA | A, sem AAAA na janela |
+| Família da sessão de controle e do fluxo TCP de mídia | IPv6 | IPv4 |
+| Porta anunciada de controle | 7000 | 7100 |
+| `features` anunciado | `0x445F8A00,0x1C340` | `0x401C4A00,0x5C340` |
+| `flags` anunciado | `0x4` | `0x4` |
+| Modelo próprio anunciado | `WiiM Amp` | `ShairportSync` |
+
+O Wireshark identificou no início de ambas as sessões `GET /info` e
+`POST /pair-setup`, mas **não decodificou o conteúdo protegido após o
+pareamento**. Logo, estes PCAPs não demonstram se o home hub recebeu
+`updateMRNowPlayingInfo`, quais capacidades ele aceitou ou por que habilitou
+a UI do WiiM. O Lab B0 não faz relay RC por projeto; seus logs saneados,
+contudo, registraram recepção de Now Playing e SupportedCommands da origem,
+com presença de título, artista, álbum, capa, duração e posição. A ausência
+de botões no Casa não é ausência de metadados no backend.
+
+A diferença IPv4/IPv6 é **hipótese de ensaio, não causa comprovada**. Ela pode
+ser isolada em uma variante reversível e exclusivamente do Lab que mantenha
+nome, identidade, `features`, `flags` e perfil de metadata iguais a B0, mas
+permita anúncio/escuta IPv6 legítimos. Primeiro confirmar por DNS-SD que a
+variante publica AAAA e por captura que o mesmo iPhone escolhe IPv6; só então
+comparar o cartão Casa. Não repetir a máscara comercial: o ensaio RC7 já
+provocou falha de conexão e incluiu capacidade MFi não implementada. Não
+inferir necessidade de IPv6, MFi ou classificação Apple a partir desta única
+comparação. O Lab foi parado após a captura, verificado no Supervisor; a
+configuração ficou em `B0/stock`.
+
+### Variante experimental v0.1.6 — hipótese dual-stack, homologação pendente
+
+A inspeção do código mostrou dois bloqueios explícitos de IPv6 **somente no
+Lab** v0.1.5: `address` liga o listener Shairport a IPv4, e o Avahi privado
+usa `use-ipv6=no`/`publish-aaaa-on-ipv4=no`. O [arquivo de configuração
+oficial do Shairport Sync](https://github.com/mikebrady/shairport-sync/blob/master/scripts/shairport-sync.conf)
+documenta que omitir `address` permite escuta nos endereços locais; o
+[manual do Avahi](https://manpages.debian.org/unstable/avahi-daemon/avahi-daemon.conf.5.en.html)
+define as opções de anúncio IPv6/AAAA. A própria captura mostrou tráfego
+IPv6 no host HAOS, mas isso não prova que a instância Lab consiga usá-lo.
+
+Foi preparada para publicação isolada na branch experimental, sem alteração
+da imagem ou do App de produção, a opção `network_mode=ipv4_only|dual_stack`
+para o App Lab.
+O padrão `ipv4_only` reproduz a configuração v0.1.5; `dual_stack` omite o
+vínculo Shairport a um IP único e habilita IPv6 e AAAA no Avahi privado. O
+mesmo nome, ID persistente, porta 7100, perfil B0/stock, `features`, `flags`,
+metadata, saída descartada e ausência de relay RC permanecem. Testes locais:
+37 testes do Lab e 4 do utilitário de ensaio passaram; Ruff e
+`git diff --check` sem erros. **Ainda não há verificação de build, mDNS,
+conexão AirPlay nem cartão Casa para v0.1.6.**
+
+Antes de considerar essa hipótese, instalar apenas uma pré-release do Lab
+com backup/rollback, confirmar `AAAA` para o próprio Lab e conexão IPv6
+efetiva no PCAP, e só então pedir observação do cartão Casa com Apple Music.
+Se IPv6 não for anunciado ou a conexão falhar, retornar a `ipv4_only` sem
+inferir qualquer conclusão sobre classificação Apple. Nenhum App de produção
+deve receber esta mudança experimental.

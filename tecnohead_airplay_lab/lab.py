@@ -31,6 +31,7 @@ ADVERTISEMENTS = (
     "classic_bits",
     "tecnohead_model_classic_bits",
 )
+NETWORK_MODES = ("ipv4_only", "dual_stack")
 MAX_ITEM = 2 * 1024 * 1024
 MAX_DECLARED_ITEM = 64 * 1024 * 1024
 HEADER = re.compile(
@@ -98,6 +99,14 @@ def load_advertisement(path: Path = DATA / "options.json") -> str:
     return advertisement
 
 
+def load_network_mode(path: Path = DATA / "options.json") -> str:
+    options = json.loads(path.read_text(encoding="utf-8"))
+    mode = options.get("network_mode", "ipv4_only")
+    if mode not in NETWORK_MODES:
+        raise ValueError("invalid laboratory network mode")
+    return mode
+
+
 def stable_lab_id(path: Path = DATA / "lab_device_id") -> str:
     """A separate, locally administered 48-bit ID; never a commercial MAC."""
 
@@ -125,15 +134,23 @@ def lan_address() -> str:
 
 
 def shairport_config(
-    profile: str, identity: str, address: str, pipe: Path, advertisement: str = "stock"
+    profile: str, identity: str, address: str, pipe: Path,
+    advertisement: str = "stock", network_mode: str = "ipv4_only",
 ) -> str:
-    if profile not in PROFILES or advertisement not in ADVERTISEMENTS:
+    if (
+        profile not in PROFILES
+        or advertisement not in ADVERTISEMENTS
+        or network_mode not in NETWORK_MODES
+    ):
         raise ValueError("invalid laboratory configuration")
     classic, _ = PROFILES[profile]
     if not re.fullmatch(r"02[0-9A-F]{10}", identity):
         raise ValueError("invalid identity")
     if not re.fullmatch(r"[0-9.]+", address):
         raise ValueError("invalid address")
+    # Upstream's address option binds the RTSP listener to one local IP.
+    # Omit it only in the isolated dual-stack trial; keep the B0 default exact.
+    bind_address = f'  address = "{address}";\n' if network_mode == "ipv4_only" else ""
     # The advertised model is TecnoHead's own; no commercial identity or MFi claim.
     return f'''general = {{
   name = "TecnoHead AirPlay Lab";
@@ -143,8 +160,7 @@ def shairport_config(
   mdns_backend = "avahi";
   output_backend = "stdout";
   port = 7100;
-  address = "{address}";
-  regtype = "_airplay._tcp";
+{bind_address}  regtype = "_airplay._tcp";
   airplay_device_id = 0x{identity}L;
   nqptp_shared_memory_interface_name = "/tecnohead-airplay-lab";
   ignore_volume_control = "yes";
@@ -194,11 +210,15 @@ def bus_config(socket_path: Path) -> str:
 '''
 
 
-AVAHI_CONFIG = '''[server]
+def avahi_config(network_mode: str = "ipv4_only") -> str:
+    if network_mode not in NETWORK_MODES:
+        raise ValueError("invalid laboratory network mode")
+    ipv6 = network_mode == "dual_stack"
+    return f'''[server]
 host-name=tecnohead-airplay-lab
 domain-name=local
 use-ipv4=yes
-use-ipv6=no
+use-ipv6={"yes" if ipv6 else "no"}
 enable-dbus=yes
 allow-point-to-point=no
 
@@ -209,7 +229,7 @@ publish-addresses=yes
 publish-hinfo=no
 publish-workstation=no
 publish-domain=no
-publish-aaaa-on-ipv4=no
+publish-aaaa-on-ipv4={"yes" if ipv6 else "no"}
 '''
 
 
@@ -396,6 +416,7 @@ async def run() -> None:
     RUNTIME.mkdir(parents=True, exist_ok=True)
     profile = load_profile()
     advertisement = load_advertisement()
+    network_mode = load_network_mode()
     identity = stable_lab_id()
     address = lan_address()
     classic, relay = PROFILES[profile]
@@ -406,9 +427,10 @@ async def run() -> None:
             path.unlink()
     os.mkfifo(pipe, 0o600)
     (RUNTIME / "bus.conf").write_text(bus_config(bus_socket), encoding="utf-8")
-    (RUNTIME / "avahi.conf").write_text(AVAHI_CONFIG, encoding="utf-8")
+    (RUNTIME / "avahi.conf").write_text(avahi_config(network_mode), encoding="utf-8")
     (RUNTIME / "shairport.conf").write_text(
-        shairport_config(profile, identity, address, pipe, advertisement), encoding="utf-8"
+        shairport_config(profile, identity, address, pipe, advertisement, network_mode),
+        encoding="utf-8",
     )
     env = {
         **os.environ,
@@ -425,6 +447,7 @@ async def run() -> None:
     counters = Counters()
     report(
         "lab_starting", profile=profile, advertisement=advertisement,
+        network_mode=network_mode,
         classic_metadata=classic, rc_relay=relay, audio_output="discarded",
     )
     try:
@@ -473,6 +496,7 @@ async def run() -> None:
             raise RuntimeError("Shairport exited during startup")
         report(
             "lab_ready", profile=profile, advertisement=advertisement,
+            network_mode=network_mode,
             name="TecnoHead AirPlay Lab", port=7100,
         )
         while not stop.is_set():

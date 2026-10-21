@@ -81,6 +81,39 @@ da Apple. Ao final, `lab_ready B0/stock` e estado **Parado** foram
 confirmados; nenhuma promoção estável foi feita. Detalhes em
 [AIRPLAY_TRIAL_LAB.md](AIRPLAY_TRIAL_LAB.md).
 
+Adendo de rede/hotspot de 20/10/2026 a D02/D12–D19: iPhone e WiiM Amp
+foram conectados ao hotspot temporário do Windows. O usuário confirmou som,
+capa e controles funcionais no próprio cartão Casa do WiiM. Uma coleta
+PktMon de 90 s, filtrada só para esse par e truncada em 128 bytes, registrou
+pacotes de sincronização PTP, mas não a sessão TCP/RTSP completa; portanto
+ela **não é comparação MediaRemote** e não fecha D12–D15. O Lab, mantido em
+`B0/stock` e na rede original do HAOS, não apareceu no seletor AirPlay do
+iPhone nesse hotspot. Não houve teste Casa nem captura do Lab nessa rede;
+D16–D19 **não mudam de status**. O Lab voltou a **Parado**; Cozinha/Piscina
+e App principal não foram modificados. Evidência sanitizada e limites da
+captura: [AIRPLAY_TRIAL_LAB.md](AIRPLAY_TRIAL_LAB.md#ensaio-de-captura-pelo-hotspot-windows--comparador-wiim).
+
+Adendo de Wireshark/espelhamento de 20/10/2026 a D02/D12–D19: no switch
+TL-SG1016PE, as portas físicas de UniFi, WiiM e HAOS foram espelhadas em
+ambos os sentidos para a estação de captura; o usuário pediu **manter essa
+configuração ativa**. Na rede original, o mesmo iPhone produziu uma sessão
+WiiM com som e pausa/retomada funcionais no próprio Casa e uma sessão Lab
+`B0/stock` cujo cartão continuou “Controles não disponíveis”. Os PCAPs
+privados foram capturados por `dumpcap` do Wireshark 4.6.9 e examinados por
+`tshark`: o WiiM anunciou A+AAAA e usou IPv6 para controle/mídia; o Lab
+anunciou A sem AAAA e usou IPv4. As máscaras `features` diferem; `flags=0x4`
+nos dois. Logs saneados do Lab confirmaram Now Playing com presença de
+título/arte e SupportedCommands recebidos da origem, mas B0 não encaminha
+RC. **A causa da diferença visual permanece hipótese**, pois o tráfego após
+o pareamento não foi decodificado e IPv6, modelo, recursos e implementação
+comercial variam juntos. D14 não é homologado por esta captura; D15 segue
+sem causa comprovada; D16–D19 continuam não aprovados nos acessórios
+TecnoHead. O Lab foi novamente parado, App de produção permaneceu parado,
+sem release, readopção ou mudança de identidade. Próximo ensaio seguro:
+isolar dual-stack/IPv6 apenas no Lab, sem copiar `features` MFi, e verificar
+conexão e cartão fisicamente. Evidências e limitações:
+[AIRPLAY_TRIAL_LAB.md](AIRPLAY_TRIAL_LAB.md#comparação-física-wireshark-wiim-funcional-versus-lab-b0stock).
+
 ## Provas automatizadas locais (não são D16–D19)
 
 `python -m pytest -q` em `tecnohead_multimidia`: **50 passed, 1 skipped** na RC5; Ruff, auditoria, CI e build multi-arquitetura passaram. Os testes novos reproduzem o enquadramento real do pipe (`Base64</data></item>` sem quebra), além de `copl`, privacidade, flag desligada por padrão, continuidade de `pvol` após item volumoso ou falha da sonda, isolamento por zona dos marcadores RC e seleção de metadados clássicos em uma única zona. Os testes automatizados não substituem iPhone, hub, HAOS ou amplificador físico.

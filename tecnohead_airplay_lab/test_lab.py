@@ -44,6 +44,22 @@ def test_unknown_advertisement_fails_closed(tmp_path: Path) -> None:
         lab.load_advertisement(options)
 
 
+@pytest.mark.parametrize("mode", lab.NETWORK_MODES)
+def test_network_mode_options(tmp_path: Path, mode: str) -> None:
+    options = tmp_path / "options.json"
+    options.write_text(json.dumps({"profile": "B0", "network_mode": mode}), encoding="utf-8")
+    assert lab.load_network_mode(options) == mode
+
+
+def test_network_mode_defaults_to_ipv4_and_rejects_unknown(tmp_path: Path) -> None:
+    options = tmp_path / "options.json"
+    options.write_text('{"profile":"B0"}', encoding="utf-8")
+    assert lab.load_network_mode(options) == "ipv4_only"
+    options.write_text('{"profile":"B0","network_mode":"any"}', encoding="utf-8")
+    with pytest.raises(ValueError):
+        lab.load_network_mode(options)
+
+
 def test_unknown_profile_fails_closed(tmp_path: Path) -> None:
     options = tmp_path / "options.json"
     options.write_text('{"profile":"vendor-mask"}', encoding="utf-8")
@@ -81,6 +97,29 @@ def test_config_does_not_claim_vendor_capabilities(profile: str, advertisement: 
 def test_invalid_config_advertisement_fails_closed() -> None:
     with pytest.raises(ValueError):
         lab.shairport_config("M1", "02AABBCCDDEE", "192.0.2.5", Path("/tmp/metadata"), "vendor")
+
+
+def test_dual_stack_changes_only_network_binding() -> None:
+    args = ("B0", "02AABBCCDDEE", "192.0.2.5", Path("/tmp/metadata"), "stock")
+    ipv4 = lab.shairport_config(*args)
+    dual = lab.shairport_config(*args, network_mode="dual_stack")
+    assert 'address = "192.0.2.5";' in ipv4
+    assert "address =" not in dual
+    assert dual == ipv4.replace('  address = "192.0.2.5";\n', "")
+    assert "use-ipv6=no" in lab.avahi_config()
+    assert "publish-aaaa-on-ipv4=no" in lab.avahi_config()
+    assert "use-ipv6=yes" in lab.avahi_config("dual_stack")
+    assert "publish-aaaa-on-ipv4=yes" in lab.avahi_config("dual_stack")
+
+
+def test_invalid_network_mode_fails_closed() -> None:
+    with pytest.raises(ValueError):
+        lab.shairport_config(
+            "B0", "02AABBCCDDEE", "192.0.2.5", Path("/tmp/metadata"),
+            "stock", "anything",
+        )
+    with pytest.raises(ValueError):
+        lab.avahi_config("anything")
 
 
 def test_mediaremote_counters_retain_no_media() -> None:

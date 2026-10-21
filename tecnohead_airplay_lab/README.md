@@ -35,6 +35,16 @@ experimental: RTSP 2xx responses do not prove Home UI success. Use `M1` with
 one advertisement at a time for the combined classification/relay experiment.
 Return to `B0` + `stock` after testing.
 
+The independent `network_mode` option defaults to `ipv4_only`, preserving the
+current explicit IPv4 listener and Avahi IPv4-only advertisement. The
+experimental `dual_stack` option removes only Shairport Sync's single-address
+bind and enables Avahi IPv6/AAAA publication. It does not change the Lab's
+identity, feature mask, metadata profile, RC relay or audio output. Confirm an
+AAAA record and an actual IPv6 AirPlay session before interpreting a Home-card
+test. A missing AAAA record or failed connection makes the experiment
+inconclusive; restore `ipv4_only` and restart the Lab. Do not apply this
+option to the production Cozinha/Piscina receivers.
+
 Only counters and field *presence* are logged. Never print track names,
 artwork, payloads, audio, IPs or pairing details. Review the logs after each
 test, then compare the same lab card in Apple Home. On completion stop the lab
