@@ -52,7 +52,19 @@ efetivamente IPv6, mas o cartão Casa ainda vazio. A combinação subsequente
 obteve gate RC e respostas RTSP 2xx a Now Playing e SupportedCommands após
 readopção do próprio Lab com música tocando; a interface continuou sem
 controles. Assim, nem IPv6 isolado nem a combinação legítima ensaiada
-homologaram a tela. O estado atual do Lab é essa última combinação em
-execução, por solicitação do usuário; produção permanece parada. O ícone
+homologaram a tela. Naquele ponto, o Lab ficou nessa combinação em
+execução, por solicitação do usuário; produção permaneceu parada. O ícone
 comercial de speaker ainda não foi reproduzido, e não há demonstração de
 qual bit/campo habilita o cartão. Ver [resultado v0.1.6](AIRPLAY_TRIAL_LAB.md#ensaio-combinado-v016--ipv6-anúncio-próprio-e-relay-rc).
+
+Em 21/10/2026, o Lab v0.1.10 manteve `M1/tecnohead_model_classic_bits/dual_stack`
+com TXT e `GET /info` originais e testou o caminho **inverso** dos comandos:
+o administrador enviou pausa e play, o Shairport postou ambos no event
+channel da sessão de áudio/PTP, e o iPhone realmente pausou e retomou.
+O cartão do próprio Lab no Casa **continuou “Controles não disponíveis”**.
+Isso comprova controle do emissor pelo endpoint, não controle **a partir
+do Casa** nem apresentação nativa. A produção segue parada e as zonas
+reais não receberam o patch. O próximo trabalho é isolar a negociação
+de capacidades/assinatura do mesmo acessório e eventuais solicitações
+Casa→receptor, usando WiiM/Denon como comparadores autorizados e sem
+imitar sua identidade. Ver [ensaio v0.1.10](AIRPLAY_TRIAL_LAB.md#resultado-físico-lab-0110--comandos-na-sessão-de-áudioptp).

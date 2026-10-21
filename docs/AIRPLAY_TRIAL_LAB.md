@@ -802,3 +802,34 @@ continua descartando áudio; D10/D11 das zonas reais não são antecipados.
 O patch foi verificado contra o commit Shairport fixado, e os 69 testes
 locais do Lab e o lint passaram antes de publicação. O App principal
 permanece parado; Cozinha e Piscina não são alteradas neste ensaio.
+
+### Resultado físico Lab 0.1.10 — comandos na sessão de áudio/PTP
+
+Em 21/10/2026, o commit `3786a2c` foi publicado na pré-release
+[`lab-v0.1.10`](https://github.com/aoliveira07/tecnohead-multimidia/releases/tag/lab-v0.1.10).
+A CI `39585689456` passou integralmente, inclusive testes e build do Lab.
+O Supervisor instalou **somente o Lab** 0.1.10, mantendo backup da 0.1.9.
+A interface mostrou 0.1.10 em execução e `lab_ready` confirmou
+`M1/tecnohead_model_classic_bits/dual_stack/txt_variant=stock/info_variant=stock`.
+O App principal permaneceu parado.
+
+O teste administrativo sem música produziu `lab_command_skipped` com
+`no_recent_audio`, comprovando entrega pelo `hassio.app_stdin` e a proteção
+contra comando fora de sessão. Com Apple Music tocando **somente no Lab**,
+o log mostrou PCM recebido e campos Now Playing do emissor presentes.
+Uma única pausa via D-Bus do Shairport registrou
+`TECNOHEAD_LAB_COMMAND_CHANNEL_PTP` e
+`TECNOHEAD_LAB_COMMAND_POST_ACCEPTED`, além de `dbus_returned`; o usuário
+confirmou que a faixa **pausou sozinha** no iPhone, sem toque. Um único
+`play` subsequente registrou os mesmos marcadores pela segunda vez; o
+usuário confirmou que a faixa **retomou sozinha**. Isto é evidência física
+de transporte e efeito dos comandos na sessão de áudio/PTP deste Lab, não
+apenas ACK. O teste não exercitou `next`/`previous`, as instâncias reais
+de Cozinha/Piscina nem comandos originados pelo cartão Casa; portanto
+**D10/D11 não passam** por este ensaio. No reteste da mesma versão, com
+Apple Music dirigido ao Lab, o usuário abriu o cartão do próprio Lab e
+informou **“Controles não disponíveis”**. A correção do caminho de comandos
+**não habilitou** capa ou botões no Casa. Isto isola a falha restante na
+exposição/negociação do acessório ou no mecanismo de controle recebido
+da interface Casa; não prova uma restrição universal da Apple. Nenhum
+patch do Lab foi promovido para Cozinha/Piscina.

@@ -237,3 +237,21 @@ funcionando no Casa nesta residência impedem tratá-la como bloqueio geral
 comprovado. Estado: PARCIAL; D16–D19 não homologados. O App principal segue
 parado; o Lab v0.1.6 foi mantido em M1/anúncio próprio/IPv6 a pedido do
 usuário.
+
+### Lab v0.1.10 — comando ao emissor comprovado, Casa ainda vazio
+
+Em 21/10/2026, um ensaio no Lab descartável separou explicitamente os
+dois fluxos que a [discussão upstream #2262](https://github.com/mikebrady/shairport-sync/discussions/2262)
+descreve: `sendMediaRemoteCommand` saiu pelo event channel da sessão
+**áudio/PTP**, enquanto o relay de Now Playing anterior usava a conexão
+**Remote Control Only**. O Lab recebeu PCM e metadados do Apple Music;
+uma pausa e um play únicos registraram categoria PTP e POST aceito.
+O usuário confirmou que o iPhone pausou e retomou **sem toque manual**.
+O mesmo cartão Lab no app Casa, durante a reprodução, continuou com
+“Controles não disponíveis”. Portanto, falta de mecanismo outbound
+play/pause **não explica sozinha** o cartão vazio; o ensaio não prova que
+o Casa tenha solicitado ou recebido comandos, nem que a classificação
+Apple esteja bloqueada. O caminho de investigação restante é comparar
+negociação/assinatura efetiva do acessório e mensagens **originadas pelo
+Casa/hub**, com o WiiM/Denon positivos, sem copiar identidades ou
+certificados. Detalhes e limites no [relatório do Lab](AIRPLAY_TRIAL_LAB.md#resultado-físico-lab-0110--comandos-na-sessão-de-áudioptp).

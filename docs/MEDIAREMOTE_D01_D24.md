@@ -1,6 +1,6 @@
 # Homologação MediaRemote D01–D24 — v1.3.2
 
-Atualização: 20/10/2026. `PASSOU` exige o critério inteiro e evidência; teste sintético ou inspeção de código não equivale a teste de iPhone/Casa. Evidências privadas enviadas pelo usuário **não são copiadas ao repositório**. Baseline estável: tag `v1.4.16` (`7c391d665ca9889debf800d33d25e536215ccbe5`). O HAOS executou a RC5 com Shairport `cf6998d` AirPlay 2/`smi11`, NQPTP `1.2.9`/`smi11`, Core/Supervisor `2026.10.2` e HAOS `18.3`. Depois, o App recebeu a [RC7 experimental](https://github.com/aoliveira07/tecnohead-multimidia/releases/tag/v1.4.17-rc.7) e as RC8/RC9 documentadas nos adendos; `latest` segue na v1.4.16. O App principal está parado para os ensaios isolados; o Lab v0.1.6 está em `M1/tecnohead_model_classic_bits/dual_stack` conforme o último teste físico. Nenhuma RC está homologada como correção da tela Casa.
+Atualização: 21/10/2026. `PASSOU` exige o critério inteiro e evidência; teste sintético ou inspeção de código não equivale a teste de iPhone/Casa. Evidências privadas enviadas pelo usuário **não são copiadas ao repositório**. Baseline estável: tag `v1.4.16` (`7c391d665ca9889debf800d33d25e536215ccbe5`). O HAOS executou a RC5 com Shairport `cf6998d` AirPlay 2/`smi11`, NQPTP `1.2.9`/`smi11`, Core/Supervisor `2026.10.2` e HAOS `18.3`. Depois, o App recebeu a [RC7 experimental](https://github.com/aoliveira07/tecnohead-multimidia/releases/tag/v1.4.17-rc.7) e as RC8/RC9 documentadas nos adendos; `latest` segue na v1.4.16. O App principal está parado para os ensaios isolados; o Lab v0.1.10 está em `M1/tecnohead_model_classic_bits/dual_stack/txt_variant=stock/info_variant=stock`. O comando play/pause pela sessão de áudio/PTP funcionou no Lab, mas o cartão Casa continuou sem controles. Nenhuma RC está homologada como correção da tela Casa.
 
 | ID | Estado | Evidência disponível / falta exata |
 | --- | --- | --- |
@@ -175,3 +175,20 @@ play/pause/próxima enviado pelo receptor e verificado no iPhone. O
 `info_variant` voltou a `stock`, comprovado por `lab_ready`; demais
 ajustes do Lab preservados. Produção parada e espelho do switch mantido.
 Detalhes no [registro do Lab](AIRPLAY_TRIAL_LAB.md#próximo-ensaio-isolado--estrutura-de-playbackcapabilities).
+
+Adendo Lab v0.1.10 de 21/10/2026 a D09–D11/D16–D19/D24: o commit
+`3786a2c` e a pré-release `lab-v0.1.10` foram publicados após CI
+`39585689456` integralmente aprovada. O Supervisor instalou **somente o
+Lab**, com backup da 0.1.9; o App principal permaneceu parado. A ação
+administrativa `hassio.app_stdin` sem música foi recebida e recusada por
+`no_recent_audio`. Com Apple Music tocando somente no Lab, pausa e play
+produziram duas ocorrências de `TECNOHEAD_LAB_COMMAND_CHANNEL_PTP` e
+`TECNOHEAD_LAB_COMMAND_POST_ACCEPTED`; o usuário confirmou no iPhone que
+a faixa **pausou e retomou sozinha**. Logo, o caminho de comando outbound
+pela sessão áudio/PTP funciona fisicamente **no Lab**. Isso não conclui
+D10/D11, que exigem teste por Cozinha/Piscina incluindo próxima faixa,
+nem valida comando iniciado pelo Casa. No teste visual subsequente da
+mesma versão, o usuário informou **“Controles não disponíveis”** no
+próprio cartão Lab. D16–D19 permanecem FALHOU para as zonas reais conforme
+os ensaios anteriores, e não passaram no Lab 0.1.10. Nenhuma variante
+experimental foi promovida à produção. Ver [resultado completo](AIRPLAY_TRIAL_LAB.md#resultado-físico-lab-0110--comandos-na-sessão-de-áudioptp).
